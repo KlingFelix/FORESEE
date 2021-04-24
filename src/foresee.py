@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib
+import os
 from matplotlib import pyplot as plt
 import math
 import random
@@ -145,21 +146,37 @@ class Model(Utility):
     #  Production
     ###############################
 
-    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None):
+    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, scaling=2):
         if label is None: label=pid0
-        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample]
+        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, scaling]
         
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None):
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, scaling=2):
         if label is None: label=pid0
-        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample]
+        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, scaling]
         
-    def add_production_mixing(self, pid, mixing, generator, energy, label=None):
+    def add_production_mixing(self, pid, mixing, generator, energy, label=None, scaling=2):
         if label is None: label=pid
-        self.production[label]=["mixing", pid, mixing, generator, energy]
+        self.production[label]=["mixing", pid, mixing, generator, energy, scaling]
         
-    def add_production_direct(self, label, energy, coupling_ref=1, condition=None, massrange=None):
-        self.production[label]=["direct", energy, coupling_ref, condition, massrange]
+    def add_production_direct(self, label, energy, coupling_ref=1, condition=None, massrange=None, scaling=2):
+        self.production[label]=["direct", energy, coupling_ref, condition, massrange, scaling]
 
+    def get_production_scaling(self, key, mass, coupling, coupling_ref):
+        if self.production[key][0] == "2body":
+            scaling = self.production[key][7]
+            if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
+            else: return (coupling/coupling_ref)**scaling
+        if self.production[key][0] == "3body":
+            scaling = self.production[key][8]
+            if scaling == "manual": return eval(self.production[key][4], {"coupling":coupling})/eval(self.production[key][4], {"coupling":coupling_ref})
+            else: return (coupling/coupling_ref)**scaling
+        if self.production[key][0] == "mixing":
+            scaling = self.production[key][5]
+            if scaling == "manual":  return eval(self.production[key][2], {"coupling":coupling})**2/eval(self.production[key][2], {"coupling":coupling_ref})**2
+            else: return (coupling/coupling_ref)**scaling
+        if self.production[key][0] == "direct":
+            scaling = self.production[key][5]
+            return (coupling/coupling_ref)**scaling
 
 class Foresee(Utility):
 
@@ -427,7 +444,9 @@ class Foresee(Utility):
         # prepare output
         model = self.model
         if channels is None: channels = [key for key in model.production.keys()]
-        momenta_lab, weights_lab = [LorentzVector(0,0,-mass,mass)], [0]
+        momenta_lab_all, weights_lab_all = [], []
+        dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+        if not os.path.exists(dirname): os.mkdir(dirname)
 
         # loop over channels
         for key in model.production.keys():
@@ -437,6 +456,7 @@ class Foresee(Utility):
             
             # summary statistics
             weight_sum, weight_sum_f=0,0
+            momenta_lab, weights_lab = [LorentzVector(0,0,-mass,mass)], [0]
             
             # 2 body decays
             if model.production[key][0]=="2body":
@@ -530,11 +550,15 @@ class Foresee(Utility):
                     if p.pz>100 and p.pt/np.abs(p.pz)<0.1/480.: weight_sum_f+=w_lpp*coupling**2/coupling_ref**2
 
             #return statistcs
+            filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+            self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
             if print_stats: print key, "{:.2e}".format(weight_sum),"{:.2e}".format(weight_sum_f)
+            for p,w in zip(momenta_lab, weights_lab):
+                momenta_lab_all.append(p)
+                weights_lab_all.append(w)
                 
         #return
-        output=self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=do_plot, filename=filenamesave)
-        if do_plot: return output[0]
+        if do_plot: return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
 
 
     ###############################
@@ -558,20 +582,19 @@ class Foresee(Utility):
         if eval(self.selection): return True
         else:return False
      
-    def get_events(self,filename, mass,
+    def get_events(self, mass, energy,
+            modes=None,
             couplings = np.logspace(-8,-3,51),
             nsample=1,
             preselectioncuts="th<0.01 and p>100",
+            coup_ref=1,
+            
         ):
-                    
-        # Load Flux file
-        particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
-            filetype="npy", nsample=nsample, preselectioncut=preselectioncuts
-        )
         
         # setup different couplings to scan over
-        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
         model = self.model
+        if modes is None: modes = [key for key in model.production.keys()]
+        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
         for coupling in couplings:
             ctau = model.get_ctau(mass, coupling)
             if self.channels is None: br = 1.
@@ -584,24 +607,38 @@ class Foresee(Utility):
             stat_t.append([])
             stat_e.append([])
             stat_w.append([])
-        
-        # loop over particles, and record probablity to decay in volume
-        for p,w in zip(particles_llp,weights_llp):
-            # check if event passes
-            if not self.event_passes(p): continue
-            # weight of this event
-            weight_event = w*self.luminosity*1000.
+    
+        # loop over production modes
+        for key in modes:
             
-            #loop over couplings
-            for icoup,coup in enumerate(couplings):
-                #add event weight
-                ctau, br =ctaus[icoup], brs[icoup]
-                dbar = ctau*p.p/mass
-                prob_decay = math.exp(-self.distance/dbar)-math.exp(-(self.distance+self.length)/dbar)
-                nsignals[icoup] += weight_event* coup**2 * prob_decay * br
-                stat_t[icoup].append(p.pt/p.pz)
-                stat_e[icoup].append(p.e)
-                stat_w[icoup].append(weight_event* coup**2 *prob_decay * br)
+            dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+            filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+
+            # try Load Flux file
+            try:
+                # print "load", filename
+                particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
+            except: continue
+    
+            # loop over particles, and record probablity to decay in volume
+            for p,w in zip(particles_llp,weights_llp):
+                # check if event passes
+                if not self.event_passes(p): continue
+                # weight of this event
+                weight_event = w*self.luminosity*1000.
+                
+                #loop over couplings
+                for icoup,coup in enumerate(couplings):
+                    #add event weight
+                    ctau, br =ctaus[icoup], brs[icoup]
+                    dbar = ctau*p.p/mass
+                    prob_decay = math.exp(-self.distance/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    nsignals[icoup] += weight_event * couplingfac * prob_decay * br
+                    stat_t[icoup].append(p.pt/p.pz)
+                    stat_e[icoup].append(p.e)
+                    stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
         return couplings, ctaus, nsignals, stat_e, stat_w, stat_t
 
