@@ -647,7 +647,7 @@ class Foresee(Utility):
     ###############################
             
     def plot_reach(self,
-            setups,bounds,projections,
+            setups,bounds,projections, bounds2=[],
             title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
         ):
@@ -657,13 +657,20 @@ class Foresee(Utility):
         fig, ax = plt.subplots(figsize=figsize)
         zorder=-100
         
+        # Existing Constraints
+        for bound in bounds2:
+            filename, label, posx, posy, rotation = bound
+            data=self.readfile("files/models/"+self.model.model_name+"/lines/"+filename)
+            ax.fill(data.T[0], data.T[1], color="#efefef",zorder=zorder)
+            ax.plot(data.T[0], data.T[1], color="darkgray"  ,zorder=zorder,lw=1)
+            zorder+=1
+        
         # Future sensitivities
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
             data=self.readfile("files/models/"+self.model.model_name+"/lines/"+filename)
             ax.plot(data.T[0], data.T[1], color=color, ls="dashed", zorder=zorder, lw=1)
             zorder+=1
-        
         
         # Existing Constraints
         for bound in bounds:
@@ -674,6 +681,10 @@ class Foresee(Utility):
             zorder+=1
         
         # labels
+        for bound in bounds2:
+            filename, label, posx, posy, rotation = bound
+            if label is None: continue
+            plt.text(posx, posy, label, fontsize=14, color="darkgray", rotation=rotation)
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
             if label is None: continue
