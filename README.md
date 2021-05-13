@@ -2,7 +2,7 @@
 
 **By Felix Kling and Sebastian Trojanowski**
 
-#[![arXiv](http://img.shields.io/badge/arXiv-1907.10621-B31B1B.svg)](https://arxiv.org/abs/1907.10621)
+[![arXiv](http://img.shields.io/badge/arXiv-XXXX.XXXX-B31B1B.svg)](https://arxiv.org/abs/XXXX.XXXX)
 
 ## Introduction
 
