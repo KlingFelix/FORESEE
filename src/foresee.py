@@ -93,16 +93,16 @@ class Model(Utility):
     def set_ctau_1d(self,filename, coupling_ref=1):
         data=self.readfile(filename).T
         self.ctau_coupling_ref=coupling_ref
-        self.ctau_function=interpolate.interp1d(data[0], data[1])
+        self.ctau_function=interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
     
     def set_ctau_2d(self,filename):
         data=self.readfile(filename).T
         self.ctau_coupling_ref=None
-        self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear")
+        self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
     
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
-            print "No lifetime specified. You need to specify lifetime first!"
+            print ("No lifetime specified. You need to specify lifetime first!")
             return 10**10
         elif self.ctau_coupling_ref is None:
             return self.ctau_function(mass,coupling)
@@ -118,7 +118,7 @@ class Model(Utility):
         self.br_functions = {}
         for mode, filename in zip(modes, filenames):
             data = self.readfile(filename).T
-            function = interpolate.interp1d(data[0], data[1])
+            function = interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
             self.br_functions[mode] = function
                     
     def set_br_2d(self,modes,filenames):
@@ -126,15 +126,15 @@ class Model(Utility):
         self.br_functions = {}
         for mode, filename in zip(modes, filenames):
             data = self.readfile(filename).T
-            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear")
+            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
 
     def get_br(self,mode,mass,coupling=1):
         if self.br_mode==None:
-            print "No branching fractions specified. You need to specify branching fractions first!"
+            print ("No branching fractions specified. You need to specify branching fractions first!")
             return 0
         elif mode not in self.br_functions.keys():
-            print "No branching fractions into ", mode, " specified. You need to specify BRs for this channel!"
+            print ("No branching fractions into ", mode, " specified. You need to specify BRs for this channel!")
             return 0
         elif self.br_mode == "1D":
             return self.br_functions[mode](mass)
@@ -274,7 +274,7 @@ class Foresee(Utility):
                 list_w.append(w[it][ip])
     
         if filename is not None:
-            print "save data to file:", filename
+            print ("save data to file:", filename)
             np.save(filename,[list_t,list_p,list_w])
         if do_plot==False:
             return list_t,list_p,list_w
@@ -534,12 +534,12 @@ class Foresee(Utility):
                 label, energy, coupling_ref = key, model.production[key][1], model.production[key][2]
                 condition, massrange =  model.production[key][3], model.production[key][4]
                 if massrange is not None:
-                    if mass<massrange or mass>massrange[1]: continue
+                    if mass<massrange[0] or mass>massrange[1]: continue
                 filename="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass)+".txt"
                 try:
                     momenta_llp, weights_llp = self.convert_list_to_momenta(filename,mass=mass)
                 except:
-                    print "did not find file:", filename
+                    print ("did not find file:", filename)
                     continue
                 for p,w_lpp in zip(momenta_llp, weights_llp):
                     if condition is not None and eval(condition)==0: continue
@@ -552,7 +552,7 @@ class Foresee(Utility):
             #return statistcs
             filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
             self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
-            if print_stats: print key, "{:.2e}".format(weight_sum),"{:.2e}".format(weight_sum_f)
+            if print_stats: print (key, "{:.2e}".format(weight_sum),"{:.2e}".format(weight_sum_f))
             for p,w in zip(momenta_lab, weights_lab):
                 momenta_lab_all.append(p)
                 weights_lab_all.append(w)
