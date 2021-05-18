@@ -2,7 +2,7 @@
 
 **By Felix Kling and Sebastian Trojanowski**
 
-[![arXiv](http://img.shields.io/badge/arXiv-XXXX.XXXX-B31B1B.svg)](https://arxiv.org/abs/XXXX.XXXX)
+[![arXiv](http://img.shields.io/badge/arXiv-2105.07077-B31B1B.svg)](https://arxiv.org/abs/2105.07077)
 
 ## Introduction
 
@@ -10,7 +10,7 @@ We present the numerical package **FOR**ward **E**xperiment **SE**nsitivity **E*
 
 ### Paper
 
-Our main publication [FORESEE: FORward Experiment SEnsitivity Estimator for the LHC and future hadron colliders](https://arxiv.org/abs/XXXX.XXXX)
+Our main publication [FORESEE: FORward Experiment SEnsitivity Estimator for the LHC and future hadron colliders](https://arxiv.org/abs/2105.07077)
 provides an overview over this package. We recommend reading it first before jumping into the code.
 
 ### Tutorials
