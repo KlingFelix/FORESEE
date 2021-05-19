@@ -439,7 +439,7 @@ class Foresee(Utility):
         
         return particles,weights
 
-    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, filenamesave=None, print_stats=False):
+    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, filenamesave=None, print_stats=False, stats_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
 
         # prepare output
         model = self.model
@@ -484,7 +484,9 @@ class Foresee(Utility):
                         weights_lab.append(w_mother*w_lpp*w_decay)
                         # statistics
                         weight_sum+=w_mother*w_lpp*w_decay
-                        if p_llp_lab.pz>100 and p_llp_lab.pt/np.abs(p_llp_lab.pz)<0.1/480.: weight_sum_f+=w_mother*w_lpp*w_decay
+                        if print_stats:
+                            p = p_llp_lab
+                            if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
         
             # 3 body decays
             if model.production[key][0]=="3body":
@@ -512,7 +514,9 @@ class Foresee(Utility):
                         weights_lab.append(w_mother*w_lpp*w_decay)
                         # statistics
                         weight_sum+=w_mother*w_lpp*w_decay
-                        if p_llp_lab.pz>100 and p_llp_lab.pt/np.abs(p_llp_lab.pz)<0.1/480.: weight_sum_f+=w_mother*w_lpp*w_decay
+                        if print_stats:
+                            p = p_llp_lab
+                            if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
     
             # mixing with SM particles
             if model.production[key][0]=="mixing":
@@ -527,7 +531,9 @@ class Foresee(Utility):
                     weights_lab.append(w_mother*mixing_angle**2)
                     # statistics
                     weight_sum+=w_mother*mixing_angle**2
-                    if p_mother.pz>100 and p_mother.pt/np.abs(p_mother.pz)<0.1/480.: weight_sum_f+=w_mother*mixing_angle**2
+                    if print_stats:
+                        p = p_mother
+                        if eval(stat_cuts): weight_sum_f+=w_mother*mixing_angle**2
     
             # direct production
             if model.production[key][0]=="direct":
@@ -547,7 +553,8 @@ class Foresee(Utility):
                     weights_lab.append(w_lpp*coupling**2/coupling_ref**2)
                     # statistics
                     weight_sum+=w_lpp*coupling**2/coupling_ref**2
-                    if p.pz>100 and p.pt/np.abs(p.pz)<0.1/480.: weight_sum_f+=w_lpp*coupling**2/coupling_ref**2
+                    if print_stats:
+                        if eval(stat_cuts): weight_sum_f+=w_lpp*coupling**2/coupling_ref**2
 
             #return statistcs
             filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
@@ -697,7 +704,7 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
-            masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename)
+            masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename, allow_pickle=True)
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
