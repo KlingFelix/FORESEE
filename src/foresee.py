@@ -439,7 +439,7 @@ class Foresee(Utility):
         
         return particles,weights
 
-    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, filenamesave=None, print_stats=False, stats_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
+    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, filenamesave=None, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
 
         # prepare output
         model = self.model
