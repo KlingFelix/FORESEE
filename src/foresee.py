@@ -6,6 +6,7 @@ import math
 import random
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
+from matplotlib import gridspec
 
 class Utility():
 
@@ -39,7 +40,9 @@ class Utility():
         elif pid in ["521" ,"-521" ]: return 5.27929
         elif pid in ["531" ,"-531" ]: return 5.36679
         elif pid in ["541" ,"-541" ]: return 6.2749
+        elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
+        elif pid in ["15"  ,"-15"  ]: return 1.777
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
@@ -116,15 +119,15 @@ class Model(Utility):
     def set_br_1d(self,modes,filenames):
         self.br_mode="1D"
         self.br_functions = {}
-        for mode, filename in zip(modes, filenames):
+        for channel, filename in zip(modes, filenames):
             data = self.readfile(filename).T
             function = interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
-            self.br_functions[mode] = function
+            self.br_functions[channel] = function
                     
     def set_br_2d(self,modes,filenames):
         self.br_mode="2D"
         self.br_functions = {}
-        for mode, filename in zip(modes, filenames):
+        for channel, filename in zip(modes, filenames):
             data = self.readfile(filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
@@ -640,7 +643,7 @@ class Foresee(Utility):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
-                    prob_decay = math.exp(-self.distance/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
                     stat_t[icoup].append(p.pt/p.pz)
@@ -657,11 +660,19 @@ class Foresee(Utility):
             setups,bounds,projections, bounds2=[],
             title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
+            branchings=None, branchingsother=None,
+            fs_label=14,
         ):
         
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
-        fig, ax = plt.subplots(figsize=figsize)
+        
+        if branchings is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = plt.figure(figsize=figsize)
+            spec = gridspec.GridSpec(nrows=2,ncols=1,width_ratios=[1],height_ratios=[1,0.3],wspace=0,hspace=0)
+            ax = fig.add_subplot(spec[0])
         zorder=-100
         
         # Existing Constraints
@@ -691,15 +702,15 @@ class Foresee(Utility):
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
             if label is None: continue
-            plt.text(posx, posy, label, fontsize=14, color="darkgray", rotation=rotation)
+            ax.text(posx, posy, label, fontsize=fs_label, color="darkgray", rotation=rotation)
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
             if label is None: continue
-            plt.text(posx, posy, label, fontsize=14, color=color, rotation=rotation)
+            ax.text(posx, posy, label, fontsize=fs_label, color=color, rotation=rotation)
         for bound in bounds:
             filename, label, posx, posy, rotation = bound
             if label is None: continue
-            plt.text(posx, posy, label, fontsize=14, color="dimgray", rotation=rotation)
+            ax.text(posx, posy, label, fontsize=fs_label, color="dimgray", rotation=rotation)
         
         # forward experiment sensitivity
         for setup in setups:
@@ -721,5 +732,28 @@ class Foresee(Utility):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0)
-        
+
+        if branchings is not None:
+            ax.tick_params(axis="x",direction="in", pad=-15)
+            ax.set_xticklabels([])
+            ax2 = fig.add_subplot(spec[1])
+            for channel, color, ls, label, posx, posy in branchings:
+                masses = np.logspace(np.log10(xlims[0]),np.log10(xlims[1]),1000)
+                brvals = [self.model.get_br(channel, mass, 1) for mass in masses]
+                ax2.plot(masses, brvals, color=color, ls=ls)
+                ax2.text(posx, posy, label, fontsize=fs_label, color=color)
+            if branchingsother is not None:
+                color, ls, label, posx, posy, range = branchingsother
+                masses = np.logspace(np.log10(range[0]),np.log10(range[1]),1000)
+                brvals = [1-sum([self.model.get_br(branching[0], mass, 1) for branching in branchings])for mass in masses]
+                ax2.plot(masses, brvals, color=color, ls=ls)
+                ax2.text(posx, posy, label, fontsize=fs_label, color=color)
+            ax2.set_xscale("log")
+            ax2.set_yscale("log")
+            ax2.set_xlim(xlims[0],xlims[1])
+            ax2.set_ylim(0.01, 1.5)
+            ax2.set_xlabel(xlabel)
+            ax2.set_ylabel("BR")
+            return plt, ax, ax2
+
         return plt
