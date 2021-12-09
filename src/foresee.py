@@ -47,8 +47,12 @@ class Utility():
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
         elif pid in ["25"          ]: return 125.
-        elif pid in ["553"         ]: return 9.46
         elif pid in ["0"           ]: return mass
+        elif pid in ["443"         ]: return 3.096
+        elif pid in ["100443"      ]: return 3.686
+        elif pid in ["553"         ]: return 9.460
+        elif pid in ["100553"      ]: return 10.023
+        elif pid in ["200553"      ]: return 10.355
     
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
@@ -83,11 +87,46 @@ class Model(Utility):
     
     def __init__(self,name):
         self.model_name = name
+        self.dsigma_der_coupling_ref = None
+        self.dsigma_der = None
         self.lifetime_coupling_ref = None
         self.lifetime_function = None
         self.br_mode=None
         self.br_functions = {}
         self.production = {}
+    
+    ###############################
+    #  Interaction Rate dsigma/dER
+    ###############################
+    
+    def set_dsigma_drecoil_1d(self, dsigma_der, coupling_ref=1):
+        self.dsigma_der = dsigma_der
+        self.dsigma_der_coupling_ref=coupling_ref
+    
+    def set_dsigma_drecoil_2d(self, dsigma_der):
+        self.dsigma_der = dsigma_der
+        self.dsigma_der_coupling_ref=None
+    
+    def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
+        nrecoil, sigma = 20, 0
+        l10ermin, l10ermax, dl10er = np.log10(ermin), np.log10(ermax), (np.log10(ermax)-np.log10(ermin))/float(nrecoil)
+        for recoil in np.logspace(l10ermin+0.5*dl10er, l10ermax-0.5*dl10er, nrecoil):
+            # df  = df / dx * dx = df/dx * dlog10x * x * log10
+            sigma += eval(self.dsigma_der) * recoil
+        sigma *=  dl10er * np.log(10)
+        return sigma
+    
+    def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
+        if self.dsigma_der==None:
+            print ("No interaction rate specified. You need to specify interaction rate first!")
+            return 10**10
+        elif self.dsigma_der_coupling_ref is None:
+            sigmaints = [self.get_sigmaint_ref(mass, coupling, energy, ermin, ermax) for coupling in couplings]
+            return sigmaints
+        else:
+            sigmaint_ref = self.get_sigmaint_ref(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
+            sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
+            return sigmaints
     
     ###############################
     #  Lifetime
@@ -401,7 +440,7 @@ class Foresee(Utility):
         
         return particles,weights
 
-    def decay_in_restframe_3body(self, br, m0, m1, m2, m3, nsample):
+    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
         
         # prepare output
         particles, weights = [], []
@@ -505,7 +544,7 @@ class Foresee(Utility):
                     
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                momenta_llp, weights_llp = self.decay_in_restframe_3body(br, m0, m1, m2, m3, nsample)
+                momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
                     
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
@@ -575,12 +614,24 @@ class Foresee(Utility):
     #  Counting Events
     ###############################
 
-    def set_detector(self,distance=480, selection="np.sqrt(x.x**2 + x.y**2)< 1", length=5, luminosity=3000, channels=None):
+    def set_detector(
+            self,distance=480,
+            selection="np.sqrt(x.x**2 + x.y**2)< 1",
+            length=5,
+            luminosity=3000,
+            channels=None,
+            numberdensity=3.754e+29,
+            ermin=0.03,
+            ermax=1,
+        ):
         self.distance=distance
         self.selection=selection
         self.length=length
         self.luminosity=luminosity
         self.channels=channels
+        self.numberdensity=numberdensity
+        self.ermin=ermin
+        self.ermax=ermax
     
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -651,6 +702,61 @@ class Foresee(Utility):
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
         return couplings, ctaus, nsignals, stat_e, stat_w, stat_t
+
+    def get_events_interaction(self, mass, energy,
+            modes=None,
+            couplings = np.logspace(-8,-3,51),
+            nsample=1,
+            preselectioncuts="th<0.01 and p>100",
+            coup_ref=1,
+        ):
+        
+        # setup different couplings to scan over
+        model = self.model
+        if modes is None: modes = [key for key in model.production.keys()]
+        nsignals, stat_t, stat_e, stat_w = [], [], [], []
+        for coupling in couplings:
+            nsignals.append(0.)
+            stat_t.append([])
+            stat_e.append([])
+            stat_w.append([])
+        
+        # loop over production modes
+        for key in modes:
+            
+            GeV2_in_invmeter2 = (5e15)**2
+            dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+            filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+            
+            # try Load Flux file
+            try:
+                particles_llp,weights_llp=self.convert_list_to_momenta(
+                    filename=filename, mass=mass,
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
+            except: continue
+            
+            # loop over particles, and record probablity to interact in volume
+            for p,w in zip(particles_llp,weights_llp):
+                # check if event passes
+                if not self.event_passes(p): continue
+                # weight of this event
+                weight_event = w*self.luminosity*1000.
+                # get sigmaints
+                sigmaints = model.get_sigmaints(mass, couplings, p.e, self.ermin, self.ermax)
+                
+                #loop over couplings
+                for icoup,coup in enumerate(couplings):
+                    #add event weight
+                    sigmaint = sigmaints[icoup]
+                    lamdaint = 1. / self.numberdensity / sigmaint * GeV2_in_invmeter2
+                    prob_int = self.length / lamdaint
+                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
+                    nsignals[icoup] += weight_event * couplingfac * prob_int
+                    stat_t[icoup].append(p.pt/p.pz)
+                    stat_e[icoup].append(p.e)
+                    stat_w[icoup].append(weight_event * couplingfac * prob_int)
+
+        return couplings, nsignals, stat_e, stat_w, stat_t
 
     ###############################
     #  Plotting
