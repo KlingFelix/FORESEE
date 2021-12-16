@@ -110,9 +110,11 @@ class Model(Utility):
     def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
         nrecoil, sigma = 20, 0
         l10ermin, l10ermax, dl10er = np.log10(ermin), np.log10(ermax), (np.log10(ermax)-np.log10(ermin))/float(nrecoil)
+        # df  = df / dx * dx = df/dx * dlog10x * x * log10
         for recoil in np.logspace(l10ermin+0.5*dl10er, l10ermax-0.5*dl10er, nrecoil):
-            # df  = df / dx * dx = df/dx * dlog10x * x * log10
-            sigma += eval(self.dsigma_der) * recoil
+            dsigma_der = eval(self.dsigma_der)
+            #some mkodels have a maximum recoil energy --> stop when dsigma_der < 0
+            if dsigma_der > 0: sigma += dsigma_der * recoil
         sigma *=  dl10er * np.log(10)
         return sigma
     
@@ -594,7 +596,6 @@ class Foresee(Utility):
                 for xmass in masses:
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
-                print mass, mass0, mass1
                 #load benchmark data
                 filename0="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
                 filename1="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
