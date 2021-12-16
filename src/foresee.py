@@ -188,32 +188,32 @@ class Model(Utility):
     #  Production
     ###############################
 
-    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, scaling=2):
+    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
-        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, scaling]
+        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling]
         
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, scaling=2):
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
-        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, scaling]
+        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling]
         
-    def add_production_mixing(self, pid, mixing, generator, energy, label=None, scaling=2):
+    def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
-        self.production[label]=["mixing", pid, mixing, generator, energy, scaling]
+        self.production[label]=["mixing", pid, mixing, generator, energy, massrange, scaling]
         
-    def add_production_direct(self, label, energy, coupling_ref=1, condition=None, massrange=None, scaling=2):
-        self.production[label]=["direct", energy, coupling_ref, condition, massrange, scaling]
+    def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
+        self.production[label]=["direct", energy, coupling_ref, condition, masses, scaling]
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         if self.production[key][0] == "2body":
-            scaling = self.production[key][7]
+            scaling = self.production[key][8]
             if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
-            scaling = self.production[key][8]
+            scaling = self.production[key][9]
             if scaling == "manual": return eval(self.production[key][4], {"coupling":coupling})/eval(self.production[key][4], {"coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
-            scaling = self.production[key][5]
+            scaling = self.production[key][6]
             if scaling == "manual":  return eval(self.production[key][2], {"coupling":coupling})**2/eval(self.production[key][2], {"coupling":coupling_ref})**2
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "direct":
@@ -246,7 +246,7 @@ class Foresee(Utility):
         return np.array(xval),np.array(yval),np.array(zval)
 
     # function that converts input file into meson spectrum
-    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None,):
+    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False):
         if filetype=="txt":
             list_logth, list_logp, list_xs = self.readfile(filename).T
         elif filetype=="npy":
@@ -258,11 +258,11 @@ class Foresee(Utility):
         
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
             
-            if xs < 10.**-6: continue
+            if nocuts==False and xs < 10.**-6: continue
             p  = 10.**logp
             th = 10.**logth
             
-            if preselectioncut is not None:
+            if nocuts==False and preselectioncut is not None:
                 if not eval(preselectioncut): continue
 
             for n in range(nsample):
@@ -505,7 +505,9 @@ class Foresee(Utility):
                 
                 # load details of decay channel
                 pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
-                generator, energy, nsample = model.production[key][4], model.production[key][5], model.production[key][6]
+                generator, energy, nsample, massrange = model.production[key][4], model.production[key][5], model.production[key][6], model.production[key][7]
+                if massrange is not None:
+                    if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
                 
                 # load mother particle spectrum
@@ -535,9 +537,11 @@ class Foresee(Utility):
                 
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
-                generator, energy, nsample = model.production[key][5], model.production[key][6], model.production[key][7]
+                generator, energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7], model.production[key][8]
+                if massrange is not None:
+                    if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
-                   
+                
                 # load mother particle
                 filename = "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
@@ -564,7 +568,9 @@ class Foresee(Utility):
             if model.production[key][0]=="mixing":
                 if mass>1.699: continue
                 pid, mixing = model.production[key][1], model.production[key][2]
-                generator, energy = model.production[key][3], model.production[key][4]
+                generator, energy, massrange = model.production[key][3], model.production[key][4], model.production[key][5]
+                if massrange is not None:
+                    if mass<massrange[0] or mass>massrange[1]: continue
                 filename = "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid))
                 mixing_angle = eval(mixing)
@@ -579,18 +585,30 @@ class Foresee(Utility):
     
             # direct production
             if model.production[key][0]=="direct":
+                #load info
                 label, energy, coupling_ref = key, model.production[key][1], model.production[key][2]
-                condition, massrange =  model.production[key][3], model.production[key][4]
-                if massrange is not None:
-                    if mass<massrange[0] or mass>massrange[1]: continue
-                filename="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass)+".txt"
+                condition, masses =  model.production[key][3], model.production[key][4]
+                #determined mass benchmark below / above mass
+                if mass<masses[0] or mass>masses[-1]: continue
+                mass0, mass1 = 0, 1e10
+                for xmass in masses:
+                    if xmass<=mass and xmass>mass0: mass0=xmass
+                    if xmass> mass and xmass<mass1: mass1=xmass
+                print mass, mass0, mass1
+                #load benchmark data
+                filename0="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+                filename1="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
                 try:
-                    momenta_llp, weights_llp = self.convert_list_to_momenta(filename,mass=mass)
+                    momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
+                    momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
                 except:
-                    print ("did not find file:", filename)
+                    print ("did not find file:", filename0, "or", filename1)
                     continue
-                for p,w_lpp in zip(momenta_llp, weights_llp):
+                #loop over particles
+                eps=1e-6
+                for p, w_lpp0, w_lpp1 in zip(momenta_llp0, weights_llp0, weights_llp1):
                     if condition is not None and eval(condition)==0: continue
+                    w_lpp = w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0)
                     momenta_lab.append(p)
                     weights_lab.append(w_lpp*coupling**2/coupling_ref**2)
                     # statistics
