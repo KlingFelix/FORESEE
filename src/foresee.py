@@ -882,3 +882,50 @@ class Foresee(Utility):
             return plt, ax, ax2
 
         return plt
+
+    def plot_production(self,
+        masses, productions, condition="True", energy="14",
+        xlims=[0.01,1],ylims=[10**-6,10**-3],
+        xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
+        figsize=(7,5), fs_label=14, title=None, legendloc=None
+    ):
+    
+        # initiate figure
+        matplotlib.rcParams.update({'font.size': 15})
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # loop over production channels
+        dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+        for channel, massrange, color, label in productions:
+            if massrange is None: massrange = xlims
+        
+            # loop over masses
+            xvals, yvals = [], []
+            for mass in masses:
+                if mass<massrange[0]: continue
+                if mass>massrange[1]: continue
+                try:
+                    data = np.load(dirname+energy+"TeV_"+channel+"_m_"+str(mass)+".npy")
+                    total = 0
+                    for logth, logp, w in data.T:
+                        if eval(condition): total+=w
+                    xvals.append(mass)
+                    yvals.append(total+1e-10)
+                except:
+                    continue
+        
+            # add to plot
+            ax.plot(xvals, yvals, color=color, label=label)
+
+        # finalize
+        ax.set_title(title)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(xlims[0],xlims[1])
+        ax.set_ylim(ylims[0],ylims[1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label)
+
+        # return
+        return plt
