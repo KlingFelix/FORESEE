@@ -89,6 +89,7 @@ class Model(Utility):
         self.model_name = name
         self.dsigma_der_coupling_ref = None
         self.dsigma_der = None
+        self.recoil_max = "1e10"
         self.lifetime_coupling_ref = None
         self.lifetime_function = None
         self.br_mode=None
@@ -99,22 +100,24 @@ class Model(Utility):
     #  Interaction Rate dsigma/dER
     ###############################
     
-    def set_dsigma_drecoil_1d(self, dsigma_der, coupling_ref=1):
+    def set_dsigma_drecoil_1d(self, dsigma_der, recoil_max="1e10", coupling_ref=1):
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=coupling_ref
+        self.recoil_max = recoil_max
     
-    def set_dsigma_drecoil_2d(self, dsigma_der):
+    def set_dsigma_drecoil_2d(self, dsigma_der, recoil_max="1e10" ):
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=None
+        self.recoil_max = recoil_max
     
     def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
+        minrecoil, maxrecoil = ermin, min(eval(self.recoil_max), ermax)
         nrecoil, sigma = 20, 0
-        l10ermin, l10ermax, dl10er = np.log10(ermin), np.log10(ermax), (np.log10(ermax)-np.log10(ermin))/float(nrecoil)
+        l10ermin, l10ermax = np.log10(minrecoil), np.log10(maxrecoil)
+        dl10er = (l10ermax-l10ermin)/float(nrecoil)
         # df  = df / dx * dx = df/dx * dlog10x * x * log10
         for recoil in np.logspace(l10ermin+0.5*dl10er, l10ermax-0.5*dl10er, nrecoil):
-            dsigma_der = eval(self.dsigma_der)
-            #some mkodels have a maximum recoil energy --> stop when dsigma_der < 0
-            if dsigma_der > 0: sigma += dsigma_der * recoil
+            sigma += eval(self.dsigma_der) * recoil
         sigma *=  dl10er * np.log(10)
         return sigma
     
