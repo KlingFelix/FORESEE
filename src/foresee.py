@@ -13,7 +13,7 @@ class Utility():
     ###############################
     #  Hadron Masses and Lifetimes
     ###############################
-    
+
     def masses(self,pid,mass=0):
         if   pid in ["2112","-2112"]: return 0.938
         elif pid in ["2212","-2212"]: return 0.938
@@ -53,7 +53,7 @@ class Utility():
         elif pid in ["553"         ]: return 9.460
         elif pid in ["100553"      ]: return 10.023
         elif pid in ["200553"      ]: return 10.355
-    
+
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
         elif pid in ["2212","-2212"]: tau = 10**8
@@ -68,11 +68,11 @@ class Utility():
         elif pid in ["3312","-3312"]: tau = 1.639*10**-10
         elif pid in ["3334","-3334"]: tau = 8.21*10**-11
         return 3*10**8 * tau
-    
+
     ###############################
     #  Utility Functions
     ###############################
-    
+
     #function that reads a table in a .txt file and converts it to a numpy array
     def readfile(self,filename):
         array = []
@@ -84,7 +84,7 @@ class Utility():
         return np.array(array)
 
 class Model(Utility):
-    
+
     def __init__(self,name):
         self.model_name = name
         self.dsigma_der_coupling_ref = None
@@ -95,21 +95,21 @@ class Model(Utility):
         self.br_mode=None
         self.br_functions = {}
         self.production = {}
-    
+
     ###############################
     #  Interaction Rate dsigma/dER
     ###############################
-    
+
     def set_dsigma_drecoil_1d(self, dsigma_der, recoil_max="1e10", coupling_ref=1):
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=coupling_ref
         self.recoil_max = recoil_max
-    
+
     def set_dsigma_drecoil_2d(self, dsigma_der, recoil_max="1e10" ):
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=None
         self.recoil_max = recoil_max
-    
+
     def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
         minrecoil, maxrecoil = ermin, min(eval(self.recoil_max), ermax)
         nrecoil, sigma = 20, 0
@@ -120,7 +120,7 @@ class Model(Utility):
             sigma += eval(self.dsigma_der) * recoil
         sigma *=  dl10er * np.log(10)
         return sigma
-    
+
     def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
         if self.dsigma_der==None:
             print ("No interaction rate specified. You need to specify interaction rate first!")
@@ -132,21 +132,21 @@ class Model(Utility):
             sigmaint_ref = self.get_sigmaint_ref(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
             sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
             return sigmaints
-    
+
     ###############################
     #  Lifetime
     ###############################
-    
+
     def set_ctau_1d(self,filename, coupling_ref=1):
         data=self.readfile(filename).T
         self.ctau_coupling_ref=coupling_ref
         self.ctau_function=interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
-    
+
     def set_ctau_2d(self,filename):
         data=self.readfile(filename).T
         self.ctau_coupling_ref=None
         self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-    
+
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
             print ("No lifetime specified. You need to specify lifetime first!")
@@ -167,7 +167,7 @@ class Model(Utility):
             data = self.readfile(filename).T
             function = interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
             self.br_functions[channel] = function
-                    
+
     def set_br_2d(self,modes,filenames):
         self.br_mode="2D"
         self.br_functions = {}
@@ -196,15 +196,15 @@ class Model(Utility):
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
         self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling]
-        
+
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
         self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling]
-        
+
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
         self.production[label]=["mixing", pid, mixing, generator, energy, massrange, scaling]
-        
+
     def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
         self.production[label]=["direct", energy, coupling_ref, condition, masses, scaling]
 
@@ -227,15 +227,16 @@ class Model(Utility):
 
 class Foresee(Utility):
 
-    def __init__(self):
+    def __init__(self, path="../../"):
         self.model = None
         self.shortlived = {"321": 20, "-321": 20, "321": 20,  }
-        self.selection="np.sqrt(x.x**2 + x.y**2)< 1"
-        self.length=5
-        self.luminosity=3000
-        self.distance=480
-        self.channels=None
-    
+        self.selection = "np.sqrt(x.x**2 + x.y**2)< 1"
+        self.length = 5
+        self.luminosity = 3000
+        self.distance = 480
+        self.channels = None
+        self.dirpath = path
+
     ###############################
     #  Reading/Plotting Particle Tables
     ###############################
@@ -260,13 +261,13 @@ class Foresee(Utility):
             print ("ERROR: cannot rtead file type")
         particles=[]
         weights  =[]
-        
+
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
-            
+
             if nocuts==False and xs < 10.**-6: continue
             p  = 10.**logp
             th = 10.**logth
-            
+
             if nocuts==False and preselectioncut is not None:
                 if not eval(preselectioncut): continue
 
@@ -277,17 +278,17 @@ class Foresee(Utility):
                 else:
                     fth = np.random.normal(1, 0.05, 1)[0]
                     fp  = np.random.normal(1, 0.05, 1)[0]
-                
+
                 th_sm=th*fth
                 p_sm=p*fp
-                
+
                 en = math.sqrt(p_sm**2+mass**2)
                 pz = p_sm*np.cos(th_sm)
                 pt = p_sm*np.sin(th_sm)
                 px = pt*np.cos(phi)
                 py = pt*np.sin(phi)
                 part=LorentzVector(px,py,pz,en)
-                
+
                 particles.append(part)
                 weights.append(xs/float(nsample))
 
@@ -295,31 +296,31 @@ class Foresee(Utility):
 
     # convert list of momenta to 2D histogram, and plot
     def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 50]]):
-        
+
         #get data
         tmin, tmax, tnum = prange[0]
         pmin, pmax, pnum = prange[1]
         t_edges = np.logspace(tmin, tmax, num=tnum+1)
         p_edges = np.logspace(pmin, pmax, num=pnum+1)
-        
+
         tx = [np.arctan(mom.pt/mom.pz) for mom in momenta]
         px = [mom.p for mom in momenta]
-        
+
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
-        
+
         t_centers = (t_edges[:-1] + t_edges[1:]) / 2
         p_centers = (p_edges[:-1] + p_edges[1:]) / 2
-        
+
         list_t = []
         list_p = []
         list_w = []
-        
+
         for it,t in enumerate(t_centers):
             for ip,p in enumerate(p_centers):
                 list_t.append(np.log10 ( t_centers[it] ) )
                 list_p.append(np.log10 ( p_centers[ip] ) )
                 list_w.append(w[it][ip])
-    
+
         if filename is not None:
             print ("save data to file:", filename)
             np.save(filename,[list_t,list_p,list_w])
@@ -346,12 +347,12 @@ class Foresee(Utility):
         ax.set_yticklabels(ticklabels)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(pmin, pmax)
-        
+
         return plt, list_t,list_p,list_w
 
     # show 2d hadronspectrum
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
-        dirname = "../../files/hadrons/"+energy+"TeV/"+generator+"/"
+        dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta(filename,mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w, do_plot=True, prange=prange)
@@ -367,18 +368,18 @@ class Foresee(Utility):
     ###############################
     #  LLP production
     ###############################
-    
+
     def get_decay_prob(self, pid, momentum):
-    
+
         # return 1 when decaying promptly
         if pid not in ["211","-211","321","-321","310","130"]: return 1
-    
+
         # lifetime and kinematics
         ctau = self.ctau(pid)
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
-        
+
         # probability to decay in beampipe
         if pid in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
@@ -390,23 +391,23 @@ class Foresee(Utility):
             if (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
         return probability
-    
+
     def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
         """
         function that decays p0 > p1 p2 and returns p1,p2
         """
-        
+
         #get axis of p0
         zaxis=Vector3D(0,0,1)
         rotaxis=zaxis.cross(p0.vector).unit()
         rotangle=zaxis.angle(p0.vector)
-        
+
         #energy and momentum of p2 in the rest frame of p0
         energy1   = (m0*m0+m1*m1-m2*m2)/(2.*m0)
         energy2   = (m0*m0-m1*m1+m2*m2)/(2.*m0)
         momentum1 = math.sqrt(energy1*energy1-m1*m1)
         momentum2 = math.sqrt(energy2*energy2-m2*m2)
-        
+
         #4-momentum of p1 and p2 in the rest frame of p0
         en1 = energy1
         pz1 = momentum1 * costheta
@@ -414,27 +415,27 @@ class Foresee(Utility):
         px1 = momentum1 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
         p1=LorentzVector(-px1,-py1,-pz1,en1)
         if rotangle!=0: p1=p1.rotate(rotangle,rotaxis)
-        
+
         en2 = energy2
         pz2 = momentum2 * costheta
         py2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.sin(phi)
         px2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
         p2=LorentzVector(px2,py2,pz2,en2)
         if rotangle!=0: p2=p2.rotate(rotangle,rotaxis)
-        
+
         #boost p2 in p0 restframe
         p1_=p1.boost(-1.*p0.boostvector)
         p2_=p2.boost(-1.*p0.boostvector)
         return p1_,p2_
-    
+
     def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
-        
+
         # prepare output
         particles, weights = [], []
-        
+
         #create parent 4-vector
         p_mother=LorentzVector(0,0,0,m0)
-        
+
         #MC sampling of angles
         for i in range(nsample):
             cos =random.uniform(-1.,1.)
@@ -442,32 +443,32 @@ class Foresee(Utility):
             p_1,p_2=self.twobody_decay(p_mother,m0,m1,m2,phi,cos)
             particles.append(p_2)
             weights.append(br/nsample)
-        
+
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
-        
+
         # prepare output
         particles, weights = [], []
-        
+
         #create parent 4-vector
         p_mother=LorentzVector(0,0,0,m0)
-        
+
         #integration boundary
         q2min,q2max = (m2+m3)**2,(m0-m1)**2
         cthmin,cthmax = -1 , 1
         mass = m2
-        
+
         #numerical integration
         integral=0
         for i in range(nsample):
-            
+
             #Get kinematic Variables
             q2 = random.uniform(q2min,q2max)
             cth = random.uniform(-1,1)
             th = np.arccos(cth)
             q  = math.sqrt(q2)
-            
+
             #decay meson and V
             cosQ =cth
             phiQ =random.uniform(-math.pi,math.pi)
@@ -475,15 +476,15 @@ class Foresee(Utility):
             phiM =random.uniform(-math.pi,math.pi)
             p_1,p_q=self.twobody_decay(p_mother,m0 ,m1,q  ,phiM,cosM)
             p_2,p_3=self.twobody_decay(p_q     ,q  ,m2,m3 ,phiQ,cosQ)
-            
+
             #branching fraction
             brval  = eval(br)
             brval *= (q2max-q2min)*(cthmax-cthmin)/float(nsample)
-            
+
             #save
             particles.append(p_3)
             weights.append(brval)
-        
+
         return particles,weights
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
@@ -497,32 +498,32 @@ class Foresee(Utility):
 
         # loop over channels
         for key in model.production.keys():
-            
+
             # selected channels only
             if key not in channels: continue
-            
+
             # summary statistics
             weight_sum, weight_sum_f=0,0
             momenta_lab, weights_lab = [LorentzVector(0,0,-mass,mass)], [0]
-            
+
             # 2 body decays
             if model.production[key][0]=="2body":
-                
+
                 # load details of decay channel
                 pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
                 generator, energy, nsample, massrange = model.production[key][4], model.production[key][5], model.production[key][6], model.production[key][7]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
-                
+
                 # load mother particle spectrum
-                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
-                
+
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
                 momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
-                
+
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
                     # if mother is shortlived, add factor that requires them to decay before absorption
@@ -536,25 +537,25 @@ class Foresee(Utility):
                         if print_stats:
                             p = p_llp_lab
                             if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
-        
+
             # 3 body decays
             if model.production[key][0]=="3body":
-                
+
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
                 generator, energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7], model.production[key][8]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
-                
+
                 # load mother particle
-                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
-                    
+
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
                 momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
-                    
+
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
                     # if mother is shortlived, add factor that requires them to decay before absorption
@@ -568,7 +569,7 @@ class Foresee(Utility):
                         if print_stats:
                             p = p_llp_lab
                             if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
-    
+
             # mixing with SM particles
             if model.production[key][0]=="mixing":
                 if mass>1.699: continue
@@ -576,7 +577,7 @@ class Foresee(Utility):
                 generator, energy, massrange = model.production[key][3], model.production[key][4], model.production[key][5]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
-                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid+".txt"
+                filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid))
                 mixing_angle = eval(mixing)
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
@@ -587,7 +588,7 @@ class Foresee(Utility):
                     if print_stats:
                         p = p_mother
                         if eval(stat_cuts): weight_sum_f+=w_mother*mixing_angle**2
-    
+
             # direct production
             if model.production[key][0]=="direct":
                 #load info
@@ -629,7 +630,7 @@ class Foresee(Utility):
             for p,w in zip(momenta_lab, weights_lab):
                 momenta_lab_all.append(p)
                 weights_lab_all.append(w)
-                
+
         #return
         if do_plot: return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
 
@@ -656,7 +657,7 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
-    
+
     def event_passes(self,momentum):
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
@@ -666,16 +667,16 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
-     
+
     def get_events(self, mass, energy,
             modes=None,
             couplings = np.logspace(-8,-3,51),
             nsample=1,
             preselectioncuts="th<0.01 and p>100",
             coup_ref=1,
-            
+
         ):
-        
+
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
@@ -692,10 +693,10 @@ class Foresee(Utility):
             stat_t.append([])
             stat_e.append([])
             stat_w.append([])
-    
+
         # loop over production modes
         for key in modes:
-            
+
             dirname = "model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
 
@@ -705,14 +706,14 @@ class Foresee(Utility):
                 particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
             except: continue
-    
+
             # loop over particles, and record probablity to decay in volume
             for p,w in zip(particles_llp,weights_llp):
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
                 weight_event = w*self.luminosity*1000.
-                
+
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
                     #add event weight
@@ -734,7 +735,7 @@ class Foresee(Utility):
             preselectioncuts="th<0.01 and p>100",
             coup_ref=1,
         ):
-        
+
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
@@ -744,21 +745,21 @@ class Foresee(Utility):
             stat_t.append([])
             stat_e.append([])
             stat_w.append([])
-        
+
         # loop over production modes
         for key in modes:
-            
+
             GeV2_in_invmeter2 = (5e15)**2
             dirname = "model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
-            
+
             # try Load Flux file
             try:
                 particles_llp,weights_llp=self.convert_list_to_momenta(
                     filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
             except: continue
-            
+
             # loop over particles, and record probablity to interact in volume
             for p,w in zip(particles_llp,weights_llp):
                 # check if event passes
@@ -767,7 +768,7 @@ class Foresee(Utility):
                 weight_event = w*self.luminosity*1000.
                 # get sigmaints
                 sigmaints = model.get_sigmaints(mass, couplings, p.e, self.ermin, self.ermax)
-                
+
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
                     #add event weight
@@ -785,29 +786,29 @@ class Foresee(Utility):
     ###############################
     #  Plotting and other final processing
     ###############################
-    
+
     def extract_contours(self,
             inputfile, outputfile,
             nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
         ):
-            
+
         # load data
         masses,couplings,nsignals=np.load(inputfile, allow_pickle=True, encoding='latin1')
         m, c = np.meshgrid(masses, couplings)
         n = np.log10(np.array(nsignals).T+1e-20)
-        
+
         # extract line
         cs = plt.contour (m,c,n, levels=[np.log10(nevents)])
         p = cs.collections[0].get_paths()[0]
         v = p.vertices
         xvals, yvals = v[:,0], v[:,1]
         plt.close()
-    
+
         # save to fole
         f= open(outputfile,"w")
         for x, y in zip(xvals,yvals): f.write(str(x)+" "+str(y)+"\n")
         f.close()
-    
+
     def plot_reach(self,
             setups,bounds,projections, bounds2=[],
             title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
@@ -815,10 +816,10 @@ class Foresee(Utility):
             branchings=None, branchingsother=None,
             fs_label=14,
         ):
-        
+
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
-        
+
         if branchings is None:
             fig, ax = plt.subplots(figsize=figsize)
         else:
@@ -826,7 +827,7 @@ class Foresee(Utility):
             spec = gridspec.GridSpec(nrows=2,ncols=1,width_ratios=[1],height_ratios=[1,0.3],wspace=0,hspace=0)
             ax = fig.add_subplot(spec[0])
         zorder=-100
-        
+
         # Existing Constraints
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
@@ -834,14 +835,14 @@ class Foresee(Utility):
             ax.fill(data.T[0], data.T[1], color="#efefef",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="darkgray"  ,zorder=zorder,lw=1)
             zorder+=1
-        
+
         # Future sensitivities
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
             data=self.readfile("model/lines/"+filename)
             ax.plot(data.T[0], data.T[1], color=color, ls="dashed", zorder=zorder, lw=1)
             zorder+=1
-        
+
         # Existing Constraints
         for bound in bounds:
             filename, label, posx, posy, rotation = bound
@@ -849,7 +850,7 @@ class Foresee(Utility):
             ax.fill(data.T[0], data.T[1], color="gainsboro",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="dimgray"  ,zorder=zorder,lw=1)
             zorder+=1
-        
+
         # labels
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
@@ -863,7 +864,7 @@ class Foresee(Utility):
             filename, label, posx, posy, rotation = bound
             if label is None: continue
             ax.text(posx, posy, label, fontsize=fs_label, color="dimgray", rotation=rotation)
-        
+
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
@@ -874,7 +875,7 @@ class Foresee(Utility):
             ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
-        
+
         #frame
         ax.set_title(title)
         ax.set_xscale("log")
@@ -916,16 +917,16 @@ class Foresee(Utility):
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
         figsize=(7,5), fs_label=14, title=None, legendloc=None
     ):
-    
+
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
-        
+
         # loop over production channels
         dirname = "model/LLP_spectra/"
         for channel, massrange, color, label in productions:
             if massrange is None: massrange = xlims
-        
+
             # loop over masses
             xvals, yvals = [], []
             for mass in masses:
@@ -940,7 +941,7 @@ class Foresee(Utility):
                     yvals.append(total+1e-10)
                 except:
                     continue
-        
+
             # add to plot
             ax.plot(xvals, yvals, color=color, label=label)
 
