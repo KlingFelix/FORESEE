@@ -351,7 +351,7 @@ class Foresee(Utility):
 
     # show 2d hadronspectrum
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
-        dirname = "files/hadrons/"+energy+"TeV/"+generator+"/"
+        dirname = "../../files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta(filename,mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w, do_plot=True, prange=prange)
@@ -486,13 +486,13 @@ class Foresee(Utility):
         
         return particles,weights
 
-    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, filenamesave=None, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
+    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
 
         # prepare output
         model = self.model
         if channels is None: channels = [key for key in model.production.keys()]
         momenta_lab_all, weights_lab_all = [], []
-        dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+        dirname = "model/LLP_spectra/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
         # loop over channels
@@ -516,7 +516,7 @@ class Foresee(Utility):
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
                 
                 # load mother particle spectrum
-                filename = "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
                 
                 # get sample of LLP momenta in the mother's rest frame
@@ -548,7 +548,7 @@ class Foresee(Utility):
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
                 
                 # load mother particle
-                filename = "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
                     
                 # get sample of LLP momenta in the mother's rest frame
@@ -576,7 +576,7 @@ class Foresee(Utility):
                 generator, energy, massrange = model.production[key][3], model.production[key][4], model.production[key][5]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
-                filename = "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid+".txt"
+                filename = "../../files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid))
                 mixing_angle = eval(mixing)
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
@@ -600,8 +600,8 @@ class Foresee(Utility):
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
                 #load benchmark data
-                filename0="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-                filename1="files/direct/"+energy+"TeV/"+self.model.model_name+"/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+                filename0="model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+                filename1="model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
                 try:
                     momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
                     momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
@@ -621,9 +621,11 @@ class Foresee(Utility):
                         if eval(stat_cuts): weight_sum_f+=w_lpp*coupling**2/coupling_ref**2
 
             #return statistcs
-            filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
-            self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
-            if print_stats: print (key, "{:.2e}".format(weight_sum),"{:.2e}".format(weight_sum_f))
+            if save_file==True:
+                filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+                self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
+            if print_stats:
+                print (key, "{:.2e}".format(weight_sum),"{:.2e}".format(weight_sum_f))
             for p,w in zip(momenta_lab, weights_lab):
                 momenta_lab_all.append(p)
                 weights_lab_all.append(w)
@@ -694,7 +696,7 @@ class Foresee(Utility):
         # loop over production modes
         for key in modes:
             
-            dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+            dirname = "model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
 
             # try Load Flux file
@@ -747,7 +749,7 @@ class Foresee(Utility):
         for key in modes:
             
             GeV2_in_invmeter2 = (5e15)**2
-            dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+            dirname = "model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
             
             # try Load Flux file
@@ -781,9 +783,31 @@ class Foresee(Utility):
         return couplings, nsignals, stat_e, stat_w, stat_t
 
     ###############################
-    #  Plotting
+    #  Plotting and other final processing
     ###############################
+    
+    def extract_contours(self,
+            inputfile, outputfile,
+            nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
+        ):
             
+        # load data
+        masses,couplings,nsignals=np.load(inputfile, allow_pickle=True, encoding='latin1')
+        m, c = np.meshgrid(masses, couplings)
+        n = np.log10(np.array(nsignals).T+1e-20)
+        
+        # extract line
+        cs = plt.contour (m,c,n, levels=[np.log10(nevents)])
+        p = cs.collections[0].get_paths()[0]
+        v = p.vertices
+        xvals, yvals = v[:,0], v[:,1]
+        plt.close()
+    
+        # save to fole
+        f= open(outputfile,"w")
+        for x, y in zip(xvals,yvals): f.write(str(x)+" "+str(y)+"\n")
+        f.close()
+    
     def plot_reach(self,
             setups,bounds,projections, bounds2=[],
             title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
@@ -806,7 +830,7 @@ class Foresee(Utility):
         # Existing Constraints
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
-            data=self.readfile("files/models/"+self.model.model_name+"/lines/"+filename)
+            data=self.readfile("model/lines/"+filename)
             ax.fill(data.T[0], data.T[1], color="#efefef",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="darkgray"  ,zorder=zorder,lw=1)
             zorder+=1
@@ -814,14 +838,14 @@ class Foresee(Utility):
         # Future sensitivities
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
-            data=self.readfile("files/models/"+self.model.model_name+"/lines/"+filename)
+            data=self.readfile("model/lines/"+filename)
             ax.plot(data.T[0], data.T[1], color=color, ls="dashed", zorder=zorder, lw=1)
             zorder+=1
         
         # Existing Constraints
         for bound in bounds:
             filename, label, posx, posy, rotation = bound
-            data=self.readfile("files/models/"+self.model.model_name+"/lines/"+filename)
+            data=self.readfile("model/lines/"+filename)
             ax.fill(data.T[0], data.T[1], color="gainsboro",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="dimgray"  ,zorder=zorder,lw=1)
             zorder+=1
@@ -843,7 +867,7 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
-            masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename, allow_pickle=True)
+            masses,couplings,nsignals=np.load("model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
@@ -898,7 +922,7 @@ class Foresee(Utility):
         fig, ax = plt.subplots(figsize=figsize)
         
         # loop over production channels
-        dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
+        dirname = "model/LLP_spectra/"
         for channel, massrange, color, label in productions:
             if massrange is None: massrange = xlims
         
