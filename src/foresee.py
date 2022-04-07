@@ -42,6 +42,8 @@ class Utility():
         elif pid in ["541" ,"-541" ]: return 6.2749
         elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
+        elif pid in ["11"  ,"-11"  ]: return 0.000511
+        elif pid in ["13"  ,"-13"  ]: return 0.105658
         elif pid in ["15"  ,"-15"  ]: return 1.777
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
@@ -94,6 +96,7 @@ class Model(Utility):
         self.lifetime_function = None
         self.br_mode=None
         self.br_functions = {}
+        self.br_finalstate = {}
         self.production = {}
 
     ###############################
@@ -160,21 +163,25 @@ class Model(Utility):
     #  BR
     ###############################
 
-    def set_br_1d(self,modes,filenames):
+    def set_br_1d(self,modes, filenames, finalstates=None):
         self.br_mode="1D"
         self.br_functions = {}
-        for channel, filename in zip(modes, filenames):
+        if finalstates==None: finalstates=[None for _ in modes]
+        for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(filename).T
             function = interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
             self.br_functions[channel] = function
+            self.br_finalstate[channel] = finalstate
 
-    def set_br_2d(self,modes,filenames):
+    def set_br_2d(self,modes,filenames, finalstates=None):
         self.br_mode="2D"
         self.br_functions = {}
-        for channel, filename in zip(modes, filenames):
+        if finalstates==None: finalstates=[None for _ in modes]
+        for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
+            self.br_finalstate[channel] = finalstate
 
     def get_br(self,mode,mass,coupling=1):
         if self.br_mode==None:
@@ -783,6 +790,123 @@ class Foresee(Utility):
 
         return couplings, nsignals, stat_e, stat_w, stat_t
 
+    ###############################
+    #  Export Results as HEPMC File
+    ###############################
+
+    def decay_llp(self, momentum, pids):
+        
+        # unspecified decays - can't do anything
+        if pids==None:
+            pids, momenta = None, []
+        # not 2-body decays - not implemented yet
+        elif len(pids)!=2:
+            pids, momenta = None, []
+        # 2=body decays
+        else:
+            m0 = momentum.m
+            phi = random.uniform(-math.pi,math.pi)
+            cos = random.uniform(-1.,1.)
+            m1, m2 = self.masses(str(pids[0])), self.masses(str(pids[1]))
+            p1, p2 = self.twobody_decay(momentum,m0,m1,m2,phi,cos)
+            momenta = [p1,p2]
+        return pids, momenta
+    
+    def write_hepmc_file(self, data, filename):
+        
+        # open file
+        f= open(filename,"w")
+        f.write("HepMC::Version 2.06.09 \n")
+        f.write("HepMC::IO_GenEvent-START_EVENT_LISTING \n")
+        
+        # loop over events
+        for ievent, (weight, position, momentum, pids, finalstate) in enumerate(data):
+        
+            # Event Info
+            f.write("E "+str(ievent)+"\n")
+            f.write("N 1 \"0\" \n")
+            f.write("U GEV MM \n")
+            f.write("C "+str(weight)+" 0 \n")
+
+            # LLP
+            status= "1" if pids==None else "2"
+            f.write("P 1 32 ") # First particle, ID for Z'
+            f.write(str(round(momentum.px,10))+" ")
+            f.write(str(round(momentum.py,10))+" ")
+            f.write(str(round(momentum.pz,10))+" ")
+            f.write(str(round(momentum.e,10))+" ")
+            f.write(str(round(momentum.m,10))+" ")
+            f.write(status+ " 0 0 0 0 \n")
+                
+            #vertex
+            npids= "0" if pids==None else str(len(pids))
+            f.write("V -1 ")
+            f.write(str(round(position.x*1000,10))+" ")
+            f.write(str(round(position.y*1000,10))+" ")
+            f.write(str(round(position.z*1000,10))+" ")
+            f.write(str(round(position.t*1000,10))+" ")
+            f.write("0 "+npids+" 0 \n")
+
+            #decay products
+            if pids is None: continue
+            for iparticle, (pid, particle) in enumerate(zip(pids, finalstate)):
+                f.write("P "+str(iparticle+2)+" "+str(pid)+" ")
+                f.write(str(round(particle.px,10))+" ")
+                f.write(str(round(particle.py,10))+" ")
+                f.write(str(round(particle.pz,10))+" ")
+                f.write(str(round(particle.e,10))+" ")
+                f.write(str(round(particle.m,10))+" ")
+                f.write("1 0 0 0 0 \n")
+                
+        # close file
+        f.close()
+           
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10):
+        
+        # get weighted sample of LLPs
+        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling])
+        weighted_raw_data = np.array([energies[0], thetas[0]]).T
+        
+        # unweight sample
+        unweighted_raw_data = random.choices(weighted_raw_data, weights=weights[0], k=numberevent)
+        eventweight = sum(weights[0])/float(numberevent)
+        
+        # setup decay channels
+        modes = self.model.br_functions.keys()
+        branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in modes]
+        finalstates = [self.model.br_finalstate[mode] for mode in modes]
+        channels = [[fs, br] for mode, br, fs in zip(modes, branchings, finalstates)]
+        br_other = 1-sum(branchings)
+        if br_other>0: channels.append([None, br_other])
+        channels=np.array(channels).T
+        
+        # get LLP momenta and decay location
+        unweighted_data = []
+        for en, theta in unweighted_raw_data:
+            # momentum
+            phi= random.uniform(-math.pi,math.pi)
+            mom = math.sqrt(en**2-mass**2)
+            pz, pt = mom*np.cos(theta), mom*np.sin(theta)
+            px, py = pt*np.cos(phi), pt*np.sin(phi)
+            momentum = LorentzVector(px,py,pz,en)
+            # position
+            posx = theta*self.distance*np.cos(phi)
+            posy = theta*self.distance*np.sin(phi)
+            posz = random.uniform(0,self.length)
+            post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
+            position = LorentzVector(posx,posy,posz,post)
+            # determine choice of final state
+            pids = random.choices(channels[0], weights=channels[1], k=1)[0]
+            pids, finalstate = self.decay_llp(momentum, pids)
+            # save
+            unweighted_data.append([eventweight, position, momentum, pids, finalstate])
+        
+        # set output filename
+        if filename==None: filename = "model/events/"+str(mass)+"_"+str(coupling)+".hepmc"
+          
+        # write to HEPMC file
+        self.write_hepmc_file(filename=filename, data=unweighted_data)
+        
     ###############################
     #  Plotting and other final processing
     ###############################
