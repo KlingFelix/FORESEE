@@ -87,7 +87,7 @@ class Utility():
 
 class Model(Utility):
 
-    def __init__(self,name):
+    def __init__(self,name, path="./"):
         self.model_name = name
         self.dsigma_der_coupling_ref = None
         self.dsigma_der = None
@@ -98,6 +98,7 @@ class Model(Utility):
         self.br_functions = {}
         self.br_finalstate = {}
         self.production = {}
+        self.modelpath = path
 
     ###############################
     #  Interaction Rate dsigma/dER
@@ -141,12 +142,12 @@ class Model(Utility):
     ###############################
 
     def set_ctau_1d(self,filename, coupling_ref=1):
-        data=self.readfile(filename).T
+        data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=coupling_ref
         self.ctau_function=interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
 
     def set_ctau_2d(self,filename):
-        data=self.readfile(filename).T
+        data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
         self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
 
@@ -168,7 +169,7 @@ class Model(Utility):
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
-            data = self.readfile(filename).T
+            data = self.readfile(self.modelpath+filename).T
             function = interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
@@ -178,7 +179,7 @@ class Model(Utility):
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
-            data = self.readfile(filename).T
+            data = self.readfile(self.modelpath+filename).T
             function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
@@ -500,7 +501,7 @@ class Foresee(Utility):
         model = self.model
         if channels is None: channels = [key for key in model.production.keys()]
         momenta_lab_all, weights_lab_all = [], []
-        dirname = "model/LLP_spectra/"
+        dirname = self.model.modelpath+"model/LLP_spectra/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
         # loop over channels
@@ -608,8 +609,8 @@ class Foresee(Utility):
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
                 #load benchmark data
-                filename0="model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-                filename1="model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+                filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+                filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
                 try:
                     momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
                     momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
@@ -704,7 +705,7 @@ class Foresee(Utility):
         # loop over production modes
         for key in modes:
 
-            dirname = "model/LLP_spectra/"
+            dirname = self.model.modelpath+"model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
 
             # try Load Flux file
@@ -757,7 +758,7 @@ class Foresee(Utility):
         for key in modes:
 
             GeV2_in_invmeter2 = (5e15)**2
-            dirname = "model/LLP_spectra/"
+            dirname = self.model.modelpath+"model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
 
             # try Load Flux file
@@ -812,7 +813,7 @@ class Foresee(Utility):
             momenta = [p1,p2]
         return pids, momenta
     
-    def write_hepmc_file(self, data, filename):
+    def write_hepmc_file(self, data, filename, zfront=0):
         
         # open file
         f= open(filename,"w")
@@ -843,7 +844,7 @@ class Foresee(Utility):
             f.write("V -1 ")
             f.write(str(round(position.x*1000,10))+" ")
             f.write(str(round(position.y*1000,10))+" ")
-            f.write(str(round(position.z*1000,10))+" ")
+            f.write(str(round((position.z+zfront)*1000,10))+" ")
             f.write(str(round(position.t*1000,10))+" ")
             f.write("0 "+npids+" 0 \n")
 
@@ -859,9 +860,10 @@ class Foresee(Utility):
                 f.write("1 0 0 0 0 \n")
                 
         # close file
+        f.write("HepMC::IO_GenEvent-END_EVENT_LISTING \n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0):
         
         # get weighted sample of LLPs
         _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling])
@@ -902,10 +904,13 @@ class Foresee(Utility):
             unweighted_data.append([eventweight, position, momentum, pids, finalstate])
         
         # set output filename
-        if filename==None: filename = "model/events/"+str(mass)+"_"+str(coupling)+".hepmc"
+        dirname = self.model.modelpath+"model/events/"
+        if not os.path.exists(dirname): os.mkdir(dirname)
+        if filename==None: filename = dirname+str(mass)+"_"+str(coupling)+".hepmc"
+        else: filename = self.model.modelpath + filename
           
         # write to HEPMC file
-        self.write_hepmc_file(filename=filename, data=unweighted_data)
+        self.write_hepmc_file(filename=filename, data=unweighted_data, zfront=zfront)
         
     ###############################
     #  Plotting and other final processing
@@ -955,7 +960,7 @@ class Foresee(Utility):
         # Existing Constraints
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
-            data=self.readfile("model/lines/"+filename)
+            data=self.readfile(self.model.modelpath+"model/lines/"+filename)
             ax.fill(data.T[0], data.T[1], color="#efefef",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="darkgray"  ,zorder=zorder,lw=1)
             zorder+=1
@@ -963,14 +968,14 @@ class Foresee(Utility):
         # Future sensitivities
         for projection in projections:
             filename, color, label, posx, posy, rotation = projection
-            data=self.readfile("model/lines/"+filename)
+            data=self.readfile(self.model.modelpath+"model/lines/"+filename)
             ax.plot(data.T[0], data.T[1], color=color, ls="dashed", zorder=zorder, lw=1)
             zorder+=1
 
         # Existing Constraints
         for bound in bounds:
             filename, label, posx, posy, rotation = bound
-            data=self.readfile("model/lines/"+filename)
+            data=self.readfile(self.model.modelpath+"model/lines/"+filename)
             ax.fill(data.T[0], data.T[1], color="gainsboro",zorder=zorder)
             ax.plot(data.T[0], data.T[1], color="dimgray"  ,zorder=zorder,lw=1)
             zorder+=1
@@ -992,7 +997,7 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
-            masses,couplings,nsignals=np.load("model/results/"+filename, allow_pickle=True, encoding='latin1')
+            masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
@@ -1047,7 +1052,7 @@ class Foresee(Utility):
         fig, ax = plt.subplots(figsize=figsize)
 
         # loop over production channels
-        dirname = "model/LLP_spectra/"
+        dirname = self.model.modelpath+"model/LLP_spectra/"
         for channel, massrange, color, label in productions:
             if massrange is None: massrange = xlims
 
