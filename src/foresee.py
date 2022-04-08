@@ -863,7 +863,10 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING \n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, seed=None):
+        
+        #set random seed
+        random.seed(seed)
         
         # get weighted sample of LLPs
         _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling])
