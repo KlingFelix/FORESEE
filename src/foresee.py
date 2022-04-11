@@ -817,17 +817,22 @@ class Foresee(Utility):
         
         # open file
         f= open(filename,"w")
-        f.write("HepMC::Version 2.06.09 \n")
-        f.write("HepMC::IO_GenEvent-START_EVENT_LISTING \n")
+        f.write("HepMC::Version 2.06.09\n")
+        f.write("HepMC::IO_GenEvent-START_EVENT_LISTING\n")
         
         # loop over events
         for ievent, (weight, position, momentum, pids, finalstate) in enumerate(data):
-        
             # Event Info
-            f.write("E "+str(ievent)+"\n")
-            f.write("N 1 \"0\" \n")
-            f.write("U GEV MM \n")
-            f.write("C "+str(weight)+" 0 \n")
+            # int: event number / int: number of multi paricle interactions [-1] / double: event scale [-1.] / double: alpha QCD [-1.] / double: alpha QED [-1.] / int: signal process id [0] / int: barcode for signal process vertex [-1] / int: number of vertices in this event [1] /  int: barcode for beam particle 1 [1] / int: barcode for beam particle 2 [0] /  int: number of entries in random state list (may be zero) [0] / long: optional list of random state integers [-] /  int: number of entries in weight list (may be zero) [0] / double: optional list of weights [-]
+            f.write("E "+str(ievent)+" -1 -1. -1. -1. 0 -1 1 1 0 0 0\n")
+            # int: number of entries in weight name list [0] /  std::string: list of weight names enclosed in quotes
+            #f.write("N 1 \"Weight\" \n")
+            # std::string: momentum units (MEV or GEV) [GeV] /  std::string: length units (MM or CM) [MM]
+            f.write("U GEV MM\n")
+            # double: cross section in pb /  double: error associated with this cross section in pb [0.]
+            f.write("C "+str(weight)+" 0.\n")
+            # PDF info - doesn't apply here
+            f.write("F 0 0 0 0 0 0 0 0 0\n")
 
             # LLP
             status= "1" if pids==None else "2"
@@ -837,7 +842,7 @@ class Foresee(Utility):
             f.write(str(round(momentum.pz,10))+" ")
             f.write(str(round(momentum.e,10))+" ")
             f.write(str(round(momentum.m,10))+" ")
-            f.write(status+ " 0 0 0 0 \n")
+            f.write(status+ " 0 0 0 0\n")
                 
             #vertex
             npids= "0" if pids==None else str(len(pids))
@@ -846,7 +851,7 @@ class Foresee(Utility):
             f.write(str(round(position.y*1000,10))+" ")
             f.write(str(round((position.z+zfront)*1000,10))+" ")
             f.write(str(round(position.t*1000,10))+" ")
-            f.write("0 "+npids+" 0 \n")
+            f.write("0 "+npids+" 0\n")
 
             #decay products
             if pids is None: continue
@@ -857,10 +862,10 @@ class Foresee(Utility):
                 f.write(str(round(particle.pz,10))+" ")
                 f.write(str(round(particle.e,10))+" ")
                 f.write(str(round(particle.m,10))+" ")
-                f.write("1 0 0 0 0 \n")
+                f.write("1 0 0 0 0\n")
                 
         # close file
-        f.write("HepMC::IO_GenEvent-END_EVENT_LISTING \n")
+        f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, seed=None):
