@@ -833,7 +833,16 @@ class Foresee(Utility):
             f.write("C "+str(weight)+" 0.\n")
             # PDF info - doesn't apply here
             f.write("F 0 0 0 0 0 0 0 0 0\n")
-
+                
+            #vertex
+            npids= "0" if pids==None else str(len(pids))
+            f.write("V -1 0 ")
+            f.write(str(round(position.x*1000,10))+" ")
+            f.write(str(round(position.y*1000,10))+" ")
+            f.write(str(round((position.z+zfront)*1000,10))+" ")
+            f.write(str(round(position.t*1000,10))+" ")
+            f.write("1 "+npids+" 0\n")
+            
             # LLP
             status= "1" if pids==None else "2"
             f.write("P 1 32 ") # First particle, ID for Z'
@@ -842,16 +851,7 @@ class Foresee(Utility):
             f.write(str(round(momentum.pz,10))+" ")
             f.write(str(round(momentum.e,10))+" ")
             f.write(str(round(momentum.m,10))+" ")
-            f.write(status+ " 0 0 0 0\n")
-                
-            #vertex
-            npids= "0" if pids==None else str(len(pids))
-            f.write("V -1 ")
-            f.write(str(round(position.x*1000,10))+" ")
-            f.write(str(round(position.y*1000,10))+" ")
-            f.write(str(round((position.z+zfront)*1000,10))+" ")
-            f.write(str(round(position.t*1000,10))+" ")
-            f.write("0 "+npids+" 0\n")
+            f.write(status+ " 0 0 -1 0\n")
 
             #decay products
             if pids is None: continue
