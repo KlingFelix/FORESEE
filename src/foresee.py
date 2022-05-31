@@ -1052,7 +1052,7 @@ class Foresee(Utility):
         masses, productions, condition="True", energy="14",
         xlims=[0.01,1],ylims=[10**-6,10**-3],
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
 
         # initiate figure
@@ -1090,7 +1090,7 @@ class Foresee(Utility):
         ax.set_ylim(ylims[0],ylims[1])
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label)
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label, ncol=ncol)
 
         # return
         return plt
