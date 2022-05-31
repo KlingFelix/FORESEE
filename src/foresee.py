@@ -281,11 +281,8 @@ class Foresee(Utility):
 
             for n in range(nsample):
                 phi= random.uniform(-math.pi,math.pi)
-                if nsample == 1:
-                    fth, fp = 1,1
-                else:
-                    fth = np.random.normal(1, 0.05, 1)[0]
-                    fp  = np.random.normal(1, 0.05, 1)[0]
+                fth = 10**np.random.uniform(-0.025, 0.025, 1)[0]
+                fp  = 10**np.random.uniform(-0.025, 0.025, 1)[0]
 
                 th_sm=th*fth
                 p_sm=p*fp
@@ -303,7 +300,7 @@ class Foresee(Utility):
         return particles,weights
 
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 50]]):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]]):
 
         #get data
         tmin, tmax, tnum = prange[0]
@@ -868,13 +865,13 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, seed=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling])
+        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=1)
         weighted_raw_data = np.array([energies[0], thetas[0]]).T
         
         # unweight sample
