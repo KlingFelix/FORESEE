@@ -865,7 +865,7 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None):
         
         #set random seed
         random.seed(seed)
@@ -882,9 +882,9 @@ class Foresee(Utility):
         modes = self.model.br_functions.keys()
         branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in modes]
         finalstates = [self.model.br_finalstate[mode] for mode in modes]
-        channels = [[fs, br] for mode, br, fs in zip(modes, branchings, finalstates)]
+        channels = [[[fs, mode], br] for mode, br, fs in zip(modes, branchings, finalstates)]
         br_other = 1-sum(branchings)
-        if br_other>0: channels.append([None, br_other])
+        if br_other>0: channels.append([[None,"unspecified"], br_other])
         channels=np.array(channels).T
         
         # get LLP momenta and decay location
@@ -903,8 +903,9 @@ class Foresee(Utility):
             post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
             position = LorentzVector(posx,posy,posz,post)
             # determine choice of final state
-            pids = random.choices(channels[0], weights=channels[1], k=1)[0]
+            pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
             pids, finalstate = self.decay_llp(momentum, pids)
+            if (decaychannels is not None) and (mode not in decaychannels): continue
             # save
             unweighted_data.append([eventweight, position, momentum, pids, finalstate])
         
