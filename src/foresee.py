@@ -55,6 +55,7 @@ class Utility():
         elif pid in ["553"         ]: return 9.460
         elif pid in ["100553"      ]: return 10.023
         elif pid in ["200553"      ]: return 10.355
+        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
 
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
