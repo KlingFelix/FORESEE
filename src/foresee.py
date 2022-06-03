@@ -878,6 +878,10 @@ class Foresee(Utility):
         # unweight sample
         unweighted_raw_data = random.choices(weighted_raw_data, weights=weights[0], k=numberevent)
         eventweight = sum(weights[0])/float(numberevent)
+        if decaychannels is not None:
+            factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
+            eventweight = eventweight * factor
+            print (factor)
         
         # setup decay channels
         modes = self.model.br_functions.keys()
@@ -891,6 +895,10 @@ class Foresee(Utility):
         # get LLP momenta and decay location
         unweighted_data = []
         for en, theta in unweighted_raw_data:
+            # determine choice of final state
+            while True:
+                pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
+                if (decaychannels is None) or (mode in decaychannels): break
             # momentum
             phi= random.uniform(-math.pi,math.pi)
             mom = math.sqrt(en**2-mass**2)
@@ -903,10 +911,8 @@ class Foresee(Utility):
             posz = random.uniform(0,self.length)
             post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
             position = LorentzVector(posx,posy,posz,post)
-            # determine choice of final state
-            pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
+            # decay
             pids, finalstate = self.decay_llp(momentum, pids)
-            if (decaychannels is not None) and (mode not in decaychannels): continue
             # save
             unweighted_data.append([eventweight, position, momentum, pids, finalstate])
         
