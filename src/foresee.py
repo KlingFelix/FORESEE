@@ -838,7 +838,7 @@ class Foresee(Utility):
             f.write(str(round(position.x*1000,10))+" ")
             f.write(str(round(position.y*1000,10))+" ")
             f.write(str(round((position.z+zfront)*1000,10))+" ")
-            f.write(str(round(position.t*1000,10))+" ")
+            f.write("0 ") #f.write(str(round(position.t*1000,10))+" ")
             f.write("1 "+npids+" 0\n")
             
             # LLP
@@ -881,7 +881,7 @@ class Foresee(Utility):
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
             eventweight = eventweight * factor
-            print (factor)
+            # print (factor)
         
         # setup decay channels
         modes = self.model.br_functions.keys()
@@ -906,10 +906,10 @@ class Foresee(Utility):
             px, py = pt*np.cos(phi), pt*np.sin(phi)
             momentum = LorentzVector(px,py,pz,en)
             # position
+            posz = random.uniform(0,self.length)
             posx = theta*self.distance*np.cos(phi)
             posy = theta*self.distance*np.sin(phi)
-            posz = random.uniform(0,self.length)
-            post = 3.0e8 * np.sqrt(posz**2 + posy**2 + posz**2)
+            post = np.sqrt(posx**2 + posy**2 + (self.distance+posz)**2)
             position = LorentzVector(posx,posy,posz,post)
             # decay
             pids, finalstate = self.decay_llp(momentum, pids)
