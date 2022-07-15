@@ -32,6 +32,7 @@ class Utility():
         elif pid in ["113"         ]: return 0.77545
         elif pid in ["223"         ]: return 0.78266
         elif pid in ["333"         ]: return 1.019461
+        elif pid in ["213" ,"-213" ]: return 0.77545
         elif pid in ["411" ,"-411" ]: return 1.86961
         elif pid in ["421" ,"-421" ]: return 1.86484
         elif pid in ["431" ,"-431" ]: return 1.96830
@@ -150,7 +151,14 @@ class Model(Utility):
     def set_ctau_2d(self,filename):
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
-        self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+        try:
+            self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+        except:
+            nx = len(np.unique(data[0]))
+            ny = int(len(data[0])/nx)
+            print (nx, ny)
+            self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
+            
 
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
@@ -181,7 +189,12 @@ class Model(Utility):
         if finalstates==None: finalstates=[None for _ in modes]
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
-            function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            try:
+                function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            except:
+                nx = len(np.unique(data[0]))
+                ny = int(len(data[0])/nx)
+                function = interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -338,11 +351,12 @@ class Foresee(Utility):
         ticks = [np.log10(x) for x in ticks]
         ticklabels = np.array([[r"$10^{"+str(j)+"}$","","","","","","","",""] for j in range(-7,6)]).flatten()
         matplotlib.rcParams.update({'font.size': 15})
-        fig = plt.figure(figsize=(8,5.5))
+        #fig = plt.figure(figsize=(8,5.5))
+        fig = plt.figure(figsize=(7,5.5))
         ax = plt.subplot(1,1,1)
         h=ax.hist2d(x=list_t,y=list_p,weights=list_w,
                     bins=[tnum,pnum],range=[[tmin,tmax],[pmin,pmax]],
-                    norm=matplotlib.colors.LogNorm(), cmap="hsv",
+                    norm=matplotlib.colors.LogNorm(), cmap="rainbow",
         )
         fig.colorbar(h[3], ax=ax)
         ax.set_xlabel(r"angle wrt. beam axis $\theta$ [rad]")
@@ -514,12 +528,14 @@ class Foresee(Utility):
 
             # 2 body decays
             if model.production[key][0]=="2body":
-
+            
                 # load details of decay channel
                 pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
                 generator, energy, nsample, massrange = model.production[key][4], model.production[key][5], model.production[key][6], model.production[key][7]
+                
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
+                    
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
 
                 # load mother particle spectrum
@@ -711,7 +727,9 @@ class Foresee(Utility):
                 # print "load", filename
                 particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
-            except: continue
+            except:
+                # print ("Warning: file "+filename+" not found")
+                continue
 
             # loop over particles, and record probablity to decay in volume
             for p,w in zip(particles_llp,weights_llp):
