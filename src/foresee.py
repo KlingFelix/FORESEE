@@ -884,7 +884,7 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None,nsample=1):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None):
         
         #set random seed
         random.seed(seed)
