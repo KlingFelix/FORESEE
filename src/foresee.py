@@ -327,8 +327,8 @@ class Foresee(Utility):
 
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
 
-        t_centers = (t_edges[:-1] + t_edges[1:]) / 2
-        p_centers = (p_edges[:-1] + p_edges[1:]) / 2
+        t_centers = np.logspace(tmin+0.5*(tmax-tmin)/float(tnum), tmax-0.5*(tmax-tmin)/float(tnum), num=tnum)
+        p_centers = np.logspace(pmin+0.5*(pmax-pmin)/float(pnum), pmax-0.5*(pmax-pmin)/float(pnum), num=pnum) 
 
         list_t = []
         list_p = []
@@ -884,7 +884,7 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False):
         
         #set random seed
         random.seed(seed)
@@ -902,10 +902,10 @@ class Foresee(Utility):
             # print (factor)
         
         # setup decay channels
-        modes = self.model.br_functions.keys()
-        branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in modes]
-        finalstates = [self.model.br_finalstate[mode] for mode in modes]
-        channels = [[[fs, mode], br] for mode, br, fs in zip(modes, branchings, finalstates)]
+        decaymodes = self.model.br_functions.keys()
+        branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in decaymodes]
+        finalstates = [self.model.br_finalstate[mode] for mode in decaymodes]
+        channels = [[[fs, mode], br] for mode, br, fs in zip(decaymodes, branchings, finalstates)]
         br_other = 1-sum(branchings)
         if br_other>0: channels.append([[None,"unspecified"], br_other])
         channels=np.array(channels).T
@@ -943,6 +943,9 @@ class Foresee(Utility):
           
         # write to HEPMC file
         self.write_hepmc_file(filename=filename, data=unweighted_data)
+        
+        #return
+        if return_data: return weighted_raw_data, weights, unweighted_raw_data
         
     ###############################
     #  Plotting and other final processing
