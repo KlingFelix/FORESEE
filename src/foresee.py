@@ -884,13 +884,13 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=1)
+        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=1, modes=modes)
         weighted_raw_data = np.array([energies[0], thetas[0]]).T
         
         # unweight sample
