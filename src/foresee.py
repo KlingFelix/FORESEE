@@ -702,7 +702,7 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
+        ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
         for coupling in couplings:
             ctau = model.get_ctau(mass, coupling)
             if self.channels is None: br = 1.
@@ -712,8 +712,7 @@ class Foresee(Utility):
             ctaus.append(ctau)
             brs.append(br)
             nsignals.append(0.)
-            stat_t.append([])
-            stat_e.append([])
+            stat_p.append([])
             stat_w.append([])
 
         # loop over production modes
@@ -746,11 +745,10 @@ class Foresee(Utility):
                     prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
-                    stat_t[icoup].append(p.pt/p.pz)
-                    stat_e[icoup].append(p.e)
+                    stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
-        return couplings, ctaus, nsignals, stat_e, stat_w, stat_t
+        return couplings, ctaus, nsignals, stat_p, stat_w
 
     def get_events_interaction(self, mass, energy,
             modes=None,
@@ -763,11 +761,10 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        nsignals, stat_t, stat_e, stat_w = [], [], [], []
+        nsignals, stat_p, stat_w = [], [], []
         for coupling in couplings:
             nsignals.append(0.)
-            stat_t.append([])
-            stat_e.append([])
+            stat_p.append([])
             stat_w.append([])
 
         # loop over production modes
@@ -801,11 +798,10 @@ class Foresee(Utility):
                     prob_int = self.length / lamdaint
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_int
-                    stat_t[icoup].append(p.pt/p.pz)
-                    stat_e[icoup].append(p.e)
+                    stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_int)
 
-        return couplings, nsignals, stat_e, stat_w, stat_t
+        return couplings, nsignals, stat_p, stat_w
 
     ###############################
     #  Export Results as HEPMC File
@@ -890,11 +886,10 @@ class Foresee(Utility):
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, energies, weights, thetas = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes)
-        weighted_raw_data = np.array([energies[0], thetas[0]]).T
+        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes)
         
         # unweight sample
-        unweighted_raw_data = random.choices(weighted_raw_data, weights=weights[0], k=numberevent)
+        unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
         eventweight = sum(weights[0])/float(numberevent)
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
@@ -912,21 +907,16 @@ class Foresee(Utility):
         
         # get LLP momenta and decay location
         unweighted_data = []
-        for en, theta in unweighted_raw_data:
+        for momentum in unweighted_raw_data:
             # determine choice of final state
             while True:
                 pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
                 if (decaychannels is None) or (mode in decaychannels): break
-            # momentum
-            phi= random.uniform(-math.pi,math.pi)
-            mom = math.sqrt(en**2-mass**2)
-            pz, pt = mom*np.cos(theta), mom*np.sin(theta)
-            px, py = pt*np.cos(phi), pt*np.sin(phi)
-            momentum = LorentzVector(px,py,pz,en)
             # position
+            thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
             posz = random.uniform(0,self.length)
-            posx = theta*self.distance*np.cos(phi)
-            posy = theta*self.distance*np.sin(phi)
+            posx = thetax*self.distance
+            posy = thetay*self.distance
             post = posz + t0
             if notime: position = LorentzVector(posx,posy,posz+zfront,0)
             else     : position = LorentzVector(posx,posy,posz+zfront,post)
@@ -945,7 +935,7 @@ class Foresee(Utility):
         self.write_hepmc_file(filename=filename, data=unweighted_data)
         
         #return
-        if return_data: return weighted_raw_data, weights, unweighted_raw_data
+        if return_data: return weighted_raw_data[0], weights, unweighted_raw_data
         
     ###############################
     #  Plotting and other final processing
