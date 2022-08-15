@@ -477,7 +477,7 @@ class Foresee(Utility):
         #integration boundary
         q2min,q2max = (m2+m3)**2,(m0-m1)**2
         cthmin,cthmax = -1 , 1
-        mass = m2
+        mass = m3
 
         #numerical integration
         integral=0
