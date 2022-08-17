@@ -219,9 +219,9 @@ class Model(Utility):
         if label is None: label=pid0
         self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling]
 
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2, integration="dq2dcosth"):
         if label is None: label=pid0
-        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling]
+        self.production[label]=["3body", pid0, pid1, pid2, br, generator, energy, nsample, massrange, scaling, integration]
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
@@ -466,7 +466,22 @@ class Foresee(Utility):
 
         return particles,weights
 
-    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
+
+
+    def decay_in_restframe_3body_EN(self, br, coupling, m0, m1, m2, m3, nsample):
+    
+        print ("Not implemented yet")
+        return [], []
+        """
+        for i in range(nsample):
+            EN = random.uniform(ENmin,ENmax)
+            p=LorentzVector(0,0,np.sqrt(EN**2-m**2),EN)
+            brval  = eval(br)
+            brval *= (ENmax-ENmin)/float(nsample)
+        """
+
+
+    def decay_in_restframe_3body_q2ct(self, br, coupling, m0, m1, m2, m3, nsample):
 
         # prepare output
         particles, weights = [], []
@@ -565,7 +580,8 @@ class Foresee(Utility):
 
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
-                generator, energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7], model.production[key][8]
+                generator, energy, nsample = model.production[key][5], model.production[key][6], model.production[key][7]
+                massrange, integration = model.production[key][8], model.production[key][9]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
@@ -576,7 +592,12 @@ class Foresee(Utility):
 
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
+                if integration == "dq2dcosth":
+                    momenta_llp, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample)
+                if integration == "dq2dEN":
+                    momenta_llp, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample)
+                if integration == "dEN":
+                    momenta_llp, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample)
 
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
