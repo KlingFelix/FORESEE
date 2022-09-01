@@ -215,9 +215,9 @@ class Model(Utility):
     #  Production
     ###############################
 
-    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
+    def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
-        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling]
+        self.production[label]=["2body", pid0, pid1, br, generator, energy, nsample, massrange, scaling, preselectioncut]
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample=1, label=None, massrange=None, scaling=2):
         if label is None: label=pid0
@@ -272,23 +272,52 @@ class Foresee(Utility):
         yval = [data[iy,1] for iy in range(ny)]
         zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
         return np.array(xval),np.array(yval),np.array(zval)
+        
+    # function to extend spectrum to low pT
+    def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
+
+        # round lists and ptmatch(so that we can easily search them)
+        list_t = [round(t,3) for t in list_t]
+        list_p = [round(p,3) for p in list_p]
+        l10ptmatch = round(round(np.log10(ptmatch)/0.05)*0.05,3)
+
+        # for each energy, get 1/theta^2 * dsigma/dlog10theta, which should be constant
+        logps = np.linspace(1+0.025,5-0.025,80)
+        values = {}
+        for logp in logps:
+            rlogp = round(logp,3)
+            rlogts = [round(l10ptmatch - rlogp + i*0.05,3) for i in range(-navg,navg+1)]
+            vals = [list_w[(list_p==rlogp)*(list_t==rlogt)][0]/(10**rlogt)**2 for rlogt in rlogts]
+            values[rlogp] = np.mean(vals)
+
+        # using that, let's extrapolate to lower pT
+        list_wx = []
+        for logt, logp, w in zip(list_t, list_p, list_w):
+            rlogp, rlogt = round(logp,3), round(logt,3)
+            if  logt>l10ptmatch-logp-2.5*0.05 or logp<1:list_wx.append(w)
+            else:list_wx.append(values[rlogp]*(10**rlogt)**2)
+
+        #return results
+        return list_wx
 
     # function that converts input file into meson spectrum
-    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False):
+    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
         if filetype=="txt":
             list_logth, list_logp, list_xs = self.readfile(filename).T
         elif filetype=="npy":
             list_logth, list_logp, list_xs = np.load(filename)
         else:
             print ("ERROR: cannot rtead file type")
-        particles=[]
-        weights  =[]
+        if extend_to_low_pt_scale is not None:
+            list_xs = self.extend_to_low_pt(list_logth, list_logp, list_xs, ptmatch=extend_to_low_pt_scale)
 
+        particles, weights = [], []
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
 
             if nocuts==False and xs < 10.**-6: continue
             p  = 10.**logp
             th = 10.**logth
+            pt = p * np.sin(th)
 
             if nocuts==False and preselectioncut is not None:
                 if not eval(preselectioncut): continue
@@ -312,9 +341,9 @@ class Foresee(Utility):
                 weights.append(xs/float(nsample))
 
         return particles,weights
-
+    
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]]):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]], vmin=None, vmax=None):
 
         #get data
         tmin, tmax, tnum = prange[0]
@@ -356,7 +385,7 @@ class Foresee(Utility):
         ax = plt.subplot(1,1,1)
         h=ax.hist2d(x=list_t,y=list_p,weights=list_w,
                     bins=[tnum,pnum],range=[[tmin,tmax],[pmin,pmax]],
-                    norm=matplotlib.colors.LogNorm(), cmap="rainbow",
+                    norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax), cmap="rainbow",
         )
         fig.colorbar(h[3], ax=ax)
         ax.set_xlabel(r"angle wrt. beam axis $\theta$ [rad]")
@@ -530,9 +559,10 @@ class Foresee(Utility):
             if model.production[key][0]=="2body":
             
                 # load details of decay channel
-                pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
-                generator, energy, nsample, massrange = model.production[key][4], model.production[key][5], model.production[key][6], model.production[key][7]
-                
+                pid0, pid1, br, generator =  model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4],
+                energy, nsample, massrange = model.production[key][5], model.production[key][6], model.production[key][7]
+                scaling, preselectioncut = model.production[key][8], model.production[key][9]
+                                
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                     
@@ -540,7 +570,7 @@ class Foresee(Utility):
 
                 # load mother particle spectrum
                 filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
-                momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
+                momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut)
 
                 # get sample of LLP momenta in the mother's rest frame
                 m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
@@ -696,12 +726,14 @@ class Foresee(Utility):
             nsample=1,
             preselectioncuts="th<0.01 and p>100",
             coup_ref=1,
-
+            extend_to_low_pt_scales={},
         ):
 
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
+        for key in model.production.keys():
+            if key not in extend_to_low_pt_scales: extend_to_low_pt_scales[key] = None
         ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
         for coupling in couplings:
             ctau = model.get_ctau(mass, coupling)
@@ -720,12 +752,13 @@ class Foresee(Utility):
 
             dirname = self.model.modelpath+"model/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
-
+                                
             # try Load Flux file
             try:
                 # print "load", filename
                 particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
-                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
+                    extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
                 # print ("Warning: file "+filename+" not found")
                 continue
@@ -880,13 +913,13 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes)
+        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales)
         
         # unweight sample
         unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
