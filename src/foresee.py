@@ -624,56 +624,33 @@ class Foresee(Utility):
         return particles,weights
 
     def decay_in_restframe_3body_EN(self,br, coupling, m0, m1, m2, m3, nsample):
+
         # prepare output
         particles, weights = [], []
+
         mass = m3
+
         #create parent 4-vector
         p_mother=LorentzVector(0,0,0,m0)
 
         #integration boundary
         #maximize the energy with respect to q
         qmin,qmax=(m2+m3),(m0-m1)
-        #q that minimizes energy
-        qminEN=minimize(Foresee().Energy,[(qmin+qmax)/2],args=(m0,m1,m2,m3,1),bounds=[(qmin,qmax)]).x[0]
-        #q that maximizes energy
-        qmaxEN=minimize(Foresee().Energy,[(qmin+qmax)/2],args=(m0,m1,m2,m3,-1),bounds=[(qmin,qmax)]).x[0]
-        if qminEN==qmin:
-            print('the q value corresponding to ENmin is the same as qmin, might be an error')
-        if qmaxEN==qmax:
-            print('the q value corresponding to ENmax is the same as qmax, might be an error')
-        ENmax=Foresee().Energy(qmaxEN,m0,m1,m2,m3,1)
-        ENmin=Foresee().Energy(qminEN,m0,m1,m2,m3,1)
-        print('ENmin ',ENmin,' ENmax ',ENmax, 'qmins ',qminEN, qmin,'qmaxs',qmaxEN,qmax)
-        print('these should be different ',qminEN,qmaxEN)
         
         #qmin,qmax=0,1
-        #q2min,q2max=0,1 #for tau particles
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+
         #numerical integration
         integral=0
         for i in range(nsample):
 
             #Get kinematic Variables
-            '''q2 = random.uniform(q2min,q2max)
+            q2 = random.uniform(q2min,q2max)
             q  = math.sqrt(q2)
-            E2stmin = (qmin**2 - m2**2 + m3**2)/(2*qmin)
-            E3stmin = (m0**2 - qmin**2 - m1**2)/(2*qmin)
-            E2stmax = (qmax**2 - m2**2 + m3**2)/(2*qmax)
-            E3stmax = (m0**2 - qmax**2 - m1**2)/(2*qmax)
-            m232min = (E2stmin + E3stmin)**2 - (np.sqrt(E2stmin**2 - m3**2) + np.sqrt(E3stmin**2 - m1**2))**2
-            m232max = (E2stmax + E3stmax)**2 - (np.sqrt(E2stmax**2 - m3**2) - np.sqrt(E3stmax**2 - m1**2))**2
-            ENmax = (m232max + qmax**2 - m2**2 - m1**2)/(2*m0)
-            ENmin = (m232min + qmin**2 - m2**2 - m1**2)/(2*m0)
-            ENmin=mass
-            mh=self.masses('15')
-            mv=self.masses('18')
-            ml=self.masses('11')
-            ENmax=(m0**2+mass**2-(ml+mv)**2)/(2*mh)
-            EN = random.uniform(ENmin,ENmax)'''
-
-            #q2 = random.uniform(q2min,q2max)
-            #q  = math.sqrt(q2)
+            ENmin=m3
+            ENmax=(m0**2+m3**2-m1**2)/(2*m0)
             EN = random.uniform(ENmin,ENmax)
-            th = np.arccos(EN)
+            #th = np.arccos(EN)
 
             #decay meson and V
             cosQ =random.uniform(-1,1)
@@ -855,7 +832,7 @@ class Foresee(Utility):
         tautau=tautau*SecToGev
         GF=1.166378*10**(-5) #GeV^(-2)
         VH=self.VH(pid1)
-        fH=self.VH(pid1)
+        fH=self.fH(pid1)
         Mtau=self.masses(pid0)
         prefactor=tautau*GF**2*VH**2*fH**2*Mtau**3/(16*np.pi)
         br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2-(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+(mass**2/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
@@ -872,15 +849,23 @@ class Foresee(Utility):
         Mrho=self.masses(pid1)
         VH=self.VH(pid1)
         prefactor=tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2)
-        br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
+        br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2))*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2)))"
         return(br)
 
+    #pid0 is tau, pid1 is produced lepton and pid2 is the neutrino
     def dbr_3_body_tau(self,pid0,pid1,pid2):
-        SecToGev=1./(6.582122*pow(10.,-25.))
-        tautau=self.tau(pid0)*SecToGev
-        GF=1.166378*10**(-5) #GeV^(-2)
-        prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*EN/(2*np.pi**3))"
-        dbr=f"{prefactor}*(1+((mass**2-self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-2*(EN/self.masses('{pid0}')))*(1-(self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}'))))*np.sqrt(EN**2-mass**2)"
+        if pid2=='18':
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=self.tau(pid0)*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*EN/(2*np.pi**3))"
+            dbr=f"{prefactor}*(1+((mass**2-self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-2*(EN/self.masses('{pid0}')))*(1-(self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}'))))*np.sqrt(EN**2-mass**2)"
+        else:
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=self.tau(pid0)*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))"
+            dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}')))**2*np.sqrt(EN**2-mass**2)*((self.masses('{pid0}')-EN)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}')))*((self.masses('{pid0}')-EN)**2/self.masses('{pid0}')+((EN**2-mass**2)/(3*self.masses('{pid0}')))))"
         return(dbr)
 
     def dbr_3_body_pseudo(self,pid0,pid1,pid2):
@@ -913,24 +898,24 @@ class Foresee(Utility):
         if channel=="B":
             f00=0.66
             fp0=f00 #for B mesons
-            MV=6.2749 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
+            MV=6.400 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
             #MS=5.4154 for B meson
-            MS=1.969
+            MS=6.330
         if channel=="Bs":
             f00=0.57
             fp0=f00
-            MV=6.2749 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
-            MS=5.4154 
+            MV=6.400 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
+            MS=6.330
         if channel=="Bc->B":
             f00=-0.58
             fp0=f00
-            MV=6.2749 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
-            MS=5.4154 
+            MV=6.400 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
+            MS=6.330
         if channel=="Bc->Bs":
             f00=-0.61
             fp0=f00
-            MV=6.2749 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
-            MS=5.4154 
+            MV=6.400 #for Bc meson, I think this should also work for Bc* meson (probly not actually)
+            MS=6.330 
         pidk="-321"
         pidpi="211"
         fp=f"{f00}/(1-q**2/{MV}**2)"
@@ -1212,6 +1197,26 @@ class Foresee(Utility):
         integ=Foresee().integrate(bra, 1, m0, m1, m2,m3, nsample)
         return(integ)
 
+    def integrate_EN(self,br, coupling, m0, m1, m2, m3, nsample):
+        #prepare output
+        weights=[]
+        mass = m3
+        #numerical integration
+        integral=0
+        for i in range(nsample):
+            #get energy bounds
+            ENmin=m3
+            ENmax=(m0**2+m3**2-m1**2)/(2*m0)
+            EN = random.uniform(ENmin,ENmax)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (ENmax-ENmin)/float(nsample)
+
+            #save
+            weights.append(brval)
+        return(sum(weights))
+
     def integrate_q2EN(self,pid0,pid1,pid2,m3,coupling,dbr,nsample):
         m0=self.masses(f'{pid0}')
         m1=self.masses(f'{pid1}')
@@ -1245,16 +1250,17 @@ class Foresee(Utility):
             m0=self.masses(f"{pid0}")
             m1=self.masses(f"{pid1}")
             m2=self.masses(f"{pid2}")
+            m3=0
             qmin,qmax=(m2+m3),(m0-m1)
             coupling=1
             delm=.1
             x=[]
             y=[]
-            m3=.01
-            for n in range(1,17):
+            for n in range(1,30):
                 y.append(Foresee().integrate_EN(dbr, 1, m0, m1, m2,m3, nsample))
                 x.append(m3)
                 m3+=delm
+            plt.xlim([0,2])
             plt.ylim([0,max(y)])
             plt.xlabel(r"$m_N (GeV)$")
             plt.ylabel(r"Br")
