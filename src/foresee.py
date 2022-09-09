@@ -19,6 +19,7 @@ class Utility():
         elif pid in ["2212","-2212"]: return 0.938
         elif pid in ["211" ,"-211" ]: return 0.13957
         elif pid in ["321" ,"-321" ]: return 0.49368
+        elif pid in ["311" ,"-311" ]: return 0.49761
         elif pid in ["310" ,"130"  ]: return 0.49761
         elif pid in ["111"         ]: return 0.135
         elif pid in ["221"         ]: return 0.547
@@ -43,9 +44,9 @@ class Utility():
         elif pid in ["541" ,"-541" ]: return 6.2749
         elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
-        elif pid in ["11"  ,"-11"  ]: return 0.000511
+        elif pid in ["11"  ,"-11"  ]: return 0.0005109989461
         elif pid in ["13"  ,"-13"  ]: return 0.105658
-        elif pid in ["15"  ,"-15"  ]: return 1.777
+        elif pid in ["15"  ,"-15"  ]: return 1.77686
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
@@ -56,7 +57,16 @@ class Utility():
         elif pid in ["553"         ]: return 9.460
         elif pid in ["100553"      ]: return 10.023
         elif pid in ["200553"      ]: return 10.355
-        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
+        elif pid in ["12"  ,"-12"  ]: return 0
+        elif pid in ["14"  ,"-14"  ]: return 0
+        elif pid in ["16"  ,"-16"  ]: return 0
+        elif pid in ["423" ,"-423" ]: return 2.007      #Alec
+        elif pid in ["323" ,"-323" ]: return 0.89166    #Alec
+        elif pid in ["5122","-5122"]: return 5.6202     #Alec
+        elif pid in ["413" ,"-413" ]: return 2.010      #Alec
+        elif pid in ["433" ,"-433" ]: return 1.96847    #Alec
+        elif pid in ["513" ,"-513" ]: return 5.27965    #Alec
+        elif pid in ["533" ,"-533" ]: return 5.36688    #Alec
 
     def ctau(self,pid):
         if   pid in ["2112","-2112"]: tau = 10**8
@@ -71,6 +81,9 @@ class Utility():
         elif pid in ["3322","-3322"]: tau = 2.90*10**-10
         elif pid in ["3312","-3312"]: tau = 1.639*10**-10
         elif pid in ["3334","-3334"]: tau = 8.21*10**-11
+        elif pid in ["15"  ,"-15"  ]: tau = 290.1*1e-15     #Alec needed?
+        elif pid in ["323" ,"-323" ]: tau = 1.2380*10**-8   #Alec needed?
+        elif pid in ["423" , "-423"]: tau = 3.1*10**-22     #Alec needed?
         return 3*10**8 * tau
 
     ###############################
@@ -497,19 +510,6 @@ class Foresee(Utility):
 
 
 
-    def decay_in_restframe_3body_EN(self, br, coupling, m0, m1, m2, m3, nsample):
-    
-        print ("Not implemented yet")
-        return [], []
-        """
-        for i in range(nsample):
-            EN = random.uniform(ENmin,ENmax)
-            p=LorentzVector(0,0,np.sqrt(EN**2-m**2),EN)
-            brval  = eval(br)
-            brval *= (ENmax-ENmin)/float(nsample)
-        """
-
-
     def decay_in_restframe_3body_q2ct(self, br, coupling, m0, m1, m2, m3, nsample):
 
         # prepare output
@@ -550,6 +550,82 @@ class Foresee(Utility):
             weights.append(brval)
 
         return particles,weights
+        
+    def decay_in_restframe_3body_q2EN(self,br, coupling, m0, m1, m2, m3, nsample):
+    
+        # prepare output
+        particles, weights = [], []
+
+        #integration boundary
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+        mass = m3
+                
+        integral=0
+        for i in range(nsample):
+
+            # sample q2
+            q2 = random.uniform(q2min,q2max)
+            q  = math.sqrt(q2)
+            
+            # sample energy
+            E2st = (q**2 - m2**2 + m3**2)/(2*q)
+            E3st = (m0**2 - q**2 - m1**2)/(2*q)
+            m232min = (E2st + E3st)**2 - (np.sqrt(E2st**2 - m3**2) + np.sqrt(E3st**2 - m1**2))**2
+            m232max = (E2st + E3st)**2 - (np.sqrt(E2st**2 - m3**2) - np.sqrt(E3st**2 - m1**2))**2
+            cthmax = (m232max + q**2 - m2**2 - m1**2)/(2*m0)
+            cthmin = (m232min + q**2 - m2**2 - m1**2)/(2*m0)
+            ENmax = (m232max + q**2 - m2**2 - m1**2)/(2*m0)
+            ENmin = (m232min + q**2 - m2**2 - m1**2)/(2*m0)
+            energy = random.uniform(ENmin,ENmax)
+        
+            # get LLP momentum
+            costh = random.uniform(-1,1)
+            sinth = np.sqrt(1-costh**2)
+            phi = random.uniform(-math.pi,math.pi)
+            p = np.sqrt(energy**2-mass**2)
+            p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (q2max-q2min)*(ENmax-ENmin)/float(nsample)
+
+            #save
+            particles.append(p_3)
+            weights.append(brval)
+        return particles,weights
+        
+    def decay_in_restframe_3body_EN(self,br, coupling, m0, m1, m2, m3, nsample):
+
+        # prepare output
+        particles, weights = [], []
+        mass = m3
+
+        #integration boundary
+        emin, emax = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0)
+
+        #numerical integration
+        integral=0
+        for i in range(nsample):
+
+            #sample energy
+            energy = random.uniform(emin,emax)
+
+            # get LLP momentum
+            costh = random.uniform(-1,1)
+            sinth = np.sqrt(1-costhe**2)
+            phi = random.uniform(-math.pi,math.pi)
+            p = np.sqrt(energy**2-mass**2)
+            p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (emax-emin)/float(nsample)
+
+            #save
+            particles.append(p_3)
+            weights.append(brval)
+        return(particles, weights)
+
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
 
@@ -611,9 +687,10 @@ class Foresee(Utility):
                 # load details of decay channel
                 pid0, pid1, pid2, br = model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4]
                 generator, energy, nsample = model.production[key][5], model.production[key][6], model.production[key][7]
-                massrange, integration = model.production[key][8], model.production[key][9]
+                massrange, integration = model.production[key][8], model.production[key][10]
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
+                
                 if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
 
                 # load mother particle
@@ -1165,3 +1242,64 @@ class Foresee(Utility):
 
         # return
         return plt
+
+    def plot_production_branchings(self,
+        masses, productions,
+        xlims=[0.01,1],ylims=[10**-1,1],
+        xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+    ):
+
+        # initiate figure
+        matplotlib.rcParams.update({'font.size': 15})
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # loop over production channels
+        model = self.model
+        coupling = 1
+        for key, color, label in productions:
+            
+            # loop over masses
+            xvals, yvals = [], []
+            for mass in masses:
+                if model.production[key][0]=="2body":
+                    pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
+                    if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
+                    m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
+                    brval = eval(br)
+                    xvals.append(mass)
+                    yvals.append(brval)
+                    
+                elif model.production[key][0]=="3body":
+                    
+                    pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
+                    br, integration = model.production[key][4], model.production[key][10]
+                    if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
+                    m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+                    if integration == "dq2dcosth":
+                        _, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample=300)
+                    if integration == "dq2dEN":
+                        _, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample=300)
+                    if integration == "dEN":
+                        _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=300)
+                    xvals.append(mass)
+                    yvals.append(sum(weights_llp))
+
+            # add to plot
+            if len(xvals)>0: ax.plot(xvals, yvals, color=color, label=label)
+
+        # finalize
+        ax.set_title(title)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(xlims[0],xlims[1])
+        ax.set_ylim(ylims[0],ylims[1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False,
+            labelspacing=0, fontsize=fs_label, ncol=ncol)
+
+        # return
+        return plt
+
+
