@@ -10,6 +10,7 @@ class HeavyNeutralLepton(Utility):
     def __init__(self, ve=1, vmu=0, vtau=0):
         self.vcoupling = {"11": ve, "13":vmu, "15": vtau}
         self.lepton = {"11": "e", "13":"\mu", "15": "\tau"}
+        self.hadron = {"211": "\pi", "321": "K", "213": "\rho"}
 
     ###############################
     #  2-body decays
@@ -60,7 +61,7 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["541","-541"]: return 41*10**-3
     
     # Branching fraction
-    def get_2body_decay(self,pid0,pid1):
+    def get_2body_br(self,pid0,pid1):
         
         #read constant
         mH, mLep, tauH = self.masses(pid0), self.masses(pid1), self.tau(pid0)
@@ -74,6 +75,27 @@ class HeavyNeutralLepton(Utility):
         prefactor*=self.vcoupling[str(abs(int(pid1)))]**2
         br=str(prefactor)+"*coupling**2*mass**2*"+str(mH)+"*(1.-(mass/"+str(mH)+")**2 + 2.*("+str(mLep)+"/"+str(mH)+")**2 + ("+str(mLep)+"/mass)**2*(1.-("+str(mLep)+"/"+str(mH)+")**2)) * np.sqrt((1.+(mass/"+str(mH)+")**2 - ("+str(mLep)+"/"+str(mH)+")**2)**2-4.*(mass/"+str(mH)+")**2)"
         return br
+
+    def get_2body_br_tau(self,pid0,pid1):
+        if pid1 in ['213','-213']:
+            grho, VH, tautau = 0.102, self.VH(pid1), self.tau(pid0)
+            Mtau, Mrho=self.masses(pid0), self.masses(pid1)
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=tautau*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            prefactor=tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2)
+            br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2))*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2)))"
+        else:
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=self.tau(pid0)
+            tautau=tautau*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            VH=self.VH(pid1)
+            fH=self.fH(pid1)
+            Mtau=self.masses(pid0)
+            prefactor=tautau*GF**2*VH**2*fH**2*Mtau**3/(16*np.pi)
+            br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2-(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+(mass**2/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
+        return (br)
         
     ###############################
     #  3-body decays
@@ -96,7 +118,7 @@ class HeavyNeutralLepton(Utility):
         elif pid0 in ['541','-541'] and pid1 in ['533','-533']: return 41*10**-3
     
 
-    def get_3body_decay_pseudoscalar(self,pid0,pid1,pid2):
+    def get_3body_dbr_pseudoscalar(self,pid0,pid1,pid2):
             
         # read constant
         mH, mHp, mLep = self.masses(pid0), self.masses(pid1), self.masses(pid2)
@@ -108,7 +130,6 @@ class HeavyNeutralLepton(Utility):
         # prefactor
         prefactor=tauH*VHHp**2*GF**2/(64*np.pi**3*mH**2)
         prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
-        
         # form factors
         if pid0 in ["411","421","431","-411","-421","-431"]:
             f00, MV, MS = .747, 2.01027, 2.318
@@ -129,7 +150,116 @@ class HeavyNeutralLepton(Utility):
         term4=f"("+fp+")**2*(4*energy*"+str(mH)+"+"+str(mLep)+"**2-mass**2-q**2)*(2*"+str(mH)+"**2-2*"+str(mHp)+"**2-4*energy*"+str(mH)+"-"+str(mLep)+"**2+mass**2+q**2)"
         term5=f"-("+fp+")**2*(2*"+str(mH)+"**2+2*"+str(mHp)+"**2-q**2)*(q**2-mass**2-"+str(mLep)+"**2)"
         bra=str(prefactor)  + "* coupling**2 *(" + term1   + "+(" + term2  + "+" + term3 + ")+("  + term4   + "+" + term5 + "))"
+        '''fp=f"{f00}/(1-q**2/{MV}**2)"
+        f0=f"{f00}/(1-q**2/{MS}**2)"
+        fm=f"({f0}-{fp})*(self.masses('{pid0}')**2-self.masses('{pid1}')**2)/q**2"
+        term1=f"({fm})**2*(q**2*(m3**2+self.masses('{pid2}')**2)-(m3**2-self.masses('{pid2}')**2)**2)"
+        term2=f"2*({fp})*({fm})*m3**2*(2*self.masses('{pid0}')**2-2*self.masses('{pid1}')**2-4*EN*self.masses('{pid0}')-self.masses('{pid2}')**2+m3**2+q**2)"
+        term3=f"(2*({fp})*({fm})*self.masses('{pid2}')**2*(4*EN*self.masses('{pid0}')+ self.masses('{pid2}')**2-m3**2-q**2))"
+        term4=f"({fp})**2*(4*EN*self.masses('{pid0}')+self.masses('{pid2}')**2-m3**2-q**2)*(2*self.masses('{pid0}')**2-2*self.masses('{pid1}')**2-4*EN*self.masses('{pid0}')-self.masses('{pid2}')**2+m3**2+q**2)"
+        term5=f"-({fp})**2*(2*self.masses('{pid0}')**2+2*self.masses('{pid1}')**2-q**2)*(q**2-m3**2-self.masses('{pid2}')**2)"
+        bra=str(prefactor)  + "*(" + term1   + "+(" + term2  + "+" + term3 + ")+("  + term4   + "+" + term5 + "))"
+        return(bra)'''
         return(bra)
+
+    def get_3body_dbr_vector(self,pid0,pid1,pid2):
+        #SecToGev=1./(6.58*pow(10.,-25.))
+        #tauH=1.638*10**-12
+        #tauH=tauH*SecToGev
+        #GF=1.166378*10**(-5) #GeV^(-2)
+        #VHV=41*10**-3 #Vcs matrix element
+        #tauH=df.loc[df['pid0']==pid0]['tauH (sec)'].values[0]
+        #tauH=tauH*SecToGev
+        #VHV=df.loc[df['pid0']==pid0]['VHHp'].values[0]
+
+
+        tauH=self.tau(pid0)
+        SecToGev=1./(6.58*pow(10.,-25.))
+        tauH=tauH*SecToGev
+        GF=1.1663787*10**(-5)
+        VHV=self.VHHp(pid0,pid1)
+        #'D^0 -> K*^- + e^+ + N'
+        if pid0 in ['421'] and pid1 in ['323','-323']:
+            A00=.76; Mp=1.97; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3
+            s2A1=.2*0; A20=.49; s1A2=.67; s2A2=.16*0
+            A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
+            V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
+            #form factors for A1 and A2
+            A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
+            A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
+        #'B^+ -> \bar{D}*^0 + e^+ + N' or 'B^0 -> D*^- + e^+ + N'
+        if (pid0 in ['521','-521'] and pid1 in ['423','-423']) or (pid0 in ['511'] and pid1 in ['413','-413']):
+            A00=0.69; Mp=6.277; s1A0=0.58; s2A0=0; V0=0.76; MV=6.842; s1V=0.57; s2V=0; A10=0.66; s1A1=0.78
+            s2A1=0; A20=0.62; s1A2=1.04; s2A2=0
+            A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
+            V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
+            #form factors for A1 and A2
+            A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
+            A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"   
+        #'B^0_s -> D^*_s^- + e^+ + N'
+        if pid0 in ['531'] and pid1 in ['433','-433']:
+            A00=0.67; Mp=6.842; s1A0=0.35; s2A0=0; V0=0.95; MV=6.842; s1V=0.372
+            s2V=0; A10=0.70; s1A1=0.463; s2A1=0; A20=0.75; s1A2=1.04; s2A2=0
+            A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
+            V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
+            #form factors for A1 and A2
+            A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
+            A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
+        
+        #'B^+_c -> B*^0 + e^+ + N'
+        if pid0 in ['541','-541'] and pid1 in ['513','-513']:
+            A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052
+            A10=.6; mfitA1=3.44; deltaA1=-1.07; A20=10.8; mfitA2=1.73; deltaA2=0.09
+            A0=f"{A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2)"
+            V=f"{V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2)"
+            #form factors for A1 and A2
+            A1=f"{A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2)"
+            A2=f"{A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2)"
+        #'B^+_c -> B^*_s^0+ e^+ + N'
+        if pid0 in ['541','-541'] and pid1 in ['533','-533']:
+            A00=-.33; mfitA0=1.86; deltaA0=.13; V0=3.25; mfitV=1.76; deltaV=-.052
+            A10=.4; mfitA1=3.44; deltaA1=-1.07; A20=10.4; mfitA2=1.73; deltaA2=0.09
+            A0=f"{A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2)"
+            V=f"{V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2)"
+            #form factors for A1 and A2
+            A1=f"{A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2)"
+            A2=f"{A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2)"
+        f1=f"({V}/(self.masses('{pid0}')+self.masses('{pid1}')))"
+        f2=f"((self.masses('{pid0}')+self.masses('{pid1}'))*{A1})"
+        f3=f"(-{A2}/(self.masses('{pid0}')+self.masses('{pid1}')))"
+        f4=f"((self.masses('{pid1}')*(2*{A0}-{A1}-{A2})+self.masses('{pid0}')*({A2}-{A1}))/q**2)"
+        f5=f"({f3}+{f4})"
+        #form factors for A0 and V, the form at least
+        #s1A0 is sigma_1(A0) etc.
+        omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2+m3**2-self.masses('{pid2}')**2-2*self.masses('{pid0}')*energy)"
+        Omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2-q**2)"
+        prefactor=f"(({tauH}*coupling**2*{VHV}**2*{GF}**2)/(32*np.pi**3*self.masses('{pid0}')**2))"
+        term1=f"({f2}**2/2)*(q**2-m3**2-self.masses('{pid2}')**2+{omegasqr}*(({Omegasqr}-{omegasqr})/self.masses('{pid1}')**2))"
+        term2=f"({f5}**2/2)*(m3**2+self.masses('{pid2}')**2)*(q**2-m3**2+self.masses('{pid2}')**2)*(({Omegasqr}**2/(4*self.masses('{pid1}')**2))-q**2)"
+        term3=f"2*{f3}**2*self.masses('{pid1}')**2*(({Omegasqr}**2/(4*self.masses('{pid1}')**2))-q**2)*(m3**2+self.masses('{pid2}')**2-q**2+{omegasqr}*(({Omegasqr}-{omegasqr})/self.masses('{pid1}')**2))"
+        term4=f"2*{f3}*{f5}*(m3**2*{omegasqr}+({Omegasqr}-{omegasqr})*self.masses('{pid2}')**2)*(({Omegasqr}**2/(4*self.masses('{pid1}')**2))-q**2)"
+        term5=f"2*{f1}*{f2}*(q**2*(2*{omegasqr}-{Omegasqr})+{Omegasqr}*(m3**2-self.masses('{pid2}')**2))"
+        term6=f"({f2}*{f5}/2)*({omegasqr}*({Omegasqr}/self.masses('{pid1}')**2)*(m3**2-self.masses('{pid2}')**2)+({Omegasqr}**2/self.masses('{pid1}')**2)*self.masses('{pid2}')**2+2*(m3**2-self.masses('{pid2}')**2)**2-2*q**2*(m3**2+self.masses('{pid2}')**2))"
+        term7=f"{f2}*{f3}*({Omegasqr}*{omegasqr}*(({Omegasqr}-{omegasqr})/self.masses('{pid1}')**2)+2*{omegasqr}*(self.masses('{pid2}')**2-m3**2)+{Omegasqr}*(m3**2-self.masses('{pid2}')**2-q**2))"
+        term8=f"{f1}**2*({Omegasqr}**2*(q**2-m3**2+self.masses('{pid2}')**2)-2*self.masses('{pid1}')**2*(q**4-(m3**2-self.masses('{pid2}')**2)**2)+2*{omegasqr}*{Omegasqr}*(m3**2-q**2-self.masses('{pid2}')**2)+2*{omegasqr}**2*q**2)"
+        bra=prefactor + "*(" + term1 + "+" + term2 + "+" + term3 + "+" + term4 + "+" + term5 + "+" + term6 + "+" + term7 + "+" + term8 + ")"
+        return(bra)
+
+    #pid0 is tau, pid1 is produced lepton and pid2 is the neutrino
+    def get_3body_dbr_tau(self,pid0,pid1,pid2):
+        if pid2=='18':
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=self.tau(pid0)*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*EN/(2*np.pi**3))"
+            dbr=f"{prefactor}*(1+((mass**2-self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-2*(EN/self.masses('{pid0}')))*(1-(self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}'))))*np.sqrt(EN**2-mass**2)"
+        else:
+            SecToGev=1./(6.582122*pow(10.,-25.))
+            tautau=self.tau(pid0)*SecToGev
+            GF=1.166378*10**(-5) #GeV^(-2)
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))"
+            dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}')))**2*np.sqrt(EN**2-mass**2)*((self.masses('{pid0}')-EN)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*EN*self.masses('{pid0}')))*((self.masses('{pid0}')-EN)**2/self.masses('{pid0}')+((EN**2-mass**2)/(3*self.masses('{pid0}')))))"
+        return(dbr)
 
 
     

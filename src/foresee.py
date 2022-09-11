@@ -47,6 +47,7 @@ class Utility():
         elif pid in ["11"  ,"-11"  ]: return 0.0005109989461
         elif pid in ["13"  ,"-13"  ]: return 0.105658
         elif pid in ["15"  ,"-15"  ]: return 1.77686
+        elif pid in ["18"  ,"-18"  ]: return 0
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
@@ -1247,7 +1248,7 @@ class Foresee(Utility):
         masses, productions,
         xlims=[0.01,1],ylims=[10**-1,1],
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,log_scale=True
     ):
 
         # initiate figure
@@ -1290,8 +1291,9 @@ class Foresee(Utility):
 
         # finalize
         ax.set_title(title)
-        ax.set_xscale("log")
-        ax.set_yscale("log")
+        if log_scale==True:
+            ax.set_xscale("log")
+            ax.set_yscale("log")
         ax.set_xlim(xlims[0],xlims[1])
         ax.set_ylim(ylims[0],ylims[1])
         ax.set_xlabel(xlabel)
