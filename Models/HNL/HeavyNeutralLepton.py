@@ -18,8 +18,10 @@ class HeavyNeutralLepton(Utility):
     
     #decay constants
     def fH(self,pid):
-        if   pid in ["211","-211"]: return 0.130
+        if   pid in ["211","-211","111","-111"]: return 0.130
+        elif pid in ["221","-221"]: return 1.2*0.130
         elif pid in ["321","-321"]: return 0.1598
+        elif pid in ["331","-331"]: return -0.45*0.130
         elif pid in ["411","-411"]: return 0.2226
         elif pid in ["431","-431"]: return 0.2801
         elif pid in ["521","-521"]: return 0.187

@@ -22,8 +22,9 @@ class Utility():
         elif pid in ["311" ,"-311" ]: return 0.49761
         elif pid in ["310" ,"130"  ]: return 0.49761
         elif pid in ["111"         ]: return 0.135
-        elif pid in ["221"         ]: return 0.547
-        elif pid in ["331"         ]: return 0.957
+        elif pid in ["211" , "-211"]: return 0.13957039
+        elif pid in ["221"         ]: return 0.547862
+        elif pid in ["331"         ]: return 0.95778
         elif pid in ["3122","-3122"]: return 1.11568
         elif pid in ["3222","-3222"]: return 1.18937
         elif pid in ["3112","-3112"]: return 1.19745

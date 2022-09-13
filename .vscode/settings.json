@@ -1,0 +1,7 @@
+{
+    "editor.hover.delay": 2000,
+    "workbench.sash.hoverDelay": 2000,
+    "workbench.hover.delay": 5000,
+    "editor.hover.sticky": true,
+    "editor.hover.enabled": false
+}
