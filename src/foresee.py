@@ -22,8 +22,9 @@ class Utility():
         elif pid in ["311" ,"-311" ]: return 0.49761
         elif pid in ["310" ,"130"  ]: return 0.49761
         elif pid in ["111"         ]: return 0.135
-        elif pid in ["221"         ]: return 0.547
-        elif pid in ["331"         ]: return 0.957
+        elif pid in ["211" , "-211"]: return 0.13957039
+        elif pid in ["221"         ]: return 0.547862
+        elif pid in ["331"         ]: return 0.95778
         elif pid in ["3122","-3122"]: return 1.11568
         elif pid in ["3222","-3222"]: return 1.18937
         elif pid in ["3112","-3112"]: return 1.19745
@@ -47,6 +48,7 @@ class Utility():
         elif pid in ["11"  ,"-11"  ]: return 0.0005109989461
         elif pid in ["13"  ,"-13"  ]: return 0.105658
         elif pid in ["15"  ,"-15"  ]: return 1.77686
+        elif pid in ["18"  ,"-18"  ]: return 0
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
@@ -612,7 +614,7 @@ class Foresee(Utility):
 
             # get LLP momentum
             costh = random.uniform(-1,1)
-            sinth = np.sqrt(1-costhe**2)
+            sinth = np.sqrt(1-costh**2)
             phi = random.uniform(-math.pi,math.pi)
             p = np.sqrt(energy**2-mass**2)
             p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
@@ -1247,7 +1249,7 @@ class Foresee(Utility):
         masses, productions,
         xlims=[0.01,1],ylims=[10**-1,1],
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,log_scale=True
     ):
 
         # initiate figure
@@ -1290,8 +1292,9 @@ class Foresee(Utility):
 
         # finalize
         ax.set_title(title)
-        ax.set_xscale("log")
-        ax.set_yscale("log")
+        if log_scale==True:
+            ax.set_xscale("log")
+            ax.set_yscale("log")
         ax.set_xlim(xlims[0],xlims[1])
         ax.set_ylim(ylims[0],ylims[1])
         ax.set_xlabel(xlabel)
