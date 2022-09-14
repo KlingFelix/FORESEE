@@ -9,8 +9,8 @@ class HeavyNeutralLepton(Utility):
     
     def __init__(self, ve=1, vmu=0, vtau=0):
         self.vcoupling = {"11": ve, "13":vmu, "15": vtau}
-        self.lepton = {"11": "e", "13":"\mu", "15": "\tau"}
-        self.hadron = {"211": "\pi", "321": "K", "213": "\rho"}
+        self.lepton = {"11": "e", "13":"mu", "15": "tau"}
+        self.hadron = {"211": "pi", "321": "K", "213": "rho"}
 
     ###############################
     #  2-body decays
@@ -86,7 +86,7 @@ class HeavyNeutralLepton(Utility):
             tautau=tautau*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
             prefactor=tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2)
-            prefactor*=self.vcoupling[str(abs(int(pid1)))]**2
+            prefactor*=self.vcoupling[str(abs(int(pid0)))]**2
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2))*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2)))"
         else:
             SecToGev=1./(6.582122*pow(10.,-25.))
@@ -97,7 +97,7 @@ class HeavyNeutralLepton(Utility):
             fH=self.fH(pid1)
             Mtau=self.masses(pid0)
             prefactor=tautau*GF**2*VH**2*fH**2*Mtau**3/(16*np.pi)
-            prefactor*=self.vcoupling[str(abs(int(pid1)))]**2
+            prefactor*=self.vcoupling[str(abs(int(pid0)))]**2
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2-(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+(mass**2/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
         return (br)
         
@@ -237,8 +237,7 @@ class HeavyNeutralLepton(Utility):
         #s1A0 is sigma_1(A0) etc.
         omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2+m3**2-self.masses('{pid2}')**2-2*self.masses('{pid0}')*energy)"
         Omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2-q**2)"
-        prefactor=((tauH*coupling**2*VHV**2*GF**2)/(32*np.pi**3*self.masses(pid0)**2))
-        prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
+        prefactor=f"(({tauH}*coupling**2*{VHV}**2*{GF}**2)/(32*np.pi**3*self.masses('{pid0}')**2))*{self.vcoupling[str(abs(int(pid2)))]}**2"
         term1=f"({f2}**2/2)*(q**2-m3**2-self.masses('{pid2}')**2+{omegasqr}*(({Omegasqr}-{omegasqr})/self.masses('{pid1}')**2))"
         term2=f"({f5}**2/2)*(m3**2+self.masses('{pid2}')**2)*(q**2-m3**2+self.masses('{pid2}')**2)*(({Omegasqr}**2/(4*self.masses('{pid1}')**2))-q**2)"
         term3=f"2*{f3}**2*self.masses('{pid1}')**2*(({Omegasqr}**2/(4*self.masses('{pid1}')**2))-q**2)*(m3**2+self.masses('{pid2}')**2-q**2+{omegasqr}*(({Omegasqr}-{omegasqr})/self.masses('{pid1}')**2))"
@@ -256,15 +255,13 @@ class HeavyNeutralLepton(Utility):
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=self.tau(pid0)*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
-            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*energy/(2*np.pi**3))"
-            prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*energy/(2*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
             dbr=f"{prefactor}*(1+((mass**2-self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-2*(energy/self.masses('{pid0}')))*(1-(self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}'))))*np.sqrt(energy**2-mass**2)"
         else:
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=self.tau(pid0)*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
-            prefactor=(tautau*coupling**2*GF**2*self.masses(pid0)**2/(4*np.pi**3))
-            prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
+            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
             dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))**2*np.sqrt(energy**2-mass**2)*((self.masses('{pid0}')-energy)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))*((self.masses('{pid0}')-energy)**2/self.masses('{pid0}')+((energy**2-mass**2)/(3*self.masses('{pid0}')))))"
         return(dbr)
 

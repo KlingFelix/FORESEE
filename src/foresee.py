@@ -614,7 +614,7 @@ class Foresee(Utility):
 
             # get LLP momentum
             costh = random.uniform(-1,1)
-            sinth = np.sqrt(1-costhe**2)
+            sinth = np.sqrt(1-costh**2)
             phi = random.uniform(-math.pi,math.pi)
             p = np.sqrt(energy**2-mass**2)
             p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
