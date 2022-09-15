@@ -356,7 +356,7 @@ class Foresee(Utility):
         return particles,weights
     
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]], vmin=None, vmax=None):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, filetype="npy", do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]], vmin=None, vmax=None):
 
         #get data
         tmin, tmax, tnum = prange[0]
@@ -384,7 +384,13 @@ class Foresee(Utility):
 
         if filename is not None:
             print ("save data to file:", filename)
-            np.save(filename,[list_t,list_p,list_w])
+            if filetype=="npy":
+                np.save(filename,[list_t,list_p,list_w])
+            if filetype=="txt":
+                f = open(filename,"w")
+                for x,y,z in zip(list_t,list_p,list_w):
+                    f.write(str(round(x,5)) + " " + str(round(y,5))+" "+str(z)+"\n")
+                f.close()
         if do_plot==False:
             return list_t,list_p,list_w
 
@@ -626,6 +632,30 @@ class Foresee(Utility):
             weights.append(brval)
         return(particles, weights)
 
+    def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
+
+        # prepare output
+        particles, weights = [], []
+
+        # create parent 4-vector
+        p_mother=LorentzVector(0,0,0,m0)
+
+        # numerical integration
+        for i in range(nsample):
+            # set kinematic Variables
+            cosI =random.uniform(-1.,1.)
+            phiI =random.uniform(-math.pi,math.pi)
+            cosM =random.uniform(-1.,1.)
+            phiM =random.uniform(-math.pi,math.pi)
+            p_1,p_I=self.twobody_decay(p_mother,m0 ,m1,mI ,phiM,cosM)
+            p_2,p_3=self.twobody_decay(p_I     ,mI ,m2,m3 ,phiI,cosI)
+            
+            #save branching fraction and
+            brval = br/float(nsample)
+            particles.append(p_3)
+            weights.append(brval)
+
+        return particles,weights
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True, print_stats=False, stat_cuts="p.pz>100. and p.pt/p.pz<0.1/480."):
 
@@ -705,6 +735,10 @@ class Foresee(Utility):
                     momenta_llp, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample)
                 if integration == "dEN":
                     momenta_llp, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample)
+                if integration == "chain_decay":
+                    mI = eval(br[1])
+                    if (m0 <= m1+mI) or (mI<m2+m3): continue
+                    momenta_llp, weights_llp = self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
 
                 # loop through all mother particles, and decay them
                 for p_mother, w_mother in zip(momenta_mother, weights_mother):
