@@ -18,14 +18,17 @@ class HeavyNeutralLepton(Utility):
     
     #decay constants
     def fH(self,pid):
-        if   pid in ["211","-211","111","-111"]: return 0.130
+        if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
+        elif pid in ["313","-313"]: return 0.1598      #K^*0, I assume it has same fH as K
         elif pid in ["321","-321"]: return 0.1598
         elif pid in ["331","-331"]: return -0.45*0.130
-        elif pid in ["411","-411"]: return 0.2226
+        elif pid in ["421","411","-411"]: return 0.2226 #not sure if neutral meson D0 has the same fH as D+
+        elif pid in ["423","-423"]: return 0.2226        #D^*0, I assume it has same fH as D
         elif pid in ["431","-431"]: return 0.2801
-        elif pid in ["521","-521"]: return 0.187
-        elif pid in ["541","-541"]: return 0.434
+        elif pid in ["511","521","-521"]: return 0.190
+        elif pid in ["531"]: return 0.230   #not sure if neutral has same as charged
+        elif pid in ["541","-541"]: return 0.480
         
     # Lifetimes
     def tau(self,pid):
@@ -61,6 +64,21 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["431","-431"]: return 0.987
         elif pid in ["521","-521"]: return 3.82*10**-3
         elif pid in ["541","-541"]: return 41*10**-3
+        elif pid in []: return 0.97370 #Vud
+        elif pid in []: return 0.2245 #Vus
+        elif pid in ["411","-411"]: return 0.221 #Vcd
+        elif pid in []: return 0.987 #Vcs
+        elif pid in ["541","-541"]: return 41*10**-3 #Vcb
+        elif pid in ["521","-521"]: return 3.82*10**-3 #Vub
+        elif pid in []: return 8*10**-3 #Vtd
+        elif pid in []: return 38.8*10**-3 #Vts
+        elif pid in []: return 1.013 #Vtb
+    
+    #for HNL decays to neutral vector mesons
+    def kV(self,pid):
+        xw=0.231
+        if pid in ["313","-313"]: return (-1/4+(1/3)*xw)
+        elif pid in ["423","-423","443"]: return (1/4-(2/3)*xw)
     
     # Branching fraction
     def get_2body_br(self,pid0,pid1):

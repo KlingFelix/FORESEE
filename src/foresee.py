@@ -33,6 +33,7 @@ class Utility():
         elif pid in ["3334","-3334"]: return 1.67245
         elif pid in ["113"         ]: return 0.77545
         elif pid in ["223"         ]: return 0.78266
+        elif pid in ["313","-313"  ]: return .89166
         elif pid in ["333"         ]: return 1.019461
         elif pid in ["213" ,"-213" ]: return 0.77545
         elif pid in ["411" ,"-411" ]: return 1.86961
