@@ -48,7 +48,7 @@ class Utility():
         elif pid in ["11"  ,"-11"  ]: return 0.0005109989461
         elif pid in ["13"  ,"-13"  ]: return 0.105658
         elif pid in ["15"  ,"-15"  ]: return 1.77686
-        elif pid in ["18"  ,"-18"  ]: return 0
+        elif pid in ["18"  ,"-18"  ]: return 0          # TODO: needed?
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
@@ -83,9 +83,9 @@ class Utility():
         elif pid in ["3322","-3322"]: tau = 2.90*10**-10
         elif pid in ["3312","-3312"]: tau = 1.639*10**-10
         elif pid in ["3334","-3334"]: tau = 8.21*10**-11
-        elif pid in ["15"  ,"-15"  ]: tau = 290.1*1e-15     #Alec needed?
-        elif pid in ["323" ,"-323" ]: tau = 1.2380*10**-8   #Alec needed?
-        elif pid in ["423" , "-423"]: tau = 3.1*10**-22     #Alec needed?
+        elif pid in ["15"  ,"-15"  ]: tau = 290.1*1e-15     # TODO: needed?
+        elif pid in ["323" ,"-323" ]: tau = 1.2380*10**-8   # TODO: needed?
+        elif pid in ["423" , "-423"]: tau = 3.1*10**-22     # TODO: needed?
         return 3*10**8 * tau
 
     ###############################
@@ -1283,7 +1283,7 @@ class Foresee(Utility):
         masses, productions,
         xlims=[0.01,1],ylims=[10**-1,1],
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,log_scale=True
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, log_scale=True
     ):
 
         # initiate figure
