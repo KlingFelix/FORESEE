@@ -2,11 +2,11 @@ import numpy as np
 from src.foresee import Utility, Foresee
 
 class HeavyNeutralLepton(Utility):
-    
+
     ###############################
     #  Initiate
     ###############################
-    
+
     def __init__(self, ve=1, vmu=0, vtau=0):
         self.vcoupling = {"11": ve, "13":vmu, "15": vtau}
         self.lepton = {"11": "e", "13":"mu", "15": "tau"}
@@ -15,18 +15,21 @@ class HeavyNeutralLepton(Utility):
     ###############################
     #  2-body decays
     ###############################
-    
+
     #decay constants
     def fH(self,pid):
-        if   pid in ["211","-211","111","-111"]: return 0.130   # TODO: THERE IS NO -111
+        if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
+        elif pid in ["313","-313"]: return 0.1598      #K^*0, I assume it has same fH as K
         elif pid in ["321","-321"]: return 0.1598
         elif pid in ["331","-331"]: return -0.45*0.130
-        elif pid in ["411","-411"]: return 0.2226
+        elif pid in ["421","411","-411"]: return 0.2226 #not sure if neutral meson D0 has the same fH as D+
+        elif pid in ["423","-423"]: return 0.2226        #D^*0, I assume it has same fH as D
         elif pid in ["431","-431"]: return 0.2801
-        elif pid in ["521","-521"]: return 0.187
-        elif pid in ["541","-541"]: return 0.434
-        
+        elif pid in ["511","521","-521"]: return 0.190
+        elif pid in ["531"]: return 0.230   #not sure if neutral has same as charged
+        elif pid in ["541","-541"]: return 0.480
+
     # Lifetimes
     def tau(self,pid):
         if   pid in ["2112","-2112"]: return 10**8
@@ -51,7 +54,7 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["3322","-3322"]: return 2.90*10**-10
         elif pid in ["3312","-3312"]: return 1.639*10**-10
         elif pid in ["3334","-3334"]: return 8.21*10**-11
-        
+
     # CKM matrix elements
     def VH(self,pid):
         if   pid in ["211","-211"]: return 0.97370 #Vud
@@ -61,17 +64,32 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["431","-431"]: return 0.987
         elif pid in ["521","-521"]: return 3.82*10**-3
         elif pid in ["541","-541"]: return 41*10**-3
-    
+        elif pid in []: return 0.97370 #Vud
+        elif pid in []: return 0.2245 #Vus
+        elif pid in ["411","-411"]: return 0.221 #Vcd
+        elif pid in []: return 0.987 #Vcs
+        elif pid in ["541","-541"]: return 41*10**-3 #Vcb
+        elif pid in ["521","-521"]: return 3.82*10**-3 #Vub
+        elif pid in []: return 8*10**-3 #Vtd
+        elif pid in []: return 38.8*10**-3 #Vts
+        elif pid in []: return 1.013 #Vtb
+
+    #for HNL decays to neutral vector mesons
+    def kV(self,pid):
+        xw=0.231
+        if pid in ["313","-313"]: return (-1/4+(1/3)*xw)
+        elif pid in ["423","-423","443"]: return (1/4-(2/3)*xw)
+
     # Branching fraction
     def get_2body_br(self,pid0,pid1):
-        
+
         #read constant
         mH, mLep, tauH = self.masses(pid0), self.masses(pid1), self.tau(pid0)
         vH, fH = self.VH(pid0), self.fH(pid0)
         SecToGev=1./(6.582122*pow(10.,-25.))
         tauH=tauH*SecToGev
         GF=1.166378*10**(-5) #GeV^(-2)
-        
+
         #calculate rate
         prefactor=(tauH*GF**2*fH**2*vH**2)/(8*np.pi)
         prefactor*=self.vcoupling[str(abs(int(pid1)))]**2
@@ -100,11 +118,11 @@ class HeavyNeutralLepton(Utility):
             prefactor*=self.vcoupling[str(abs(int(pid0)))]**2
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2-(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+(mass**2/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
         return (br)
-        
+
     ###############################
     #  3-body decays
     ###############################
-        
+
     #VHH in 3-body decays - CKM matrix elements
     def VHHp(self,pid0,pid1):
         if   pid0 in ['411','-411'] and pid1 in ['311','-311']: return 0.987
@@ -120,17 +138,17 @@ class HeavyNeutralLepton(Utility):
         elif pid0 in ['531','-531'] and pid1 in ['433','-433']: return 41*10**-3
         elif pid0 in ['541','-541'] and pid1 in ['513','-513']: return 0.221
         elif pid0 in ['541','-541'] and pid1 in ['533','-533']: return 41*10**-3
-    
+
 
     def get_3body_dbr_pseudoscalar(self,pid0,pid1,pid2):
-            
+
         # read constant
         mH, mHp, mLep = self.masses(pid0), self.masses(pid1), self.masses(pid2)
         VHHp, tauH = self.VHHp(pid0,pid1), self.tau(pid0)
         SecToGev=1./(6.582122*pow(10.,-25.))
         tauH=tauH*SecToGev
         GF=1.166378*10**(-5) #GeV^(-2)
-        
+
         # prefactor
         prefactor=tauH*VHHp**2*GF**2/(64*np.pi**3*mH**2)
         prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
@@ -199,7 +217,7 @@ class HeavyNeutralLepton(Utility):
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
             #form factors for A1 and A2
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
-            A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"   
+            A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
         #'B^0_s -> D^*_s^- + e^+ + N'
         if pid0 in ['531'] and pid1 in ['433','-433']:
             A00=0.67; Mp=6.842; s1A0=0.35; s2A0=0; V0=0.95; MV=6.842; s1V=0.372
@@ -209,7 +227,7 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
-        
+
         #'B^+_c -> B*^0 + e^+ + N'
         if pid0 in ['541','-541'] and pid1 in ['513','-513']:
             A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052
@@ -264,6 +282,3 @@ class HeavyNeutralLepton(Utility):
             prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
             dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))**2*np.sqrt(energy**2-mass**2)*((self.masses('{pid0}')-energy)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))*((self.masses('{pid0}')-energy)**2/self.masses('{pid0}')+((energy**2-mass**2)/(3*self.masses('{pid0}')))))"
         return(dbr)
-
-
-    
