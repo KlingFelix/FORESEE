@@ -15,7 +15,9 @@ class Utility():
     ###############################
 
     def masses(self,pid,mass=0):
-        if   pid in ["2112","-2112"]: return 0.938
+        if   pid in ["1","-1"      ]: return 0.00467
+        elif pid in ["2","-2"      ]: return 0.00216
+        elif pid in ["2112","-2112"]: return 0.938
         elif pid in ["2212","-2212"]: return 0.938
         elif pid in ["211" ,"-211" ]: return 0.13957
         elif pid in ["321" ,"-321" ]: return 0.49368
@@ -49,7 +51,6 @@ class Utility():
         elif pid in ["11"  ,"-11"  ]: return 0.0005109989461
         elif pid in ["13"  ,"-13"  ]: return 0.105658
         elif pid in ["15"  ,"-15"  ]: return 1.77686
-        elif pid in ["18"  ,"-18"  ]: return 0
         elif pid in ["22"          ]: return 0
         elif pid in ["23"          ]: return 91.
         elif pid in ["24"  ,"-24"  ]: return 80.4
