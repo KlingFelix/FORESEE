@@ -125,7 +125,16 @@ class HeavyNeutralLepton(Utility):
         
     #VHH in 3-body decays - CKM matrix elements
     def VHHp(self,pid0,pid1):
-        if   pid0 in ["2","-2"    ] and pid1 in ["1","-1"    ]: return 0.97370
+        if   pid0 in ["2","-2"    ] and pid1 in ["1","-1"    ]: return 0.97370 #Vud
+        if   pid0 in ["2","-2","3","-3"] and pid1 in ["3","-3","2","-2"    ]: return 0.2245 #Vus
+        if   pid0 in ["4","-4","1","-1"    ] and pid1 in ["1","-1","4","-4"   ]: return 0.221 #Vcd
+        if   pid0 in ["4","-4","3","-3"    ] and pid1 in ["3","-3" ,"4","-4"   ]: return 0.987 #Vcs
+        if   pid0 in ["4","-4","5","-5"    ] and pid1 in ["4","-4","5","-5"    ]: return 41*10**-3 #Vcb
+        if   pid0 in ["2","-2","5","-5"    ] and pid1 in ["2","-2","5","-5"    ]: return 3.82*10**-3 #Vub
+        if   pid0 in ["6","-6","1","-1"    ] and pid1 in ["6","-6","1","-1"    ]: return 8*10**-3 #Vtd
+        if   pid0 in ["6","-6","3","-3"    ] and pid1 in ["6","-6","3","-3"    ]: return 38.8*10**-3 #Vts
+        if   pid0 in ["6","-6","5","-5"    ] and pid1 in ["6","-6","5","-5"    ]: return 1.013 #Vtb
+
         elif pid0 in ['411','-411'] and pid1 in ['311','-311']: return 0.987
         elif pid0 in ['421','-421'] and pid1 in ['321','-321']: return 0.997
         elif pid0 in ['521','-521'] and pid1 in ['421','-421']: return 41*10**-3
