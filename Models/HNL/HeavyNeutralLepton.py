@@ -20,11 +20,11 @@ class HeavyNeutralLepton(Utility):
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
-        elif pid in ["313","-313"]: return 0.1598      #K^*0, I assume it has same fH as K
+        elif pid in ["313","-313","323","-323"]: return 0.204      #for K*, need to see which values we should use, these seemed pretty good though
         elif pid in ["321","-321"]: return 0.1598
         elif pid in ["331","-331"]: return -0.45*0.130
-        elif pid in ["421","411","-411"]: return 0.2226 #not sure if neutral meson D0 has the same fH as D+
-        elif pid in ["423","-423"]: return 0.2226        #D^*0, I assume it has same fH as D
+        elif pid in ["421","411","-411"]: return 0.2226 
+        elif pid in ["423","-423"]: return 0.2235        #D*0, value is pretty close to D, so this is probably right
         elif pid in ["431","-431"]: return 0.2801
         elif pid in ["511","521","-521"]: return 0.190
         elif pid in ["531"]: return 0.230   #not sure if neutral has same as charged
@@ -58,7 +58,7 @@ class HeavyNeutralLepton(Utility):
     # CKM matrix elements
     def VH(self,pid):
         if   pid in ["211","-211"]: return 0.97370 #Vud
-        elif pid in ["321","-321"]: return 0.2245 #Vus
+        elif pid in ["321","-321","323","-323"]: return 0.2245 #Vus
         elif pid in ["213","-213"]: return 0.97370
         elif pid in ["411","-411"]: return 0.221
         elif pid in ["431","-431"]: return 0.987
@@ -125,7 +125,8 @@ class HeavyNeutralLepton(Utility):
 
     #VHH in 3-body decays - CKM matrix elements
     def VHHp(self,pid0,pid1):
-        if   pid0 in ['411','-411'] and pid1 in ['311','-311']: return 0.987
+        if   pid0 in ["2","-2"    ] and pid1 in ["1","-1"    ]: return 0.97370
+        elif pid0 in ['411','-411'] and pid1 in ['311','-311']: return 0.987
         elif pid0 in ['421','-421'] and pid1 in ['321','-321']: return 0.997
         elif pid0 in ['521','-521'] and pid1 in ['421','-421']: return 41*10**-3
         elif pid0 in ['511','-511'] and pid1 in ['411','-411']: return 42.2*10**-3
