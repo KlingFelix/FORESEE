@@ -15,7 +15,7 @@ class HeavyNeutralLepton(Utility):
     ###############################
     #  2-body decays
     ###############################
-
+    
     #decay constants
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.130
@@ -26,8 +26,8 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["421","411","-411"]: return 0.2226 
         elif pid in ["423","-423"]: return 0.2235        #D*0, value is pretty close to D, so this is probably right
         elif pid in ["431","-431"]: return 0.2801
-        elif pid in ["511","521","-521"]: return 0.190
-        elif pid in ["531"]: return 0.230   #not sure if neutral has same as charged
+        elif pid in ["511", "511","521","-521"]: return 0.190
+        elif pid in ["531","-531"]: return 0.230   #not sure if neutral has same as charged
         elif pid in ["541","-541"]: return 0.480
 
     # Lifetimes
@@ -36,7 +36,7 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["15","-15"    ]: return 290.1*1e-15
         elif pid in ["2212","-2212"]: return 10**8
         elif pid in ["211","-211"  ]: return 2.603*10**-8
-        elif pid in ["323","-323"  ]: return 1.2380*10**-8
+        elif pid in ["323","-323"  ]: return 1.2380*10**-8   #### WRONG
         elif pid in ["321","-321"  ]: return 1.2380*10**-8
         elif pid in ["411","-411"  ]: return 1040*10**-15
         elif pid in ["421","-421"  ]: return 410*10**-15
