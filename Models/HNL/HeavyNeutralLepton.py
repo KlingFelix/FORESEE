@@ -1,5 +1,7 @@
 import numpy as np
 from src.foresee import Utility, Foresee
+import sympy as smp
+import mpmath as mp
 
 class HeavyNeutralLepton(Utility):
 
@@ -20,8 +22,8 @@ class HeavyNeutralLepton(Utility):
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
-        elif pid in ["313","-313","323","-323"]: return 0.204      #for K*, need to see which values we should use, these seemed pretty good though
-        elif pid in ["321","-321"]: return 0.1598
+        elif pid in ["313","-313","323","-323"]: return 0.1598*1.308      #for K*, modified according to arXiv:1805.00718v2
+        elif pid in ["311","-311","321","-321"]: return 0.1598 
         elif pid in ["331","-331"]: return -0.45*0.130
         elif pid in ["421","411","-411"]: return 0.2226 
         elif pid in ["423","-423"]: return 0.2235        #D*0, value is pretty close to D, so this is probably right
@@ -292,3 +294,216 @@ class HeavyNeutralLepton(Utility):
             prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
             dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))**2*np.sqrt(energy**2-mass**2)*((self.masses('{pid0}')-energy)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))*((self.masses('{pid0}')-energy)**2/self.masses('{pid0}')+((energy**2-mass**2)/(3*self.masses('{pid0}')))))"
         return(dbr)
+    
+    #############HNL decay channel branching ratios############
+
+    #for N->l_beta^+ l_beta^- nu_alpha 
+    def analyze_pid1_pid3(self,pid1,pid3):
+        if pid1 in ["11","-11"]:
+            beta=1
+        if pid1 in ["13","-13"]:
+            beta=2
+        if pid1 in ["15","-15"]:
+            beta=3
+        if pid3 in ["12","-12"]:
+            alpha=1
+        if pid3 in ["14","-14"]:
+            alpha=2
+        if pid3 in ["16","-16"]:
+            alpha=3
+        return(alpha,beta)
+    def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
+        GF=1.166378*10**(-5)
+        delta=lambda l1,l2: 1 if l1==l2 else 0
+        xl=f"(self.masses(pid1)/mass)"
+        xw=f"(0.231)" #xw=sin(theta_w)^2
+        L=f"np.log((1-3*{xl}**2-(1-{xl}**2)*np.sqrt(1-4*{xl}**2))/({xl}**2*(1+np.sqrt(1-4*{xl}**2))))"
+        C1=f"(1/4)*(1-4*{xw}+8*{xw}**2)"
+        C2=f"(1/2)*{xw}*(2*{xw}-1)"
+        C3=f"(1/4)*(1+4*{xw}+8*{xw}**2)"
+        C4=f"(1/2)*{xw}*(2*{xw}+1)"
+        alpha,beta=analyze_pid1_pid3(pid1,pid3)
+        coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
+        br_lb_lb_nua=f"({GF}**2*mass**5/(192*np.pi**3))*{coupling}**2*(({C1}*(1-{delta(alpha,beta)})+{C3}*{delta(alpha,beta)})*((1-14*{xl}**2-2*{xl}**4-12*{xl}**6)*np.sqrt(1-4*{xl}**2)+12*{xl}**4*({xl}**4-1)*{L})+4*({C2}*(1-{delta(alpha,beta)})+{C4}*{delta(alpha,beta)})*({xl}**2*(2+10*{xl}**2-12*{xl}**4)*np.sqrt(1-4*{xl}**2)+6*{xl}**4*(1-2*{xl}**2+2*{xl}**4)*{L}))"
+        return(br_lb_lb_nua)
+
+    #for N->l_beta^+ l_beta^- nu_alpha using daniels formula
+    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+    I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+    I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
+    from scipy.integrate import quad
+    def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
+        xw=f"0.231"
+        GF=1.166378*10**(-5)
+        delta=lambda l1,l2: 1 if l1==l2 else 0
+        if pid2=="11":
+            l2=1
+        if pid2=="13":
+            l2=2
+        if pid2=="15":
+            l2=3
+        if pid3=="12":
+            l1=1
+        if pid3=="14":
+            l1=2
+        if pid3=="16":
+            l1=3
+        gL=f"(-(1/2)+{xw})"
+        gR=f"{xw}"
+        x=f"0"
+        y=f"(self.masses({pid2})/mass)"
+        z=y
+        I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+        I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
+        coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
+        br_lb_lb_nua=f"({coupling}**2*{GF}**2*mass**5/(96*np.pi**3))*(({gL}*{gR}+{delta(l1,l2)}*{gR})*{I2}+({gL}**2+{gR}**2+{delta(l1,l2)}*(1+2*{gL}))*{I1})"
+        return(br_lb_lb_nua)
+    
+
+    #for N->U bar{D} l_alpha^-
+    I_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+    def calc_br_u_bd_l(self,pid1,pid2,pid3):
+        GF=1.166378*10**(-5)
+        xd=f"(self.masses({pid2})/mass)"
+        xu=f"(self.masses({pid1})/mass)"
+        xl=f"(self.masses({pid3})/mass)"
+        x=xl
+        y=xu
+        z=xd
+        I=f"quad(I_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+        coupling=f"self.vcoupling[str(abs(int({pid3})))]"
+        br_u_d_l=f"(self.VHHp({pid1},{pid2})**2*{GF}**2*mass**5*coupling**2/(32*np.pi**3))*{I}"
+        return(br_u_d_l)
+    
+    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+    x=0
+    xq=f"(self.masses(pid1)/mass)"
+    y=xq
+    z=xq
+    xw=f"(0.231)" #xw=sin(theta_w)^2
+    I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+    I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
+    def calc_br_q_bq_nu(self,pid1,pid3):
+        GF=1.166378*10**(-5)
+        if pid1 in quarks_u:
+            gL=f"(1/2-(2/3)*{xw})"
+            gR=f"(-(2/3)*{xw})" #article had 2 g_R^U so I assumed one was supposed to have a D
+        if pid1 in quarks_d:
+            gL=f"(-1/2+(1/3)*{xw})"
+            gR=f"((1/3)*{xw})"
+        I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+        I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
+        coupling=f"hnl.vcoupling[str(abs(int(pid3))-1)]"
+        br_q_bq_nu=f"(coupling**2*{GF}**2*mass**5/(32*np.pi**3))*({gL}*{gR}*{I2}+({gL}**2+{gR}**2)*{I1})"
+        return(br_q_bq_nu)
+    ################################################################################################
+
+
+    ########################writing files for HNL decays ################################################
+    #this portion will take a branching fraction and write to a file in the form m br
+    #for the decays of HNL, takes a branching ratio and creates a file of mass br
+    def write_m_br_file(self,br,mass_produced,filename="model/pi_nu.txt"):
+        f = open(filename, "w+")
+        f.close()
+        f = open(filename, "a")
+        #mass=1
+        mass=.01
+        delm=.01
+        steps=int(10/.01)-1
+        for n in range(steps):
+            #f.write(f"{m}  {br}\n")
+            #print(eval(br))
+            if mass>mass_produced:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br)]))
+            else:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,0]))
+
+            mass=chop(mass+delm)
+        f.close()
+        print('file created...')
+        #a=.0134155
+
+    #same as write_m_br_file except for mass between, start_mass, end_mass is for the starting mass for br_had and ending mass for br_had
+    def write_m_br_had_file(self,br,br_had,mass_produced,start_mass,end_mass,filename="model/pi_nu.txt"):
+        f = open(filename, "w+")
+        f.close()
+        f = open(filename, "a")
+        #mass=1
+
+
+
+
+        mass=start_mass
+        delm=.01
+        steps=int((end_mass-start_mass)/.01)+1
+        for n in range(steps):
+            #f.write(f"{m}  {br}\n")
+            #print(eval(br))
+            if mass>mass_produced:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br_had)]))
+            else:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,0]))
+
+            mass=chop(mass+delm)
+
+
+
+
+
+
+        mass=end_mass
+        delm=.01
+        steps=int((10-end_mass)/.01)+1
+        for n in range(steps):
+            #f.write(f"{m}  {br}\n")
+            #print(eval(br))
+            if mass>mass_produced:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br)]))
+            else:
+                f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,0]))
+
+            mass=chop(mass+delm)
+        f.close()
+        print('file created...')
+        #a=.0134155
+
+    #this is for the decay N->nu_l1 l2 l2
+    def write_m_brm_file(self,filename="model/pi_nu.txt"):
+        f = open(filename, "w+")
+        f.close()
+        f = open(filename, "a")
+        #mass=1
+        mass=.01
+        br=bra_nul1_l2_l2(mass,l1,l2)+"*6.58*10**-14"
+        delm=.01
+        steps=int(10/.01)-1
+        for n in range(steps):
+            #f.write(f"{m}  {br}\n")
+            #print(eval(br))
+            f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br)]))
+            mass=chop(mass+delm)
+        f.close()
+        print('file created...')
+
+    def write_m_ctau_file(self,filename="model/ctau.txt"):
+        f = open(filename, "w+")
+        f.close()
+        f = open(filename, "a")
+        #mass=1
+        mass=.01
+        coupling=1
+        tau_N=f"6.58*10**-14*coupling**-2"
+        ctau=tau_N+"*3*10**8"
+        delm=.01
+        steps=int(10/.01)-1
+        for n in range(steps):
+            #f.write(f"{m}  {br}\n")
+            #print(eval(br))
+            f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(ctau)]))
+            mass=chop(mass+delm)
+        f.close()
+        print('file created...')
+#takes a number and chops off part of it according to the precision, or delta
+def chop(expr, delta=10**-2):
+    return np.ma.masked_inside(expr, -delta, delta).filled(0)
