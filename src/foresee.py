@@ -461,7 +461,8 @@ class Foresee(Utility):
             elif (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
         if pid in ["321","-321","211","-211"]:
-            ltas, rpipe = 20., 0.05
+            lq1, ltas, rpipe = 23., 20., 0.05
+            if (theta < 0.017/ltas): probability = 1.- np.exp(- lq1/dbarz)
             if (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
         return probability
@@ -1289,7 +1290,8 @@ class Foresee(Utility):
         masses, productions,
         xlims=[0.01,1],ylims=[10**-1,1],
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, log_scale=True
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, log_scale=True,
+        nsample=300,
     ):
 
         # initiate figure
@@ -1319,11 +1321,11 @@ class Foresee(Utility):
                     if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
                     m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
                     if integration == "dq2dcosth":
-                        _, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample=300)
+                        _, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample=nsample)
                     if integration == "dq2dEN":
-                        _, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample=300)
+                        _, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
                     if integration == "dEN":
-                        _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=300)
+                        _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
                     xvals.append(mass)
                     yvals.append(sum(weights_llp))
 
