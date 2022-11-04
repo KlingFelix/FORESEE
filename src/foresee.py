@@ -14,6 +14,15 @@ class Utility():
     #  Hadron Masses and Lifetimes
     ###############################
 
+    def charges(self, pid):
+        if   pid in ["11", "13", "15"]: return -1
+        elif pid in ["-11", "-13", "-15"]: return 1
+        elif pid in ["2212"]: return 1
+        elif pid in ["-2212"]: return 1
+        elif pid in ["211", "321", "411", "431"]: return 1
+        elif pid in ["-211", "-321", "-411", "-431"]: return -1
+        else: return 0
+        
     def masses(self,pid,mass=0):
         if   pid in ["2112","-2112"]: return 0.938
         elif pid in ["2212","-2212"]: return 0.938
@@ -912,8 +921,43 @@ class Foresee(Utility):
         # close file
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
+        
+    def write_csv_file(self, data, filename):
+        
+        # open file
+        f= open(filename,"w")
+        f.write("particle_id,particle_type,process,vx,vy,vz,vt,px,py,pz,m,q\n")
+        
+        # loop over events
+        for ievent, (weight, position, momentum, pids, finalstate) in enumerate(data):
+            
+            #vertex
+            vx, vy = round(position.x*1000,10), round(position.y*1000,10)
+            vz, vt = round(position.z*1000,10), round(position.t*1000,10)
+                        
+            # LLP
+            px, py = round(momentum.px,10), round(momentum.py,10)
+            pz, m, q = round(momentum.pz,10), round(momentum.m ,10), 0
+            particle_id, particle_type, process = ievent, 32, 0
+            f.write(str(particle_id)+","+str(particle_type)+","+str(process)+",")
+            f.write(str(vx)+","+str(vy)+","+str(vz)+","+str(vt)+",")
+            f.write(str(px)+","+str(py)+","+str(pz)+","+str(m)+","+str(q)+"\n")
+            
+            #decay products
+            if pids is None: continue
+            for iparticle, (pid, particle) in enumerate(zip(pids, finalstate)):
+                px, py = round(particle.px,10), round(particle.py,10)
+                pz, m, q = round(particle.pz,10), round(particle.m ,10), self.charges(str(pid))
+                particle_id, particle_type, process = ievent, pid, 0
+                f.write(str(particle_id)+","+str(particle_type)+","+str(process)+",")
+                f.write(str(vx)+","+str(vy)+","+str(vz)+","+str(vt)+",")
+                f.write(str(px)+","+str(py)+","+str(pz)+","+str(m)+","+str(q)+"\n")
+                
+        # close file
+        f.close()
+        
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc"):
         
         #set random seed
         random.seed(seed)
@@ -958,14 +1002,15 @@ class Foresee(Utility):
             # save
             unweighted_data.append([eventweight, position, momentum, pids, finalstate])
         
-        # set output filename
+        # prepare output filename
         dirname = self.model.modelpath+"model/events/"
         if not os.path.exists(dirname): os.mkdir(dirname)
-        if filename==None: filename = dirname+str(mass)+"_"+str(coupling)+".hepmc"
+        if filename==None: filename = dirname+str(mass)+"_"+str(coupling)+"."+filetype
         else: filename = self.model.modelpath + filename
           
-        # write to HEPMC file
-        self.write_hepmc_file(filename=filename, data=unweighted_data)
+        # write to file file
+        if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data)
+        if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
         #return
         if return_data: return weighted_raw_data[0], weights, unweighted_raw_data
