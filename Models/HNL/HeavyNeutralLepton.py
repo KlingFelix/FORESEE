@@ -22,9 +22,12 @@ class HeavyNeutralLepton(Utility):
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
+        elif pid in ["213","-213"]: return 0.210
+        elif pid in ["113"]       : return 0.210
+        elif pid in ["223","-223"]: return 0.195    
         elif pid in ["313","-313","323","-323"]: return 0.1598*1.308      #for K*, modified according to arXiv:1805.00718v2
         elif pid in ["311","-311","321","-321"]: return 0.1598 
-        elif pid in ["331","-331"]: return -0.45*0.130
+        elif pid in ["331","-331"]: return 0.140    #it is difficult to find a reliable source for this decay constant, this value was briefly mentioned: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.60.074002
         elif pid in ["421","411","-411"]: return 0.2226 
         elif pid in ["423","-423"]: return 0.2235        #D*0, value is pretty close to D, so this is probably right
         elif pid in ["431","-431"]: return 0.2801
@@ -35,9 +38,10 @@ class HeavyNeutralLepton(Utility):
     # Lifetimes
     def tau(self,pid):
         if   pid in ["2112","-2112"]: return 10**8
-        elif pid in ["15","-15"    ]: return 290.1*1e-15
+        elif pid in ["15","-15"    ]: return 290.3*1e-15
         elif pid in ["2212","-2212"]: return 10**8
         elif pid in ["211","-211"  ]: return 2.603*10**-8
+        elif pid in ["223"         ]: return 7.58*10**-23 #obtained this lifetime from wiki, couldnt find on pdg
         elif pid in ["323","-323"  ]: return 1.2380*10**-8   #### WRONG
         elif pid in ["321","-321"  ]: return 1.2380*10**-8
         elif pid in ["411","-411"  ]: return 1040*10**-15
@@ -105,8 +109,8 @@ class HeavyNeutralLepton(Utility):
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=tautau*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
-            prefactor=tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2)
-            prefactor*=self.vcoupling[str(abs(int(pid0)))]**2
+            prefactor=(tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2))
+            prefactor*=(self.vcoupling[str(abs(int(pid0)))]**2)
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2))*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2)))"
         else:
             SecToGev=1./(6.582122*pow(10.,-25.))
@@ -116,8 +120,8 @@ class HeavyNeutralLepton(Utility):
             VH=self.VH(pid1)
             fH=self.fH(pid1)
             Mtau=self.masses(pid0)
-            prefactor=tautau*GF**2*VH**2*fH**2*Mtau**3/(16*np.pi)
-            prefactor*=self.vcoupling[str(abs(int(pid0)))]**2
+            prefactor=(tautau*GF**2*VH**2*fH**2*Mtau**3/(16*np.pi))
+            prefactor*=(self.vcoupling[str(abs(int(pid0)))]**2)
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2-(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+(mass**2/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2)*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2))))"
         return (br)
 
@@ -149,7 +153,7 @@ class HeavyNeutralLepton(Utility):
         elif pid0 in ['511','-511'] and pid1 in ['413','-413']: return 41*10**-3
         elif pid0 in ['531','-531'] and pid1 in ['433','-433']: return 41*10**-3
         elif pid0 in ['541','-541'] and pid1 in ['513','-513']: return 0.221
-        elif pid0 in ['541','-541'] and pid1 in ['533','-533']: return 41*10**-3
+        elif pid0 in ['541','-541'] and pid1 in ['533','-533']: return 0.987
 
 
     def get_3body_dbr_pseudoscalar(self,pid0,pid1,pid2):
@@ -213,8 +217,8 @@ class HeavyNeutralLepton(Utility):
         GF=1.1663787*10**(-5)
         VHV=self.VHHp(pid0,pid1)
         #'D^0 -> K*^- + e^+ + N'
-        if pid0 in ['421'] and pid1 in ['323','-323']:
-            A00=.76; Mp=1.97; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3
+        if pid0 in ['-421','421'] and pid1 in ['323','-323']:
+            A00=.76; Mp=1.969; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3
             s2A1=.2*0; A20=.49; s1A2=.67; s2A2=.16*0
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
@@ -222,7 +226,7 @@ class HeavyNeutralLepton(Utility):
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
         #'B^+ -> \bar{D}*^0 + e^+ + N' or 'B^0 -> D*^- + e^+ + N'
-        if (pid0 in ['521','-521'] and pid1 in ['423','-423']) or (pid0 in ['511'] and pid1 in ['413','-413']):
+        if (pid0 in ['521','-521'] and pid1 in ['423','-423']) or (pid0 in ['511','-511'] and pid1 in ['413','-413']):
             A00=0.69; Mp=6.277; s1A0=0.58; s2A0=0; V0=0.76; MV=6.842; s1V=0.57; s2V=0; A10=0.66; s1A1=0.78
             s2A1=0; A20=0.62; s1A2=1.04; s2A2=0
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
@@ -231,8 +235,8 @@ class HeavyNeutralLepton(Utility):
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
         #'B^0_s -> D^*_s^- + e^+ + N'
-        if pid0 in ['531'] and pid1 in ['433','-433']:
-            A00=0.67; Mp=6.842; s1A0=0.35; s2A0=0; V0=0.95; MV=6.842; s1V=0.372
+        if pid0 in ['531','-531'] and pid1 in ['433','-433']:
+            A00=0.67; Mp=6.272; s1A0=0.35; s2A0=0; V0=0.95; MV=6.332; s1V=0.372
             s2V=0; A10=0.70; s1A1=0.463; s2A1=0; A20=0.75; s1A2=1.04; s2A2=0
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
@@ -243,21 +247,21 @@ class HeavyNeutralLepton(Utility):
         #'B^+_c -> B*^0 + e^+ + N'
         if pid0 in ['541','-541'] and pid1 in ['513','-513']:
             A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052
-            A10=.6; mfitA1=3.44; deltaA1=-1.07; A20=10.8; mfitA2=1.73; deltaA2=0.09
-            A0=f"{A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2)"
-            V=f"{V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2)"
+            A10=.6; mfitA1=3.44; deltaA1=-1.07; A20=10.8; mfitA2=1.73; deltaA2=-0.09
+            A0=f"({A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2))"
+            V=f"({V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2))"
             #form factors for A1 and A2
-            A1=f"{A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2)"
-            A2=f"{A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2)"
+            A1=f"({A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2))"
+            A2=f"({A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2))"
         #'B^+_c -> B^*_s^0+ e^+ + N'
         if pid0 in ['541','-541'] and pid1 in ['533','-533']:
             A00=-.33; mfitA0=1.86; deltaA0=.13; V0=3.25; mfitV=1.76; deltaV=-.052
-            A10=.4; mfitA1=3.44; deltaA1=-1.07; A20=10.4; mfitA2=1.73; deltaA2=0.09
-            A0=f"{A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2)"
-            V=f"{V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2)"
+            A10=.4; mfitA1=3.44; deltaA1=-1.07; A20=10.4; mfitA2=1.73; deltaA2=-0.09
+            A0=f"({A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2))"
+            V=f"({V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2))"
             #form factors for A1 and A2
-            A1=f"{A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2)"
-            A2=f"{A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2)"
+            A1=f"({A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2))"
+            A2=f"({A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2))"
         f1=f"({V}/(self.masses('{pid0}')+self.masses('{pid1}')))"
         f2=f"((self.masses('{pid0}')+self.masses('{pid1}'))*{A1})"
         f3=f"(-{A2}/(self.masses('{pid0}')+self.masses('{pid1}')))"
@@ -281,17 +285,17 @@ class HeavyNeutralLepton(Utility):
 
     #pid0 is tau, pid1 is produced lepton and pid2 is the neutrino
     def get_3body_dbr_tau(self,pid0,pid1,pid2):
-        if pid2=='18':
+        if pid2=='16' or pid2=='-16':
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=self.tau(pid0)*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
-            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2*energy/(2*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
+            prefactor=f"({tautau}*{GF}**2*coupling**2*self.masses('{pid0}')**2*energy/(2*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
             dbr=f"{prefactor}*(1+((mass**2-self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-2*(energy/self.masses('{pid0}')))*(1-(self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}'))))*np.sqrt(energy**2-mass**2)"
         else:
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=self.tau(pid0)*SecToGev
             GF=1.166378*10**(-5) #GeV^(-2)
-            prefactor=f"({tautau}*coupling**2*{GF}**2*self.masses('{pid0}')**2/(4*np.pi**3))*{self.vcoupling[str(abs(int(pid1)))]}**2"
+            prefactor=f"({tautau}*{GF}**2*coupling**2*self.masses('{pid0}')**2/(4*np.pi**3))*{self.vcoupling[str(abs(int(pid0)))]}**2"
             dbr=f"{prefactor}*(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))**2*np.sqrt(energy**2-mass**2)*((self.masses('{pid0}')-energy)*(1-(mass**2+self.masses('{pid1}')**2)/self.masses('{pid0}')**2)-(1-self.masses('{pid1}')**2/(self.masses('{pid0}')**2+mass**2-2*energy*self.masses('{pid0}')))*((self.masses('{pid0}')-energy)**2/self.masses('{pid0}')+((energy**2-mass**2)/(3*self.masses('{pid0}')))))"
         return(dbr)
     
