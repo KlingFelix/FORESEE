@@ -7,6 +7,7 @@ import random
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
+import pandas as pd
 
 class Utility():
 
@@ -625,7 +626,7 @@ class Foresee(Utility):
 
             # get LLP momentum
             costh = random.uniform(-1,1)
-            sinth = np.sqrt(1-costhe**2)
+            sinth = np.sqrt(1-costh**2)
             phi = random.uniform(-math.pi,math.pi)
             p = np.sqrt(energy**2-mass**2)
             p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
@@ -1290,9 +1291,9 @@ class Foresee(Utility):
         masses, productions,
         xlims=[0.01,1],ylims=[10**-1,1],
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, log_scale=True,
-        nsample=300,
-    ):
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, log_scale=True, 
+        nsample=100):
+
 
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
@@ -1308,27 +1309,83 @@ class Foresee(Utility):
             for mass in masses:
                 if model.production[key][0]=="2body":
                     pid0, pid1, br =  model.production[key][1], model.production[key][2], model.production[key][3]
-                    if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
-                    m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
-                    brval = eval(br)
-                    xvals.append(mass)
-                    yvals.append(brval)
+                    if self.masses(pid0) <= self.masses(pid1, mass) + mass:
+                        xvals.append(mass)
+                        yvals.append(0)
+                    #might want to include this feature in get_llp_spectra
+                    else:
+                        m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
+                        brval = eval(br)
+                        xvals.append(mass)
+                        yvals.append(brval)
 
                 elif model.production[key][0]=="3body":
 
                     pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
                     br, integration = model.production[key][4], model.production[key][10]
-                    if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass: continue
-                    m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                    if integration == "dq2dcosth":
-                        _, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample=nsample)
-                    if integration == "dq2dEN":
-                        _, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
-                    if integration == "dEN":
-                        _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
-                    xvals.append(mass)
-                    yvals.append(sum(weights_llp))
+                    if self.masses(pid0) <= self.masses(pid1, mass) + self.masses(pid2, mass) + mass:
+                        xvals.append(mass)
+                        yvals.append(0)
+                    else:
+                        m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+                        if integration == "dq2dcosth":
+                            _, weights_llp = self.decay_in_restframe_3body_q2ct(br, coupling, m0, m1, m2, m3, nsample=nsample)
+                        if integration == "dq2dEN":
+                            _, weights_llp = self.decay_in_restframe_3body_q2EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
+                        if integration == "dEN":
+                            _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
+                        xvals.append(mass)
+                        yvals.append(sum(weights_llp))
+            ###added temporarily by alec to compare productions with daniel###
+            #2 body comparisons
+            src_path="/Users/alechewitt/Desktop/Git_felix_2/FORESEE"
+            '''if model.production[key][0]=="2body" and abs(int(pid0))=="15":
+                pid0, pid1 =  model.production[key][1], model.production[key][2]
+                df = pd.DataFrame(columns=['mass', 'Br'])
+                df['mass']=xvals
+                df['Br']=yvals
+                df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_tau_{pid0}_{pid1}.txt", header=None, index=None, sep='\t')'''
+            if model.production[key][0]=="2body":
+                pid0, pid1 =  model.production[key][1], model.production[key][2]
+                if str(abs(int(pid0)))!="15":
+                    df = pd.DataFrame(columns=['mass', 'Br'])
+                    #print(xvals)
+                    df['mass']=xvals
+                    df['Br']=yvals
+                    if int(pid0)>0:
+                        pid1_temp=str(-abs(int(pid1)))
+                    else:
+                        pid1_temp=pid1
+                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_lep_{pid0}_{pid1_temp}.txt", header=None, index=None, sep='\t')
+                if str(abs(int(pid0)))=="15":
+                    #pid0, pid1 =  model.production[key][1], model.production[key][2]
+                    df = pd.DataFrame(columns=['mass', 'Br'])
+                    df['mass']=xvals
+                    df['Br']=yvals
+                    if int(pid0)>0:
+                        pid1_temp=str(-abs(int(pid1)))
+                    if int(pid0)<0:
+                        pid1_temp=pid1
+                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_tau_{pid0}_{pid1_temp}.txt", header=None, index=None, sep='\t')
 
+            #3 body comparisons
+            if model.production[key][0]=="3body":
+                pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
+
+                if str(abs(int(pid0)))=="15":
+                    df = pd.DataFrame(columns=['mass', 'Br'])
+                    df['mass']=xvals
+                    df['Br']=yvals
+                    #3body_tau includes both of the br ratios from tau
+                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/3body_tau_{pid0}_{pid1}_{pid2}.txt", header=None, index=None, sep='\t')
+                if str(abs(int(pid0)))!="15":
+                    #pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
+                    df = pd.DataFrame(columns=['mass', 'Br'])
+                    df['mass']=xvals
+                    df['Br']=yvals
+                    #H includes both vectors and pseudoscalars
+                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/3body_H_{pid0}_{pid1}_{pid2}.txt", header=None, index=None, sep='\t')
+            ##########
             # add to plot
             if len(xvals)>0: ax.plot(xvals, yvals, color=color, label=label)
 
