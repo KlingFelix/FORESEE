@@ -24,16 +24,22 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["221","-221"]: return 1.2*0.130
         elif pid in ["213","-213"]: return 0.210
         elif pid in ["113"]       : return 0.210
-        elif pid in ["223","-223"]: return 0.195    
+        elif pid in ["223","-223"]: return 0.195  
+        elif pid in ["333"]: return 0.241               #for phi meson found here https://iopscience.iop.org/article/10.1088/1674-1137/abcd8f/pdf
         elif pid in ["313","-313","323","-323"]: return 0.1598*1.308      #for K*, modified according to arXiv:1805.00718v2
         elif pid in ["311","-311","321","-321"]: return 0.1598 
         elif pid in ["331","-331"]: return 0.140    #it is difficult to find a reliable source for this decay constant, this value was briefly mentioned: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.60.074002
-        elif pid in ["421","411","-411"]: return 0.2226 
-        elif pid in ["423","-423"]: return 0.2235        #D*0, value is pretty close to D, so this is probably right
+        elif pid in ["421","-421","411","-411"]: return 0.2226 
+        elif pid in ["443"]: return 0.409         #J/psifound fromhttps://arxiv.org/pdf/hep-ph/9703252.pdf
         elif pid in ["431","-431"]: return 0.2801
         elif pid in ["511", "511","521","-521"]: return 0.190
         elif pid in ["531","-531"]: return 0.230   #not sure if neutral has same as charged
         elif pid in ["541","-541"]: return 0.480
+        elif pid in ["413","-413","423","-423"]: return 1.097*0.2226 
+        elif pid in ["433","-433"]: return 1.093*0.2801
+
+
+
 
     # Lifetimes
     def tau(self,pid):
@@ -67,18 +73,67 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["321","-321","323","-323"]: return 0.2245 #Vus
         elif pid in ["213","-213"]: return 0.97370
         elif pid in ["411","-411"]: return 0.221
-        elif pid in ["431","-431"]: return 0.987
-        elif pid in ["521","-521"]: return 3.82*10**-3
+        elif pid in ["431","-431","433","-433"]: return 0.987 #Vcs
         elif pid in ["541","-541"]: return 41*10**-3
         elif pid in []: return 0.97370 #Vud
         elif pid in []: return 0.2245 #Vus
-        elif pid in ["411","-411"]: return 0.221 #Vcd
+        elif pid in ["411","-411","413","-413"]: return 0.221 #Vcd
         elif pid in []: return 0.987 #Vcs
         elif pid in ["541","-541"]: return 41*10**-3 #Vcb
-        elif pid in ["521","-521"]: return 3.82*10**-3 #Vub
+        elif pid in ["521","-521"]: return 3.94*10**-3 #Vub
         elif pid in []: return 8*10**-3 #Vtd
         elif pid in []: return 38.8*10**-3 #Vts
         elif pid in []: return 1.013 #Vtb
+
+    #symbol for a given pid
+    #originally created to analyze HNL decays
+    def symbols(self,pid):
+        #quarks
+        if   pid in ["1"]: return "d"
+        elif pid in ["2"]: return "u"
+        elif pid in ["3"]: return "s"
+        elif pid in ["4"]: return "c"
+        elif pid in ["5"]: return "b"
+        elif pid in ["6"]: return "t"
+
+        #leptons
+        elif pid in ["11"]: return "e"
+        elif pid in ["12"]: return r"$\nu_e$"
+        elif pid in ["13"]: return r"$\mu$"
+        elif pid in ["14"]: return r"$\mu_e$"
+        elif pid in ["15"]: return r"$\tau$"
+        elif pid in ["16"]: return r"$\nu_{\tau}$"
+
+        #neutral pseudoscalars
+        elif pid in ["111"]: return r"$\pi^0$"
+        elif pid in ["221"]: return r"$\eta$"
+        elif pid in ["311"]: return r"$K^0$"
+        elif pid in ["331"]: return r"$\eta^{'}$"
+        elif pid in ["421"]: return r"$D^0$"
+
+        #charged pseudoscalars
+        elif pid in ["211"]: return r"$\pi^+$"
+        elif pid in ["321"]: return r"$K^+$"
+        elif pid in ["411"]: return r"$D^+$"
+        elif pid in ["431"]: return r"$D^+_s$"
+        elif pid in ["521"]: return r"$B^+$"
+
+        #neutral vectors
+        elif pid in ["113"]: return r"$\rho^0$"
+        elif pid in ["223"]: return r"$\omega$"
+        elif pid in ["313"]: return r"$K^{*0}$"
+        elif pid in ["333"]: return r"$\phi$"
+        elif pid in ["423"]: return r"$D^{*0}$"
+        elif pid in ["443"]: return r"$J/\psi$"
+
+        #charged vectors
+        elif pid in ["213"]: return r"$\rho^+$"
+        elif pid in ["323"]: return r"$K^{*+}$"
+        elif pid in ["413"]: return r"$D^{*+}$"
+        elif pid in ["433"]: return r"$D^{*+}_s$"
+
+
+
 
     #for HNL decays to neutral vector mesons
     def kV(self,pid):

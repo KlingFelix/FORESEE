@@ -72,6 +72,7 @@ class Utility():
         elif pid in ["5122","-5122"]: return 5.6202     #Alec
         elif pid in ["413" ,"-413" ]: return 2.010      #Alec
         elif pid in ["433" ,"-433" ]: return 1.96847    #Alec
+        elif pid in ["443" ]: return 3.0969     #Alec
         elif pid in ["513" ,"-513" ]: return 5.27965    #Alec
         elif pid in ["533" ,"-533" ]: return 5.36688    #Alec
 
