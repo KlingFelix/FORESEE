@@ -733,7 +733,7 @@ class Foresee(Utility):
             modes=None,
             couplings = np.logspace(-8,-3,51),
             nsample=1,
-            preselectioncuts="th<0.01 and p>100",
+            preselectioncuts="th<0.01",
             coup_ref=1,
             extend_to_low_pt_scales={},
         ):
@@ -957,13 +957,13 @@ class Foresee(Utility):
         f.close()
         
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc"):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc", preselectioncuts="th<0.01"):
         
         #set random seed
         random.seed(seed)
         
         # get weighted sample of LLPs
-        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales)
+        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales, preselectioncuts=preselectioncuts)
         
         # unweight sample
         unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
