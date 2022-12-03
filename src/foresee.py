@@ -673,14 +673,16 @@ class Foresee(Utility):
                 #loop over particles
                 eps=1e-6
                 for p, w_lpp0, w_lpp1 in zip(momenta_llp0, weights_llp0, weights_llp1):
-                    if condition is not None and eval(condition)==0: continue
+                    if   condition is not None and eval(condition)==0: continue
+                    elif condition is None: factor=1
+                    else: factor = eval(condition)
                     w_lpp = w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0)
                     momenta_lab.append(p)
-                    weights_lab.append(w_lpp*coupling**2/coupling_ref**2)
+                    weights_lab.append(w_lpp*coupling**2/coupling_ref**2*factor)
                     # statistics
-                    weight_sum+=w_lpp*coupling**2/coupling_ref**2
+                    weight_sum+=w_lpp*coupling**2/coupling_ref**2*factor
                     if print_stats:
-                        if eval(stat_cuts): weight_sum_f+=w_lpp*coupling**2/coupling_ref**2
+                        if eval(stat_cuts): weight_sum_f+=w_lpp*coupling**2/coupling_ref**2*factor
 
             #return statistcs
             if save_file==True:
