@@ -2,6 +2,10 @@ import numpy as np
 from src.foresee import Utility, Foresee
 import sympy as smp
 import mpmath as mp
+from os import listdir
+import glob
+import os
+from os.path import exists
 
 class HeavyNeutralLepton(Utility):
 
@@ -33,7 +37,10 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["443"]: return 0.409         #J/psifound fromhttps://arxiv.org/pdf/hep-ph/9703252.pdf
         elif pid in ["431","-431"]: return 0.2801
         elif pid in ["511", "511","521","-521"]: return 0.190
-        elif pid in ["531","-531"]: return 0.230   #not sure if neutral has same as charged
+        elif pid in ["513","-513"]: return 1.027*0.190
+        elif pid in ["531","-531"]: return 0.230  
+        elif pid in ["523","-523"]: return 1.027*0.190
+        elif pid in ["533","-533"]: return 1.028*0.230        #obtained from https://iopscience.iop.org/article/10.1088/1674-1137/42/7/073102/pdf (same with all vector mesons)
         elif pid in ["541","-541"]: return 0.480
         elif pid in ["413","-413","423","-423"]: return 1.097*0.2226 
         elif pid in ["433","-433"]: return 1.093*0.2801
@@ -80,7 +87,7 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["411","-411","413","-413"]: return 0.221 #Vcd
         elif pid in []: return 0.987 #Vcs
         elif pid in ["541","-541"]: return 41*10**-3 #Vcb
-        elif pid in ["521","-521"]: return 3.94*10**-3 #Vub
+        elif pid in ["521","-521","523","-523"]: return 3.94*10**-3 #Vub
         elif pid in []: return 8*10**-3 #Vtd
         elif pid in []: return 38.8*10**-3 #Vts
         elif pid in []: return 1.013 #Vtb
@@ -140,6 +147,9 @@ class HeavyNeutralLepton(Utility):
         xw=0.231
         if pid in ["313","-313"]: return (-1/4+(1/3)*xw)
         elif pid in ["423","-423","443"]: return (1/4-(2/3)*xw)
+    
+    def GF(self):
+        return 1.166378*10**(-5)
 
     # Branching fraction
     def get_2body_br(self,pid0,pid1):
@@ -453,7 +463,7 @@ class HeavyNeutralLepton(Utility):
             gR=f"((1/3)*{xw})"
         I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
         I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
-        coupling=f"hnl.vcoupling[str(abs(int(pid3))-1)]"
+        coupling=f"self.vcoupling[str(abs(int(pid3))-1)]"
         br_q_bq_nu=f"(coupling**2*{GF}**2*mass**5/(32*np.pi**3))*({gL}*{gR}*{I2}+({gL}**2+{gR}**2)*{I1})"
         return(br_q_bq_nu)
     ################################################################################################
@@ -563,6 +573,6 @@ class HeavyNeutralLepton(Utility):
             mass=chop(mass+delm)
         f.close()
         print('file created...')
-#takes a number and chops off part of it according to the precision, or delta
-def chop(expr, delta=10**-2):
-    return np.ma.masked_inside(expr, -delta, delta).filled(0)
+
+
+
