@@ -535,7 +535,7 @@ class Foresee(Utility):
         p_mother=LorentzVector(0,0,0,m0)
 
         #integration boundary
-        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2         #m0~parent meson, m1~daughter meson, m2~lepton, m3~theorized particle
         cthmin,cthmax = -1 , 1
         mass = m3
 
@@ -573,7 +573,7 @@ class Foresee(Utility):
         particles, weights = [], []
 
         #integration boundary
-        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2     #m0~parent meson, m1~daughter meson, m2~lepton, m3~theorized particle, q^2=m12^2
         mass = m3
 
         integral=0
@@ -617,7 +617,7 @@ class Foresee(Utility):
         mass = m3
 
         #integration boundary
-        emin, emax = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0)
+        emin, emax = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0)        #m0~parent meson, m1~daughter meson, m2~lepton, m3~theorized particle
 
         #numerical integration
         integral=0

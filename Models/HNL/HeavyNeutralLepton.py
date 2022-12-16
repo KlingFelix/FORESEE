@@ -235,15 +235,15 @@ class HeavyNeutralLepton(Utility):
         prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
         # form factors
         if pid0 in ["411","421","431","-411","-421","-431"]:
-            f00, MV, MS = .747, 2.01027, 2.318
+            f00, MV, MS = .747, 2.01027, 2.318      #f00 obtained from https://arxiv.org/pdf/1511.04877.pdf
         if pid0 in ["511","521","-511","-521"]:
-            f00, MV, MS = 0.66, 6.400, 6.330
+            f00, MV, MS = 0.66, 6.400, 6.2749       #f00 obtained from https://arxiv.org/pdf/1505.03925v2.pdf
         if pid0 in ["531","-531"]:
-            f00, MV, MS = 0.57, 6.400, 6.330
+            f00, MV, MS = 0.57, 5.32, 5.27          #f00 obtained from https://arxiv.org/pdf/1106.3003.pdf
         if pid0 in ["541","-541"] and pid1 in ["511","-511"]:
-            f00, MV, MS = -0.58, 6.400, 6.330
+            f00, MV, MS = -0.58, 6.400, 6.2749      #f00 obtained from https://arxiv.org/pdf/hep-ph/0007169.pdf
         if pid0 in ["541","-541"] and pid1 in ["531","-531"]:
-            f00, MV, MS = -0.61, 6.400, 6.330
+            f00, MV, MS = -0.61, 6.400, 6.2749      #f00 obtained from https://arxiv.org/pdf/hep-ph/0007169.pdf
         fp=str(f00)+"/(1-q**2/"+str(MV)+"**2)"
         f0=str(f00)+"/(1-q**2/"+str(MS)+"**2)"
         fm="("+f0+"-"+fp+")*("+str(mH)+"**2-"+str(mHp)+"**2)/q**2"
@@ -283,8 +283,8 @@ class HeavyNeutralLepton(Utility):
         VHV=self.VHHp(pid0,pid1)
         #'D^0 -> K*^- + e^+ + N'
         if pid0 in ['-421','421'] and pid1 in ['323','-323']:
-            A00=.76; Mp=1.969; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3
-            s2A1=.2*0; A20=.49; s1A2=.67; s2A2=.16*0
+            A00=.76; Mp=1.969; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3     #from https://journals.aps.org/prd/pdf/10.1103/PhysRevD.62.014006 (table IV)
+            s2A1=.2*0; A20=.49; s1A2=.67; s2A2=.16*0        
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
             #form factors for A1 and A2
@@ -292,7 +292,7 @@ class HeavyNeutralLepton(Utility):
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
         #'B^+ -> \bar{D}*^0 + e^+ + N' or 'B^0 -> D*^- + e^+ + N'
         if (pid0 in ['521','-521'] and pid1 in ['423','-423']) or (pid0 in ['511','-511'] and pid1 in ['413','-413']):
-            A00=0.69; Mp=6.277; s1A0=0.58; s2A0=0; V0=0.76; MV=6.842; s1V=0.57; s2V=0; A10=0.66; s1A1=0.78
+            A00=0.69; Mp=6.277; s1A0=0.58; s2A0=0; V0=0.76; MV=6.842; s1V=0.57; s2V=0; A10=0.66; s1A1=0.78      #from https://journals.aps.org/prd/pdf/10.1103/PhysRevD.62.014006 (table X)
             s2A1=0; A20=0.62; s1A2=1.04; s2A2=0
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
@@ -301,7 +301,7 @@ class HeavyNeutralLepton(Utility):
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
         #'B^0_s -> D^*_s^- + e^+ + N'
         if pid0 in ['531','-531'] and pid1 in ['433','-433']:
-            A00=0.67; Mp=6.272; s1A0=0.35; s2A0=0; V0=0.95; MV=6.332; s1V=0.372
+            A00=0.67; Mp=6.272; s1A0=0.35; s2A0=0; V0=0.95; MV=6.332; s1V=0.372         #from https://arxiv.org/pdf/1212.3167.pdf (Table 1)
             s2V=0; A10=0.70; s1A1=0.463; s2A1=0; A20=0.75; s1A2=1.04; s2A2=0
             A0=f"({A00}/((1-q**2/{Mp}**2)*(1-({s1A0}*q**2/{Mp}**2)+({s2A0}*q**4/{Mp}**4))))"
             V=f"({V0}/((1-q**2/{MV}**2)*(1-({s1V}*q**2/{MV}**2)+({s2V}*q**4/{MV}**4))))"
@@ -311,7 +311,7 @@ class HeavyNeutralLepton(Utility):
 
         #'B^+_c -> B*^0 + e^+ + N'
         if pid0 in ['541','-541'] and pid1 in ['513','-513']:
-            A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052
+            A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052       #from https://arxiv.org/pdf/hep-ph/0007169.pdf (Table 3)
             A10=.6; mfitA1=3.44; deltaA1=-1.07; A20=10.8; mfitA2=1.73; deltaA2=-0.09
             A0=f"({A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2))"
             V=f"({V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2))"
@@ -320,7 +320,7 @@ class HeavyNeutralLepton(Utility):
             A2=f"({A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2))"
         #'B^+_c -> B^*_s^0+ e^+ + N'
         if pid0 in ['541','-541'] and pid1 in ['533','-533']:
-            A00=-.33; mfitA0=1.86; deltaA0=.13; V0=3.25; mfitV=1.76; deltaV=-.052
+            A00=-.33; mfitA0=1.86; deltaA0=.13; V0=3.25; mfitV=1.76; deltaV=-.052       #from https://arxiv.org/pdf/hep-ph/0007169.pdf (Table 3)
             A10=.4; mfitA1=3.44; deltaA1=-1.07; A20=10.4; mfitA2=1.73; deltaA2=-0.09
             A0=f"({A00}/(1-(q**2/{mfitA0}**2)-{deltaA0}*(q**2/{mfitA0}**2)**2))"
             V=f"({V0}/(1-(q**2/{mfitV}**2)-{deltaV}*(q**2/{mfitV}**2)**2))"
