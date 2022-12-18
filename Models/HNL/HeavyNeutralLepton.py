@@ -6,6 +6,7 @@ from os import listdir
 import glob
 import os
 from os.path import exists
+from HNL_Decay import *
 
 class HeavyNeutralLepton(Utility):
 
@@ -26,7 +27,7 @@ class HeavyNeutralLepton(Utility):
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.130
         elif pid in ["221","-221"]: return 1.2*0.130
-        elif pid in ["213","-213"]: return 0.210
+        elif pid in ["213","-213"]: return 0.210        #https://iopscience.iop.org/article/10.1088/1674-1137/42/7/073102/pdf
         elif pid in ["113"]       : return 0.210
         elif pid in ["223","-223"]: return 0.195  
         elif pid in ["333"]: return 0.241               #for phi meson found here https://iopscience.iop.org/article/10.1088/1674-1137/abcd8f/pdf
@@ -575,4 +576,8 @@ class HeavyNeutralLepton(Utility):
         print('file created...')
 
 
-
+    def get_br_and_ctau(self,mpts,N):
+            coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
+            Decay = DecayModes(couplings = coupling)
+            Decay.gen_gamma_csv(mpts=mpts,N = N)
+            Decay.get_ctau()
