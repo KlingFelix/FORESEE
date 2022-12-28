@@ -18,10 +18,6 @@ class HeavyNeutralLepton(Utility):
         self.vcoupling = {"11": ve, "13":vmu, "15": vtau}
         self.lepton = {"11": "e", "13":"mu", "15": "tau"}
         self.hadron = {"211": "pi", "321": "K", "213": "rho"}
-
-    ###############################
-    #  2-body decays
-    ###############################
     
     #decay constants
     def fH(self,pid):
@@ -46,9 +42,6 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["413","-413","423","-423"]: return 1.097*0.2226 
         elif pid in ["433","-433"]: return 1.093*0.2801
 
-
-
-
     # Lifetimes
     def tau(self,pid):
         if   pid in ["2112","-2112"]: return 10**8
@@ -56,7 +49,7 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["2212","-2212"]: return 10**8
         elif pid in ["211","-211"  ]: return 2.603*10**-8
         elif pid in ["223"         ]: return 7.58*10**-23 #obtained this lifetime from wiki, couldnt find on pdg
-        elif pid in ["323","-323"  ]: return 1.2380*10**-8   #### WRONG
+        elif pid in ["323","-323"  ]: return 1.425*10**-23 
         elif pid in ["321","-321"  ]: return 1.2380*10**-8
         elif pid in ["411","-411"  ]: return 1040*10**-15
         elif pid in ["421","-421"  ]: return 410*10**-15
@@ -152,7 +145,11 @@ class HeavyNeutralLepton(Utility):
     def GF(self):
         return 1.166378*10**(-5)
 
+    ###############################
+    #  2-body decays
+    ###############################
     # Branching fraction
+    #pid0 is parent meson, pid1 is daughter meson
     def get_2body_br(self,pid0,pid1):
 
         #read constant
@@ -162,13 +159,15 @@ class HeavyNeutralLepton(Utility):
         tauH=tauH*SecToGev
         GF=1.166378*10**(-5) #GeV^(-2)
 
-        #calculate rate
+        #calculate br
         prefactor=(tauH*GF**2*fH**2*vH**2)/(8*np.pi)
         prefactor*=self.vcoupling[str(abs(int(pid1)))]**2
         br=str(prefactor)+"*coupling**2*mass**2*"+str(mH)+"*(1.-(mass/"+str(mH)+")**2 + 2.*("+str(mLep)+"/"+str(mH)+")**2 + ("+str(mLep)+"/mass)**2*(1.-("+str(mLep)+"/"+str(mH)+")**2)) * np.sqrt((1.+(mass/"+str(mH)+")**2 - ("+str(mLep)+"/"+str(mH)+")**2)**2-4.*(mass/"+str(mH)+")**2)"
         return br
 
+    #pid0 is tau lepton, pid1 is produced meson, pid2 is HNL
     def get_2body_br_tau(self,pid0,pid1):
+        #for daugter vector meson rho
         if pid1 in ['213','-213']:
             grho, VH, tautau = 0.102, self.VH(pid1), self.tau(pid0)
             Mtau, Mrho=self.masses(pid0), self.masses(pid1)
@@ -178,6 +177,7 @@ class HeavyNeutralLepton(Utility):
             prefactor=(tautau*grho**2*GF**2*VH**2*Mtau**3/(8*np.pi*Mrho**2))
             prefactor*=(self.vcoupling[str(abs(int(pid0)))]**2)
             br=f"{prefactor}*coupling**2*((1-(mass**2/self.masses('{pid0}')**2))**2+(self.masses('{pid1}')**2/self.masses('{pid0}')**2)*(1+((mass**2-2*self.masses('{pid1}')**2)/self.masses('{pid0}')**2)))*np.sqrt((1-((self.masses('{pid1}')-mass)**2/self.masses('{pid0}')**2))*(1-((self.masses('{pid1}')+mass)**2/self.masses('{pid0}')**2)))"
+        #for daughter pseudoscalars
         else:
             SecToGev=1./(6.582122*pow(10.,-25.))
             tautau=self.tau(pid0)
@@ -221,7 +221,8 @@ class HeavyNeutralLepton(Utility):
         elif pid0 in ['541','-541'] and pid1 in ['513','-513']: return 0.221
         elif pid0 in ['541','-541'] and pid1 in ['533','-533']: return 0.987
 
-
+    #3-body differential branching fraction dBr/(dq^2dE) for decay of pseudoscalar to pseudoscalar meson
+    #pid0 is parent meson pid1 is daughter meson pid2 is lepton pid3 is HNL
     def get_3body_dbr_pseudoscalar(self,pid0,pid1,pid2):
 
         # read constant
@@ -234,7 +235,7 @@ class HeavyNeutralLepton(Utility):
         # prefactor
         prefactor=tauH*VHHp**2*GF**2/(64*np.pi**3*mH**2)
         prefactor*=self.vcoupling[str(abs(int(pid2)))]**2
-        # form factors
+        #form factor parameters
         if pid0 in ["411","421","431","-411","-421","-431"]:
             f00, MV, MS = .747, 2.01027, 2.318      #f00 obtained from https://arxiv.org/pdf/1511.04877.pdf
         if pid0 in ["511","521","-511","-521"]:
@@ -245,44 +246,28 @@ class HeavyNeutralLepton(Utility):
             f00, MV, MS = -0.58, 6.400, 6.2749      #f00 obtained from https://arxiv.org/pdf/hep-ph/0007169.pdf
         if pid0 in ["541","-541"] and pid1 in ["531","-531"]:
             f00, MV, MS = -0.61, 6.400, 6.2749      #f00 obtained from https://arxiv.org/pdf/hep-ph/0007169.pdf
+        #form factors
         fp=str(f00)+"/(1-q**2/"+str(MV)+"**2)"
         f0=str(f00)+"/(1-q**2/"+str(MS)+"**2)"
         fm="("+f0+"-"+fp+")*("+str(mH)+"**2-"+str(mHp)+"**2)/q**2"
+        #putting all terms together
         term1="("+fm+")**2*(q**2*(mass**2+"+str(mLep)+"**2)-(mass**2-"+str(mLep)+"**2)**2)"
         term2=f"2*("+fp+")*("+fm+")*mass**2*(2*"+str(mH)+"**2-2*"+str(mHp)+"**2-4*energy*"+str(mH)+"-"+str(mLep)+"**2+mass**2+q**2)"
         term3=f"(2*("+fp+")*("+fm+")*"+str(mLep)+"**2*(4*energy*"+str(mH)+"+ "+str(mLep)+"**2-mass**2-q**2))"
         term4=f"("+fp+")**2*(4*energy*"+str(mH)+"+"+str(mLep)+"**2-mass**2-q**2)*(2*"+str(mH)+"**2-2*"+str(mHp)+"**2-4*energy*"+str(mH)+"-"+str(mLep)+"**2+mass**2+q**2)"
         term5=f"-("+fp+")**2*(2*"+str(mH)+"**2+2*"+str(mHp)+"**2-q**2)*(q**2-mass**2-"+str(mLep)+"**2)"
         bra=str(prefactor)  + "* coupling**2 *(" + term1   + "+(" + term2  + "+" + term3 + ")+("  + term4   + "+" + term5 + "))"
-        '''fp=f"{f00}/(1-q**2/{MV}**2)"
-        f0=f"{f00}/(1-q**2/{MS}**2)"
-        fm=f"({f0}-{fp})*(self.masses('{pid0}')**2-self.masses('{pid1}')**2)/q**2"
-        term1=f"({fm})**2*(q**2*(m3**2+self.masses('{pid2}')**2)-(m3**2-self.masses('{pid2}')**2)**2)"
-        term2=f"2*({fp})*({fm})*m3**2*(2*self.masses('{pid0}')**2-2*self.masses('{pid1}')**2-4*EN*self.masses('{pid0}')-self.masses('{pid2}')**2+m3**2+q**2)"
-        term3=f"(2*({fp})*({fm})*self.masses('{pid2}')**2*(4*EN*self.masses('{pid0}')+ self.masses('{pid2}')**2-m3**2-q**2))"
-        term4=f"({fp})**2*(4*EN*self.masses('{pid0}')+self.masses('{pid2}')**2-m3**2-q**2)*(2*self.masses('{pid0}')**2-2*self.masses('{pid1}')**2-4*EN*self.masses('{pid0}')-self.masses('{pid2}')**2+m3**2+q**2)"
-        term5=f"-({fp})**2*(2*self.masses('{pid0}')**2+2*self.masses('{pid1}')**2-q**2)*(q**2-m3**2-self.masses('{pid2}')**2)"
-        bra=str(prefactor)  + "*(" + term1   + "+(" + term2  + "+" + term3 + ")+("  + term4   + "+" + term5 + "))"
-        return(bra)'''
         return(bra)
 
+    #3-body differential branching fraction dBr/(dq^2dE) for decay of pseudoscalar to vector meson
+    #pid0 is parent meson pid1 is daughter meson pid2 is lepton pid3 is HNL
     def get_3body_dbr_vector(self,pid0,pid1,pid2):
-        #SecToGev=1./(6.58*pow(10.,-25.))
-        #tauH=1.638*10**-12
-        #tauH=tauH*SecToGev
-        #GF=1.166378*10**(-5) #GeV^(-2)
-        #VHV=41*10**-3 #Vcs matrix element
-        #tauH=df.loc[df['pid0']==pid0]['tauH (sec)'].values[0]
-        #tauH=tauH*SecToGev
-        #VHV=df.loc[df['pid0']==pid0]['VHHp'].values[0]
-
-
         tauH=self.tau(pid0)
         SecToGev=1./(6.58*pow(10.,-25.))
         tauH=tauH*SecToGev
         GF=1.1663787*10**(-5)
         VHV=self.VHHp(pid0,pid1)
-        #'D^0 -> K*^- + e^+ + N'
+        #'D^0 -> K*^- + e^+ + N' form factors
         if pid0 in ['-421','421'] and pid1 in ['323','-323']:
             A00=.76; Mp=1.969; s1A0=.17; s2A0=0; V0=1.03; MV=2.11; s1V=.27; s2V=0; A10=.66; s1A1=.3     #from https://journals.aps.org/prd/pdf/10.1103/PhysRevD.62.014006 (table IV)
             s2A1=.2*0; A20=.49; s1A2=.67; s2A2=.16*0        
@@ -291,7 +276,7 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
-        #'B^+ -> \bar{D}*^0 + e^+ + N' or 'B^0 -> D*^- + e^+ + N'
+        #'B^+ -> \bar{D}*^0 + e^+ + N' or 'B^0 -> D*^- + e^+ + N' form factors
         if (pid0 in ['521','-521'] and pid1 in ['423','-423']) or (pid0 in ['511','-511'] and pid1 in ['413','-413']):
             A00=0.69; Mp=6.277; s1A0=0.58; s2A0=0; V0=0.76; MV=6.842; s1V=0.57; s2V=0; A10=0.66; s1A1=0.78      #from https://journals.aps.org/prd/pdf/10.1103/PhysRevD.62.014006 (table X)
             s2A1=0; A20=0.62; s1A2=1.04; s2A2=0
@@ -300,7 +285,7 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
-        #'B^0_s -> D^*_s^- + e^+ + N'
+        #'B^0_s -> D^*_s^- + e^+ + N' form factors
         if pid0 in ['531','-531'] and pid1 in ['433','-433']:
             A00=0.67; Mp=6.272; s1A0=0.35; s2A0=0; V0=0.95; MV=6.332; s1V=0.372         #from https://arxiv.org/pdf/1212.3167.pdf (Table 1)
             s2V=0; A10=0.70; s1A1=0.463; s2A1=0; A20=0.75; s1A2=1.04; s2A2=0
@@ -309,8 +294,7 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-({s1A1}*q**2/{MV}**2)+({s2A1}*q**4/{MV}**4)))"
             A2=f"({A20}/(1-({s1A2}*q**2/{MV}**2)+({s2A2}*q**4/{MV}**4)))"
-
-        #'B^+_c -> B*^0 + e^+ + N'
+        #'B^+_c -> B*^0 + e^+ + N' form factors
         if pid0 in ['541','-541'] and pid1 in ['513','-513']:
             A00=-.27; mfitA0=1.86; deltaA0=.13; V0=3.27; mfitV=1.76; deltaV=-.052       #from https://arxiv.org/pdf/hep-ph/0007169.pdf (Table 3)
             A10=.6; mfitA1=3.44; deltaA1=-1.07; A20=10.8; mfitA2=1.73; deltaA2=-0.09
@@ -319,7 +303,7 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2))"
             A2=f"({A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2))"
-        #'B^+_c -> B^*_s^0+ e^+ + N'
+        #'B^+_c -> B^*_s^0+ e^+ + N' form factors
         if pid0 in ['541','-541'] and pid1 in ['533','-533']:
             A00=-.33; mfitA0=1.86; deltaA0=.13; V0=3.25; mfitV=1.76; deltaV=-.052       #from https://arxiv.org/pdf/hep-ph/0007169.pdf (Table 3)
             A10=.4; mfitA1=3.44; deltaA1=-1.07; A20=10.4; mfitA2=1.73; deltaA2=-0.09
@@ -328,12 +312,12 @@ class HeavyNeutralLepton(Utility):
             #form factors for A1 and A2
             A1=f"({A10}/(1-(q**2/{mfitA1}**2)-{deltaA1}*(q**2/{mfitA1}**2)**2))"
             A2=f"({A20}/(1-(q**2/{mfitA2}**2)-{deltaA2}*(q**2/{mfitA2}**2)**2))"
+        #form factors
         f1=f"({V}/(self.masses('{pid0}')+self.masses('{pid1}')))"
         f2=f"((self.masses('{pid0}')+self.masses('{pid1}'))*{A1})"
         f3=f"(-{A2}/(self.masses('{pid0}')+self.masses('{pid1}')))"
         f4=f"((self.masses('{pid1}')*(2*{A0}-{A1}-{A2})+self.masses('{pid0}')*({A2}-{A1}))/q**2)"
         f5=f"({f3}+{f4})"
-        #form factors for A0 and V, the form at least
         #s1A0 is sigma_1(A0) etc.
         omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2+m3**2-self.masses('{pid2}')**2-2*self.masses('{pid0}')*energy)"
         Omegasqr=f"(self.masses('{pid0}')**2-self.masses('{pid1}')**2-q**2)"
@@ -350,6 +334,7 @@ class HeavyNeutralLepton(Utility):
         return(bra)
 
     #pid0 is tau, pid1 is produced lepton and pid2 is the neutrino
+    #3-body differential branching fraction dBr/(dE) for 3-body leptonic decay of tau lepton
     def get_3body_dbr_tau(self,pid0,pid1,pid2):
         if pid2=='16' or pid2=='-16':
             SecToGev=1./(6.582122*pow(10.,-25.))
@@ -366,8 +351,8 @@ class HeavyNeutralLepton(Utility):
         return(dbr)
     
     #############HNL decay channel branching ratios############
-
-    #for N->l_beta^+ l_beta^- nu_alpha 
+    #NOTE: the branching ratios for HNL given below are actually decay widths
+    #corresponds lepton pids to a greek index ranging from 1 to 3
     def analyze_pid1_pid3(self,pid1,pid3):
         if pid1 in ["11","-11"]:
             beta=1
@@ -382,6 +367,8 @@ class HeavyNeutralLepton(Utility):
         if pid3 in ["16","-16"]:
             alpha=3
         return(alpha,beta)
+
+    #for N->l_beta^+ l_beta^- nu_alpha decay width
     def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
         GF=1.166378*10**(-5)
         delta=lambda l1,l2: 1 if l1==l2 else 0
@@ -397,7 +384,7 @@ class HeavyNeutralLepton(Utility):
         br_lb_lb_nua=f"({GF}**2*mass**5/(192*np.pi**3))*{coupling}**2*(({C1}*(1-{delta(alpha,beta)})+{C3}*{delta(alpha,beta)})*((1-14*{xl}**2-2*{xl}**4-12*{xl}**6)*np.sqrt(1-4*{xl}**2)+12*{xl}**4*({xl}**4-1)*{L})+4*({C2}*(1-{delta(alpha,beta)})+{C4}*{delta(alpha,beta)})*({xl}**2*(2+10*{xl}**2-12*{xl}**4)*np.sqrt(1-4*{xl}**2)+6*{xl}**4*(1-2*{xl}**2+2*{xl}**4)*{L}))"
         return(br_lb_lb_nua)
 
-    #for N->l_beta^+ l_beta^- nu_alpha using daniels formula
+    #for N->l_beta^+ l_beta^- nu_alpha decay width
     lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
     I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
     I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
@@ -430,7 +417,7 @@ class HeavyNeutralLepton(Utility):
         return(br_lb_lb_nua)
     
 
-    #for N->U bar{D} l_alpha^-
+    #for N->U bar{D} l_alpha^- decay width (inclusive mode)
     I_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
     lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
     def calc_br_u_bd_l(self,pid1,pid2,pid3):
@@ -499,35 +486,20 @@ class HeavyNeutralLepton(Utility):
         f = open(filename, "w+")
         f.close()
         f = open(filename, "a")
-        #mass=1
-
-
-
-
         mass=start_mass
         delm=.01
         steps=int((end_mass-start_mass)/.01)+1
         for n in range(steps):
-            #f.write(f"{m}  {br}\n")
-            #print(eval(br))
             if mass>mass_produced:
                 f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br_had)]))
             else:
                 f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,0]))
 
             mass=chop(mass+delm)
-
-
-
-
-
-
         mass=end_mass
         delm=.01
         steps=int((10-end_mass)/.01)+1
         for n in range(steps):
-            #f.write(f"{m}  {br}\n")
-            #print(eval(br))
             if mass>mass_produced:
                 f.write(" {: <10} {: <10}\n".format(*['%.2f' % mass,eval(br)]))
             else:
@@ -536,7 +508,6 @@ class HeavyNeutralLepton(Utility):
             mass=chop(mass+delm)
         f.close()
         print('file created...')
-        #a=.0134155
 
     #this is for the decay N->nu_l1 l2 l2
     def write_m_brm_file(self,filename="model/pi_nu.txt"):
