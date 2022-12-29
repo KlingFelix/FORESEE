@@ -548,7 +548,53 @@ class HeavyNeutralLepton(Utility):
 
 
     def get_br_and_ctau(self,mpts,N):
-            coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
-            Decay = DecayModes(couplings = coupling)
-            Decay.gen_gamma_csv(mpts=mpts,N = N)
-            Decay.get_ctau()
+        
+        
+        
+        
+        
+        
+        coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
+        
+        Decay = DecayModes(couplings = coupling)
+        
+        Decay.gen_gamma_csv(mpts=mpts,N = N)
+        
+        Decay.get_ctau()
+        
+        Decay.get_BRs()
+        
+        
+    def set_brs(self):
+        
+        
+        
+        coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
+        
+        Decay = DecayModes(couplings = coupling)
+        
+        
+        modes = Decay.pids_all + Decay.pids_all_anti
+        
+        
+        finalstates = [list(i) for i in modes] 
+        
+        filenames = []
+        
+        for pid in modes:
+            
+            if len(pid)==2: 
+                pid1,pid2 = pid
+                
+                filename = f"Brs/{pid1}_{pid2}.csv"
+            elif len(pid)==3: 
+                pid1,pid2,pid3 = pid
+                
+                filename = f"Brs/{pid1}_{pid2}_{pid3}.csv"
+            filenames.append(filename)
+            
+        
+                
+        return modes,finalstates,filenames
+            
+        
