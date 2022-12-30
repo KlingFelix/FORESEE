@@ -77,28 +77,58 @@ def anti(pid):
 
 class DecayModes: 
     
-    def __init__(self,couplings,pids='all',majorana=True):
+    def __init__(self,couplings,pids='all',majorana=True,cutoff=Quark_level_cutoff):
         
         
         self.majorana = majorana
-        
+        self.cutoff = cutoff
         self.pids = pids
         
         self.couplings = couplings
         
         self.pids_dict = {
-            'lP': [(211,11),(211,13),(211,15),
-                   (321,11),(321,13),(321,15)],
-            'nuP': [(111,12),(111,14),(111,16),
-                    (221,12),(221,14),(221,16),
-                    (331,12),(331,14),(331,16),
-                    (311,12),(311,14),(311,16)],
+            'lP': [(211,11),(211,13),(211,15),  #pi+
+                   (321,11),(321,13),(321,15),  #K+
+                   (411,11),(411,13),(411,15),  #D+
+                   (431,11),(431,13),(431,15),  #Ds+
+                   (521,11),(521,13),(521,15),  #B+
+                   (541,11),(541,13),(541,15),  #Bc+
+                   
+                  ],      
             
-            'lV': [(213,11),(213,13),(213,15),
-                   (323,11),(323,13),(323,15)],
-            'nuV': [(113,12),(113,14),(113,16),
-                    (223,12),(223,14),(223,16),
-                    (313,12),(313,14),(313,16)],
+            
+            
+            
+            'nuP': [(111,12),(111,14),(111,16),     #pi0
+                    (221,12),(221,14),(221,16),     #eta
+                    (331,12),(331,14),(331,16),     #eta'
+                    #(441,12),(441,14),(441,16),     #etac
+                    (311,12),(311,14),(311,16),     #K0
+                    #(-311,12),(-311,14),(-311,16),  #K0bar
+                    (421,12),(421,14),(421,16),     #D0
+                    #(-421,12),(-421,14),(-421,16),     #D0bar
+                    (511,12),(511,14),(511,16),     #B0
+                    #(-511,12),(-511,14),(-511,16),     #B0bar
+                    (531,12),(531,14),(531,16),     #Bs0
+                    #(-531,12),(-531,14),(-531,16),     #Bs0bar
+                    
+                   ],  
+            
+            'lV': [(213,11),(213,13),(213,15),    #rho+
+                   (323,11),(323,13),(323,15),    #K*+
+                   (413,11),(413,13),(413,15),    #D*+
+                   (433,11),(433,13),(433,15),    #Ds*+
+                   (523,11),(523,13),(523,15),    #B*+
+                  ],
+            'nuV': [(113,12),(113,14),(113,16),   #rho0
+                    (223,12),(223,14),(223,16),   #omega
+                    (313,12),(313,14),(313,16),   #K*0
+                    #(-313,12),(-313,14),(-313,16),   #K*0bar
+                    (333,12),(333,14),(333,16),   #phi
+                    (443,12),(443,14),(443,16),   #J/Psi
+                    (423,12),(423,14),(423,16),   #D*0
+                    #(-423,12),(-423,14),(-423,16),   #D*0bar
+                    ],
             'llnu':[(11,11,12),(11,13,14),(11,15,16),
                     (13,11,12),(13,13,14),(13,15,16),
                     (15,11,12),(15,13,14),(15,15,16)],
@@ -144,13 +174,32 @@ class DecayModes:
         
         self.Gf = 1.166 * (10**-5)
         
-        self.f_dict = {411: 0.2226, 421: 0.2226, 431: 0.2801,   #Charmed Mesons
-                 311: 0.1598, 321: 0.1598,                      #Strange Mesons
-                 111: 0.130, 211: 0.130,                        #Pions
-                 521: 0.190, 541:.480,#Bottom Mesons
-                 221: 0.1647, 331:0.1529,
-                       
-                 213:0.220, 323:0.217, 113:0.220,223:0.195,313:0.217,
+        self.f_dict = {
+            111: 0.130,
+            113:0.220,
+            211: 0.130,
+            213:0.220,
+            221: 0.1647,
+            223:0.195,
+            311: 0.1598, 
+            313:0.217,
+            321: 0.1598, 
+            323:0.217, 
+            331:0.1529,
+            333:0.229,
+            411: 0.2226,
+            413:0.310,
+            421: 0.2226,
+            423:0.310,
+            431: 0.2801,  
+            433: 0.315,
+            441:0.335,
+            443:0.459,
+            511: 0.190,
+            521: 0.190,
+            523: 0.219,
+            531:0.216,
+            541:0.480,
                  }
         
         
@@ -158,8 +207,13 @@ class DecayModes:
         
         pid_P,pid_l = mode
         
-        V_dict = {211: self.Vckm['ud'],
-                  321: self.Vckm['us']
+        V_dict = {211: self.Vckm['ud'], #pi+
+                  321: self.Vckm['us'], #K+
+                  411: self.Vckm['cd'], #D+
+                  431: self.Vckm['cs'], #Ds+
+                  521: self.Vckm['ub'], #B+
+                  541: self.Vckm['cb'], #Bc+
+              
         }
         
         if pid_l == 11 or pid_l == -11: U = self.couplings[0]
@@ -236,7 +290,11 @@ class DecayModes:
             
             
         V_dict = {213: self.Vckm['ud'],
-                  323: self.Vckm['us']
+                  323: self.Vckm['us'],
+                  413: self.Vckm['cd'],
+                  433: self.Vckm['cs'],
+                  523: self.Vckm['ub'],
+                  
         }
             
         prefactor =   U**2*self.Gf**2 * m**3 * self.f_dict[abs(pid_V)]**2 * V_dict[abs(pid_V)]**2 / (16*np.pi) 
@@ -272,7 +330,10 @@ class DecayModes:
         
         sin2w = 0.23121
         
-        k_V = {113:sin2w/3,223:sin2w/3,313: (sin2w/3)-(1/4)}
+        k_V = {113: sin2w/3, 223: sin2w/3,
+               313: (sin2w/3)-(1/4), 333:(sin2w/3)-(1/4),
+               443: (1/4) - (2*sin2w/3), 423: (1/4) - (2*sin2w/3)
+              }
         
         
         prefactor = U**2*self.Gf**2 * m**3 * self.f_dict[abs(pid_V)]**2 * k_V[abs(pid_V)]**2 / (4*np.pi)
@@ -307,17 +368,12 @@ class DecayModes:
         
         ynu = 0
         
-        if cutoff == None:
-            if 1 >= yl1 + yl2:
-                return U**2*self.Gf**2 * m**5 * I1(yl1,ynu,yl2) *(1-delta(pid_l1,pid_l2)) / (192*np.pi**3)
-            else:
-                return 0   
-            
+        
+        if 1 >= yl1 + yl2:
+            return U**2*self.Gf**2 * m**5 * I1(yl1,ynu,yl2) *(1-delta(pid_l1,pid_l2)) / (192*np.pi**3)
         else:
-            if 1 >= yl1+yl2 and m<=cutoff:
-                return U**2*self.Gf**2 * m**5 * I1(yl1,ynu,yl2) *(1-delta(pid_l1,pid_l2)) / (192*np.pi**3)
-            else:
-                return 0  
+            return 0   
+            
         
         
         
@@ -360,17 +416,13 @@ class DecayModes:
     
         term2 = (glL**2 + glR**2 + delta(abs(pid_nu)-1,abs(pid_l2))*(1+2*glL))*I1(ynu,yl2,yl2)
         
-        if cutoff == None:
-            if 1 >= yl1 + yl2:
-                return prefactor*(term1 + term2)
-            else:
-                return 0   
-            
+      
+        if 1 >= yl1 + yl2:
+            return prefactor*(term1 + term2)
         else:
-            if 1 >= yl1+yl2 and m<=cutoff:
-                return prefactor*(term1 + term2)
-            else:
-                return 0  
+            return 0   
+            
+        
         
     def Gamma_3nu(self,m,mode,cutoff=None):
         pid_nu,_,_ = mode
@@ -381,16 +433,7 @@ class DecayModes:
         
         gamma = U**2*self.Gf**2 * m**5 / (192*np.pi**3)
         
-        if cutoff == None:
-            if 1 >= 0:
-                return gamma
-            
-            
-        else:
-            if 1 >= 0 and m<=cutoff:
-                return gamma
-            else:
-                return 0  
+        return gamma
         
         
         
@@ -416,7 +459,8 @@ class DecayModes:
         if cutoff == None:
             if 1 >= yu+yd+yl:
                 return U**2*self.Gf**2 * V**2 * m**5 * I1(yl,yu,yd) / (64 * np.pi**3)
-            
+            else:
+                return 0
             
         else:
             if 1 >= yu+yd+yl and m>=cutoff:
@@ -472,17 +516,27 @@ class DecayModes:
             if 1 >= yq+yq:
                 return prefactor*(term1 + term2)
             
-            
+            else:
+                return 0 
         else:
             if 1 >= yq+yq and m>=cutoff:
                 return prefactor*(term1 + term2)
             else:
                 return 0  
         
+    def wipe_decay_dir(self):
         
-        
+        direc = 'Decay Widths'
+        for f in os.listdir(direc):
+            os.remove(os.path.join(direc, f))
+       
+        direc = 'Brs'
+        for f in os.listdir(direc):
+            os.remove(os.path.join(direc, f))
+    
     def gen_gamma_csv(self,mpts,N,pids = 'all'):
         
+        self.wipe_decay_dir()
         if pids =='all': pids = self.pids_all 
             
         for mode in pids: 
@@ -501,7 +555,7 @@ class DecayModes:
             
             
             
-            gammapts = eval(f"[self.Gamma_{channel}(m,mode) for m in mpts]",{'self':self,'mode':mode,'couplings':self.couplings,'mpts':mpts},{})
+            gammapts = eval(f"[self.Gamma_{channel}(m,mode,cutoff={self.cutoff}) for m in mpts]",{'self':self,'mode':mode,'couplings':self.couplings,'mpts':mpts},{})
             
             df_data = {'m': mpts,'Gamma':gammapts}
 
@@ -525,36 +579,175 @@ class DecayModes:
                     df.to_csv(fr"Decay Widths/{pid1*-1}_{pid2*-1}_{pid3*-1}.csv",sep=' ',header=False,index=False)
 
     
-    
-   
+    def pid_data(self,pid):
         
-    def plotter(self,pids='all'):
+        if len(pid) == 2: 
+            pid1,pid2 = pid
+
+            data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}.csv",sep=' ',header=None)
+
+        elif len(pid) == 3: 
+            pid1,pid2,pid3 = pid
+            data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}_{pid3}.csv",sep=' ',header=None)
+
+
+        mpts = data[0]
+        gammapts = data[1]
+
+        return (mpts,gammapts)
+
+        
+    def plotter(self,pids='all',m5=False,br=False,file='plot.jpg',ylims=None):
+        pid_labels = {
+            #Leptons
+            11:  r"$e^-$",
+            12:  r"$\nu_e$",
+            13:  r"$\mu^-$",
+            14:  r"$\nu_\mu$",
+            15:  r"$\tau^-$",
+            16:  r"$\nu_\tau$",
+            'nu': r"$\nu$",
+            #Mesons
+            111: r"$\pi^0$",
+            113: r"$\rho^0$",
+            211: r"$\pi^0$",
+            213: r"$\rho^+$",
+            221: r"$\eta$",
+            223: r"$\omega$",
+            311: r"$K^0$",
+            313: r"$K^{*0}$",
+            321: r"$K^+$", 
+            323: r"$K^{*+}$",
+            331: r"$\eta '$",
+            333: r"$\phi$",
+            411: r"$D^+$",
+            413: r"$D^{*+}$",
+            421: r"$D^0$",
+            423: r"$D^{*0}$",
+            431: r"$D_s^+$",  
+            433: r"$D_s^{*+}$", 
+            441: r"$\eta_c$",
+            443: r"$J/\psi$",
+            511: r"$B^0$", 
+            521: r"$B^+$", 
+            523: r"$B^{*+}$",
+            531: r"$B_s^0$",
+            541: r"$B_c^+$",
+        }
+        
+        
+        
+        
+        
+        
+        
+        if br == True: 
+            GeVtoS = (6.58 * 10**-25)
+
+            
+            c = 299792458 #m/s
+            
+            
+            data = pd.read_csv(fr"ctau.txt",sep=' ',header=None)
+            
+            mpts = data[0]
+            
+            ctau = data[1]
+            
+        
         
         if pids =='all': pids = self.pids_all + self.pids_all_anti
         
         fig,ax = plt.subplots()
         
-        ax.set(xscale='log',yscale='log',xlabel=r'$m_N$ (GeV)', ylabel=r'$\Gamma \,/\,{U_{\alpha}}^2$ (GeV)', title = fr"$\Gamma\,(\,N \to \,\, l_\alpha^- \, P^+ )$")
-
-        
-        for pid in pids: 
+        if m5 == True: ylabel = r'$\Gamma/m_N^5$ (GeV)'
             
-            if len(pid) == 2: 
-                pid1,pid2 = pid
+        elif br== True: ylabel = 'Br'
+        else: ylabel = r'$\Gamma$ (GeV)'
+        
+        ax.set(xscale='log',yscale='log',xlabel=r'$m_N$ (GeV)', ylabel=ylabel)
+        
+        if ylims != None: 
+            ax.set_ylim(ylims[0],ylims[1])
+        
+        fig.set_size_inches(10, 10)
+        for obj in pids: 
+            
+            if type(obj) == tuple:
                 
-                data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}.csv",sep=' ',header=None)
-            
-            elif len(pid) == 3: 
-                pid1,pid2,pid3 = pid
-                data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}_{pid3}.csv",sep=' ',header=None)
-            
+                pid = obj
+
+                mpts, gammapts = self.pid_data(pid)
+                   
+                
+                if m5 == True:
+                    
+                    gammapts = [gammapts[i]/(mpts[i]**5) for i in range(len(gammapts))]
+                    
+                if br==True:
+                    
+                    gammapts = [gammapts[i]*ctau[i]/(c*GeVtoS) for i in range(len(gammapts))]
+                
+                if len(pid) == 2: label = fr"{pid_labels[pid[0]]} + {pid_labels[pid[1]]}"
+                elif len(pid) == 3: label = fr"{pid_labels[pid[0]]} + {pid_labels[pid[1]]}{pid_labels[pid[2]]}"
+                    
+                ax.plot(mpts,gammapts,label=label)
+                
+                
+            elif type(obj) == list:
+                
+                label = obj[0]
+                
+                obj.pop(0)
+                
+                
+                
+                
+                obj_gamma=[]
+                
+                for pid in obj: 
+                    
+                    mpts, gammapts = self.pid_data(pid)
+                    
+                    if m5 == True:
+                    
+                        gammapts = [gammapts[i]/(mpts[i]**5) for i in range(len(gammapts))]
+                    
+                    if br==True:
+                    
+                        gammapts = [gammapts[i]*ctau[i]/(c*GeVtoS) for i in range(len(gammapts))]
+                    
+                    
+                    obj_gamma.append(gammapts)
+                    
+                gamma_total = []
+                
+                for i in range(len(obj_gamma[0])):
+                    
+                    gamma_total_m = 0 
+                    
+                    for mode in obj_gamma:
+                        
+                        gamma_total_m += mode[i]
+                 
+                    gamma_total.append(gamma_total_m)
+                ax.plot(mpts,gamma_total,label=fr"{label}")
+                
+                
+                
+                
+                
         
-            mpts = data[0]
-            gammapts = data[1]
-            
-            ax.plot(mpts,gammapts,label=fr"{pid}")
-            
         ax.legend()
+        
+    
+        fig.savefig(file,dpi=400)
+        
+        
+        
+        
+        
+        
         
     def get_ctau(self,pids='all'):
         
@@ -604,4 +797,57 @@ class DecayModes:
         df.to_csv(fr"ctau.txt",sep=' ',header=False,index=False)
         
    
+    def get_BRs(self):
         
+        GeVtoS = (6.58 * 10**-25)
+
+        c = 299792458 #m/s
+        
+        pids = self.pids_all + self.pids_all_anti
+        
+        
+        ctau_data = pd.read_csv(fr"ctau.txt",sep=' ',header = None)
+        
+        tau = [ctau_m /(c*GeVtoS) for ctau_m in ctau_data[1]]
+        
+        for pid in pids: 
+            
+            if len(pid) == 2: 
+                pid1,pid2 = pid
+                
+                data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}.csv",sep=' ',header=None)
+                
+                gammapts = list(data[1])
+                
+                mpts = list(data[0])
+                
+                br = [gammapts[i]*tau[i] for i in range(len(gammapts))] 
+            
+                df_data = {'m': mpts,'Br':br}
+
+
+                df=pd.DataFrame(df_data)
+
+                df.to_csv(fr"Brs/{pid1}_{pid2}.csv",sep=' ',header=False,index=False)
+                
+                
+            elif len(pid) == 3: 
+                pid1,pid2,pid3 = pid
+                data = pd.read_csv(fr"Decay Widths/{pid1}_{pid2}_{pid3}.csv",sep=' ',header=None)
+                gammapts = list(data[1])
+                mpts = list(data[0])
+                
+                br = [gammapts[i]*tau[i] for i in range(len(gammapts))] 
+            
+                df_data = {'m': mpts,'Br':br}
+
+
+                df=pd.DataFrame(df_data)
+
+                df.to_csv(fr"Brs/{pid1}_{pid2}_{pid3}.csv",sep=' ',header=False,index=False)
+                
+                
+            
+            
+            
+            
