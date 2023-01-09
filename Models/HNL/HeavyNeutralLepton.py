@@ -456,6 +456,11 @@ class HeavyNeutralLepton(Utility):
         return(br_q_bq_nu)
     ################################################################################################
 
+    #input path to given folder and it removes all files in that folder
+    def remove_files_from_folder(self,path):
+        files = glob.glob(path)
+        for f in files:
+            os.remove(f)
 
     ########################writing files for HNL decays ################################################
     #this portion will take a branching fraction and write to a file in the form m br

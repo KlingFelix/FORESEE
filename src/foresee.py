@@ -828,7 +828,12 @@ class Foresee(Utility):
                 weights_lab_all.append(w)
 
         #return
-        if do_plot: return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
+        if do_plot: 
+            if len(weights_lab_all)==0:
+                print('No HNLs produced! Either add more productions or change the desired mass to obtain the spectrum. ')
+                pass
+            if len(weights_lab_all)!=0:
+                return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
 
 
     ###############################
@@ -1067,6 +1072,7 @@ class Foresee(Utility):
 
         # unweight sample
         unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
+        print(unweighted_raw_data)
         eventweight = sum(weights[0])/float(numberevent)
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
@@ -1163,7 +1169,7 @@ class Foresee(Utility):
         for bound in bounds2:
             filename, label, posx, posy, rotation = bound
             data=self.readfile(self.model.modelpath+"model/lines/"+filename)
-            ax.fill(data.T[0], data.T[1], color="#efefef",zorder=zorder)
+            ax.fill_between(data.T[0], data.T[1], np.max(data.T[1]), color="#efefef", alpha=.5)
             ax.plot(data.T[0], data.T[1], color="darkgray"  ,zorder=zorder,lw=1)
             zorder+=1
 
@@ -1178,7 +1184,7 @@ class Foresee(Utility):
         for bound in bounds:
             filename, label, posx, posy, rotation = bound
             data=self.readfile(self.model.modelpath+"model/lines/"+filename)
-            ax.fill(data.T[0], data.T[1], color="gainsboro",zorder=zorder)
+            ax.fill_between(data.T[0], data.T[1], np.max(data.T[1]), color="gainsboro", alpha=.5)
             ax.plot(data.T[0], data.T[1], color="dimgray"  ,zorder=zorder,lw=1)
             zorder+=1
 
@@ -1338,56 +1344,6 @@ class Foresee(Utility):
                             _, weights_llp = self.decay_in_restframe_3body_EN(br, coupling, m0, m1, m2, m3, nsample=nsample)
                         xvals.append(mass)
                         yvals.append(sum(weights_llp))
-            ###added temporarily by alec to compare productions with daniel###
-            #2 body comparisons
-            src_path="/Users/alechewitt/Desktop/Git_felix_2/FORESEE"
-            '''if model.production[key][0]=="2body" and abs(int(pid0))=="15":
-                pid0, pid1 =  model.production[key][1], model.production[key][2]
-                df = pd.DataFrame(columns=['mass', 'Br'])
-                df['mass']=xvals
-                df['Br']=yvals
-                df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_tau_{pid0}_{pid1}.txt", header=None, index=None, sep='\t')'''
-            if model.production[key][0]=="2body":
-                pid0, pid1 =  model.production[key][1], model.production[key][2]
-                if str(abs(int(pid0)))!="15":
-                    df = pd.DataFrame(columns=['mass', 'Br'])
-                    #print(xvals)
-                    df['mass']=xvals
-                    df['Br']=yvals
-                    if int(pid0)>0:
-                        pid1_temp=str(-abs(int(pid1)))
-                    else:
-                        pid1_temp=pid1
-                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_lep_{pid0}_{pid1_temp}.txt", header=None, index=None, sep='\t')
-                if str(abs(int(pid0)))=="15":
-                    #pid0, pid1 =  model.production[key][1], model.production[key][2]
-                    df = pd.DataFrame(columns=['mass', 'Br'])
-                    df['mass']=xvals
-                    df['Br']=yvals
-                    if int(pid0)>0:
-                        pid1_temp=str(-abs(int(pid1)))
-                    if int(pid0)<0:
-                        pid1_temp=pid1
-                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/2body_tau_{pid0}_{pid1_temp}.txt", header=None, index=None, sep='\t')
-
-            #3 body comparisons
-            if model.production[key][0]=="3body":
-                pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
-
-                if str(abs(int(pid0)))=="15":
-                    df = pd.DataFrame(columns=['mass', 'Br'])
-                    df['mass']=xvals
-                    df['Br']=yvals
-                    #3body_tau includes both of the br ratios from tau
-                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/3body_tau_{pid0}_{pid1}_{pid2}.txt", header=None, index=None, sep='\t')
-                if str(abs(int(pid0)))!="15":
-                    #pid0, pid1, pid2 =  model.production[key][1], model.production[key][2], model.production[key][3]
-                    df = pd.DataFrame(columns=['mass', 'Br'])
-                    df['mass']=xvals
-                    df['Br']=yvals
-                    #H includes both vectors and pseudoscalars
-                    df.to_csv(f"{src_path}/Models/HNL/model/br_comp/3body_H_{pid0}_{pid1}_{pid2}.txt", header=None, index=None, sep='\t')
-            ##########
             # add to plot
             if len(xvals)>0: ax.plot(xvals, yvals, color=color, label=label)
 
