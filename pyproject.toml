@@ -1,0 +1,54 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-vcs",
+  "hatchling",
+]
+
+
+
+[project]
+name = "foresee-hep"
+version = "0.1.1"
+authors = [
+  { name="Felix Kling", email="felix.kling@desy.de" },
+  { name="Sebastian Trojanowski", email="sebastian.trojanowski@ncbj.gov.pl" },
+]
+description = "FORward Experiment SEnsitivity Estimator"
+readme = "README.md"
+requires-python = ">=3.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy>=1.13.3",
+  "matplotlib>=2.0.0",
+  "scipy>=1.0.0",
+  "scikit-hep>=3.1.0",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/KlingFelix/FORESEE"
+Documentation = "https://arxiv.org/abs/2105.07077"
+
+
+[tool.black]
+include = '(\.py$|\.ipynb$)'
+exclude = '''
+(
+  \.git
+  | \.npy
+  | \.pyc
+  | \.ipynb_checkpoints
+  | \.gitignore
+  | \.DS_Store
+  | LLP_spectra
+  | results
+  | events
+  | dist
+)
+'''
+
