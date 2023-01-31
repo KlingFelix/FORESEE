@@ -1,8 +1,8 @@
 #foresee output
 *.hepmc
-*model/events
-*model/results
-*model/LLP_spectra
+*/model/events
+*/model/results
+*/model/LLP_spectra
 
 #old files
 oldfiles/
