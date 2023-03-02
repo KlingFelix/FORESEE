@@ -3,7 +3,7 @@
 **By Felix Kling and Sebastian Trojanowski**
 
 [![arXiv](http://img.shields.io/badge/arXiv-2105.07077-B31B1B.svg)](https://arxiv.org/abs/2105.07077)
-[![license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/madminer-tool/madminer/blob/main/LICENSE.md)
+[![license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/KlingFelix/FORESEE/blob/main/LICENSE.md)
 
 ## Introduction
 
