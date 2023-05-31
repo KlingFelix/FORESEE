@@ -352,7 +352,7 @@ class Foresee(Utility):
         return particles,weights
     
     # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-6, 0, 120],[ 0, 5, 100]], vmin=None, vmax=None):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
 
         #get data
         tmin, tmax, tnum = prange[0]
