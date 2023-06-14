@@ -1152,6 +1152,9 @@ class Foresee(Utility):
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
 
+        # print warning
+        print ("Warning: This function will soon be depreciated and be replaced by foresee.plot_production_new().")
+        
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
@@ -1184,6 +1187,103 @@ class Foresee(Utility):
 
             # add to plot
             ax.plot(xvals, yvals, color=color, label=label)
+
+        # finalize
+        ax.set_title(title)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(xlims[0],xlims[1])
+        ax.set_ylim(ylims[0],ylims[1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label, ncol=ncol)
+
+        # return
+        return plt
+
+
+    def plot_production_new(self,
+        masses, productions, condition="True", energy="14",
+        xlims=[0.01,1],ylims=[10**-6,10**-3],
+        xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+    ):
+
+        # initiate figure
+        matplotlib.rcParams.update({'font.size': 15})
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # loop over production channels
+        dirname = self.model.modelpath+"model/LLP_spectra/"
+        for production in productions:
+            
+            # get arguments
+            channels = production['channels']
+            if 'massrange' in production.keys(): massrange = production['massrange']
+            else: massrange=xlims
+            if 'color' in production.keys(): color = production['color']
+            else: color=None
+            if 'ls' in production.keys(): ls = production['ls']
+            else: ls=None
+            if 'label' in production.keys(): label = production['label']
+            else: label=None
+            if 'uncertainty' in production.keys(): uncertainty = production['uncertainty']
+            else: uncertainty=None
+            
+            # loop over masses
+            xvals, yvals = [], []
+            
+            # loop over channels
+            if isinstance(channels, (list, tuple, np.ndarray))== False: channels=[channels]
+            for mass in masses:
+                if mass<massrange[0]: continue
+                if mass>massrange[1]: continue
+                total = 0
+                for channel in channels:
+                    filename = dirname+energy+"TeV_"+channel+"_m_"+str(mass)+".npy"
+                    try:
+                        data = np.load(filename)
+                        for logth, logp, w in data.T:
+                            if eval(condition): total+=w
+                    except:
+                        continue
+                if total>0:
+                    xvals.append(mass)
+                    yvals.append(total+1e-10)
+                
+            # add to plot
+            ax.plot(xvals, yvals, color=color, label=label, ls=ls)
+                    
+            # add range
+            if uncertainty is not None:
+                # get input
+                xvals_configurations, yvals_configurations = [], []
+                for iconfiguration, configurations in enumerate(uncertainty):
+                    yvals_configuration = []
+                    if isinstance(configurations, (list, tuple, np.ndarray))== False: configurations=[configurations]
+                    for mass in masses:
+                        if mass<massrange[0]: continue
+                        if mass>massrange[1]: continue
+                        total = 0
+                        for configuration in configurations:
+                            filename = dirname+energy+"TeV_"+configuration+"_m_"+str(mass)+".npy"
+                            try:
+                                data = np.load(filename)
+                                for logth, logp, w in data.T:
+                                    if eval(condition): total+=w
+                            except:
+                                continue
+                        if iconfiguration==0: xvals_configurations.append(mass)
+                        yvals_configuration.append(total+1e-10)
+                    yvals_configurations.append(yvals_configuration)
+                
+                # get range
+                yvals_configurations = np.array(yvals_configurations)
+                yvals_min = [min(row) for row in yvals_configurations.T]
+                yvals_max = [max(row) for row in yvals_configurations.T]
+                
+                # add to plot
+                ax.fill_between(xvals_configurations, yvals_min, yvals_max, color=color, alpha=0.2)
 
         # finalize
         ax.set_title(title)
