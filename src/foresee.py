@@ -166,7 +166,6 @@ class Model(Utility):
         except:
             nx = len(np.unique(data[0]))
             ny = int(len(data[0])/nx)
-            print (nx, ny)
             self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
             
     def get_ctau(self,mass,coupling):
@@ -241,11 +240,11 @@ class Model(Utility):
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         if self.production[key][0] == "2body":
-            scaling = self.production[key][8]
+            scaling = self.production[key][9]
             if scaling == "manual": return eval(self.production[key][3], {"coupling":coupling})/eval(self.production[key][3], {"coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "3body":
-            scaling = self.production[key][9]
+            scaling = self.production[key][10]
             if scaling == "manual": return eval(self.production[key][4], {"coupling":coupling})/eval(self.production[key][4], {"coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key][0] == "mixing":
@@ -636,7 +635,6 @@ class Foresee(Utility):
                 momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
                 
                 # boost
-                print (len(momenta_llp), len(momenta_mother))
                 arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
                 arr_momenta_llp = np.array(momenta_llp)
                 momenta_lab_add = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
