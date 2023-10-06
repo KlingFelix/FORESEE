@@ -4,7 +4,6 @@ import os
 from matplotlib import pyplot as plt
 import math
 import random
-import time
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
@@ -613,7 +612,7 @@ class Foresee(Utility):
     def coord(self,mom):
         return np.array( [[np.arctan(mom.pt/mom.pz), mom.p]] )
 
-    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True, print_time=False ):
+    def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
 
         # prepare output
         model = self.model
@@ -639,39 +638,30 @@ class Foresee(Utility):
                 pid0, pid1, br, generator =  model.production[key][1], model.production[key][2], model.production[key][3], model.production[key][4],
                 energy, nsample_had, nsample = model.production[key][5], model.production[key][6], model.production[key][7]
                 massrange, preselectioncut = model.production[key][8], model.production[key][10]
-                if print_time: print ( nsample,": {") ### TIME
                                      
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
                 if self.masses(pid0) <= self.masses(pid1, mass) + mass: continue
 
                 # load mother particle spectrum
-                time0 = time.time() ### TIME
                 filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
-                if print_time: print ("  'load_mother':", time.time()-time0,",") ### TIME
                 
                 # get sample of LLP momenta in the mother's rest frame
-                time0 = time.time() ### TIME
                 m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
                 momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
-                if print_time: print ("  'get_LLPs':", time.time()-time0,",") ### TIME
                  
                 # boost
-                time0 = time.time() ### TIME
                 arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
                 arr_momenta_llp = np.array(momenta_llp)
                 momenta_lab_add = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
                 momenta_lab = np.concatenate((momenta_lab, momenta_lab_add), axis=0)
-                if print_time: print ("  'boost':", time.time()-time0,",") ### TIME
                 
                 # weights
-                time0 = time.time() ### TIME
                 w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
                 weights_llp = np.array(weights_llp)
                 weights_lab_add = (weights_llp * w_decays[:, np.newaxis]).flatten()
                 weights_lab = np.concatenate((weights_lab, weights_lab_add), axis=0)
-                if print_time: print ("  'weights':", time.time()-time0,",") ### TIME
                  
             # 3 body decays
             if model.production[key][0]=="3body":
@@ -750,15 +740,11 @@ class Foresee(Utility):
 
             #return statistcs
             if save_file==True:
-                time0 = time.time() ### TIME
                 filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
                 self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
-                if print_time: print ("  'save_file':", time.time()-time0,",") ### TIME
             if do_plot:
-                time0 = time.time() ### TIME
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
                 weights_lab_all = np.concatenate((weights_lab_all, np.array(weights_lab)), axis=0)
-                if print_time: print ("  'prepare_plot':", time.time()-time0, "},") ### TIME
         #return
         if do_plot:
             return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
