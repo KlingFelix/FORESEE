@@ -617,7 +617,7 @@ class Foresee(Utility):
         # prepare output
         model = self.model
         if channels is None: channels = [key for key in model.production.keys()]
-        momenta_lab_all, weights_lab_all = np.array([[0,0]]), [0 ]
+        momenta_lab_all, weights_lab_all = np.array([[0.1,0.1]]), [0 ]
         dirname = self.model.modelpath+"model/LLP_spectra/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
@@ -629,7 +629,7 @@ class Foresee(Utility):
 
             # summary statistics
             weight_sum, weight_sum_f=0,0
-            momenta_lab, weights_lab = np.array([[0,0]]), [0 ]
+            momenta_lab, weights_lab = np.array([[0.1,0.1]]), [0 ]
             
             # 2 body decays
             if model.production[key][0]=="2body":
