@@ -313,21 +313,29 @@ class Foresee(Utility):
         #return results
         return list_wx
 
+    # fuunction to read file and return momenta, weights
+    def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
+        
+        if type(filenames) == str: filenames=[filenames]
+        list_xs = []
+        for filename in filenames:
+            if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
+            elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
+            else: print ("ERROR: cannot rtead file type")
+            if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
+            list_xs.append(weights)
+        return list_logth, list_logp, np.array(list_xs).T
+
     # function that converts input file into meson spectrum
     def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
-        if filetype=="txt":
-            list_logth, list_logp, list_xs = self.readfile(filename).T
-        elif filetype=="npy":
-            list_logth, list_logp, list_xs = np.load(filename)
-        else:
-            print ("ERROR: cannot rtead file type")
-        if extend_to_low_pt_scale is not None:
-            list_xs = self.extend_to_low_pt(list_logth, list_logp, list_xs, ptmatch=extend_to_low_pt_scale)
-
+        
+        #read file
+        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
+        
         particles, weights = [], []
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
 
-            if nocuts==False and xs < 10.**-6: continue
+            if nocuts==False and max(xs) < 10.**-6: continue
             p  = 10.**logp
             th = 10.**logth
             pt = p * np.sin(th)
@@ -351,9 +359,9 @@ class Foresee(Utility):
                 part=LorentzVector(px,py,pz,en)
 
                 particles.append(part)
-                weights.append(xs/float(nsample))
+                weights.append([w/float(nsample) for w in xs])
 
-        return particles,weights
+        return particles, np.array(weights)
     
     # get_hist_list
     def get_hist_list(self, tx, px, weights, prange):
@@ -443,8 +451,8 @@ class Foresee(Utility):
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
-        p,w = self.convert_list_to_momenta(filename,mass=self.masses(pid))
-        plt,_,_,_ =self.convert_to_hist_list(p,w, do_plot=True, prange=prange)
+        p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
+        plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
         return plt
 
     ###############################
@@ -635,7 +643,7 @@ class Foresee(Utility):
                 pid1 = model.production[key]["pid1"]
                 pid2 = model.production[key]["pid2"]
                 br = model.production[key]["br"]
-                generator = model.production[key]["generator"][0]
+                generator = model.production[key]["generator"]
                 energy = model.production[key]["energy"]
                 nsample_had = model.production[key]["nsample_had"]
                 nsample = model.production[key]["nsample"]
@@ -649,7 +657,7 @@ class Foresee(Utility):
                 elif (model.production[key]["type"]=="3body") and (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): continue
 
                 # load mother particle spectrum
-                filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
                 
                 # get sample of LLP momenta in the mother's rest frame
@@ -668,7 +676,10 @@ class Foresee(Utility):
                 # weights
                 w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
                 weights_llp = np.array(weights_llp)
-                weights_lab = (weights_llp * w_decays[:, np.newaxis]).flatten()
+                weights_lab = (weights_llp * w_decays[:, :, np.newaxis])
+                weights_lab = weights_lab.reshape(-1, weights_lab.shape[-2])
+
+                #weights_lab = (weights_llp * w_decays[:, np.newaxis]).flatten()
                  
             # mixing with SM particles
             if model.production[key]["type"]=="mixing":
@@ -676,7 +687,7 @@ class Foresee(Utility):
                 # load details of production channel
                 pid0 = model.production[key]["pid0"]
                 mixing = model.production[key]["mixing"]
-                generator = model.production[key]["generator"][0]
+                generator = model.production[key]["generator"]
                 energy = model.production[key]["energy"]
                 massrange = model.production[key]["massrange"]
                 
@@ -685,7 +696,7 @@ class Foresee(Utility):
                     if mass<massrange[0] or mass>massrange[1]: continue
                     
                 # load mother particle spectrum
-                filename = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"+generator+"_"+energy+"TeV_"+pid0+".txt"
+                filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
                 
                 # momenta
@@ -702,7 +713,7 @@ class Foresee(Utility):
                 label = key
                 energy = model.production[key]["energy"]
                 coupling_ref =  model.production[key]["coupling_ref"]
-                condition =  model.production[key]["condition"][0]
+                condition =  model.production[key]["condition"]
                 masses =  model.production[key]["masses"]
                 
                 #determined mass benchmark below / above mass
@@ -726,17 +737,20 @@ class Foresee(Utility):
                 momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
                 
                 # weights
-                factors = np.array([0 if (condition is not None) and (eval(condition)==0) else 1 if condition is None else eval(condition) for p in momenta_llp0])
+                factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
                 weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
                 weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
                 
             #return statistcs
             if save_file==True:
-                filenamesave = dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
-                self.convert_to_hist_list(momenta_lab, weights_lab, do_plot=False, filename=filenamesave)
+                if model.production[key]["type"]=="direct": productions = model.production[key]["condition"]
+                else: productions = model.production[key]["generator"]
+                for iproduction, production in enumerate(productions):
+                    filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
+                    self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
             if do_plot:
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
-                weights_lab_all = np.concatenate((weights_lab_all, weights_lab), axis=0)
+                weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
         #return
         if do_plot:
             return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
