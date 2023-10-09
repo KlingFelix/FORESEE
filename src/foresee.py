@@ -4,6 +4,7 @@ import os
 from matplotlib import pyplot as plt
 import math
 import random
+import time
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
@@ -226,21 +227,21 @@ class Model(Utility):
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
-        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "generator": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
+        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
-        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "generator": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
+        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
         if type(generator)==str: generator=[generator]
-        self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "generator": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
+        self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
         if type(condition)==str: condition=[condition]
-        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "condition": condition}
+        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         scaling = self.production[key]["scaling"]
@@ -643,7 +644,7 @@ class Foresee(Utility):
                 pid1 = model.production[key]["pid1"]
                 pid2 = model.production[key]["pid2"]
                 br = model.production[key]["br"]
-                generator = model.production[key]["generator"]
+                generator = model.production[key]["production"]
                 energy = model.production[key]["energy"]
                 nsample_had = model.production[key]["nsample_had"]
                 nsample = model.production[key]["nsample"]
@@ -677,9 +678,14 @@ class Foresee(Utility):
                 w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
                 weights_llp = np.array(weights_llp)
                 weights_lab = (weights_llp * w_decays[:, :, np.newaxis])
-                weights_lab = weights_lab.reshape(-1, weights_lab.shape[-2])
-
-                #weights_lab = (weights_llp * w_decays[:, np.newaxis]).flatten()
+                weights_lab = np.concatenate([w.T for w in weights_lab])
+                
+                # previous code does the same as below, but is 100 times faster
+                #weights_lab=[]
+                #for w_decay in w_decays:
+                #    for weight_llp in weights_llp:
+                #        weights_lab.append(weight_llp*w_decay)
+                #weights_lab=np.array(weights_lab)
                  
             # mixing with SM particles
             if model.production[key]["type"]=="mixing":
@@ -687,7 +693,7 @@ class Foresee(Utility):
                 # load details of production channel
                 pid0 = model.production[key]["pid0"]
                 mixing = model.production[key]["mixing"]
-                generator = model.production[key]["generator"]
+                generator = model.production[key]["production"]
                 energy = model.production[key]["energy"]
                 massrange = model.production[key]["massrange"]
                 
@@ -713,7 +719,7 @@ class Foresee(Utility):
                 label = key
                 energy = model.production[key]["energy"]
                 coupling_ref =  model.production[key]["coupling_ref"]
-                condition =  model.production[key]["condition"]
+                condition =  model.production[key]["production"]
                 masses =  model.production[key]["masses"]
                 
                 #determined mass benchmark below / above mass
@@ -743,9 +749,7 @@ class Foresee(Utility):
                 
             #return statistcs
             if save_file==True:
-                if model.production[key]["type"]=="direct": productions = model.production[key]["condition"]
-                else: productions = model.production[key]["generator"]
-                for iproduction, production in enumerate(productions):
+                for iproduction, production in enumerate(model.production[key]["production"]):
                     filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
             if do_plot:
@@ -789,19 +793,23 @@ class Foresee(Utility):
         else:return False
 
     def get_events(self, mass, energy,
-            modes=None,
+            modes = None,
             couplings = np.logspace(-8,-3,51),
-            nsample=1,
-            preselectioncuts="th<0.01",
-            coup_ref=1,
-            extend_to_low_pt_scales={},
+            nsample = 1,
+            preselectioncuts = "th<0.01",
+            coup_ref = 1,
+            extend_to_low_pt_scales = {},
         ):
 
         # setup different couplings to scan over
         model = self.model
-        if modes is None: modes = [key for key in model.production.keys()]
+        if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
         for key in model.production.keys():
             if key not in extend_to_low_pt_scales: extend_to_low_pt_scales[key] = None
+        nprods = max([len(modes[key]) for key in modes.keys()])
+        for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
+            
+        #setup ctau and other arrays
         ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
         for coupling in couplings:
             ctau = model.get_ctau(mass, coupling)
@@ -816,10 +824,11 @@ class Foresee(Utility):
             stat_w.append([])
 
         # loop over production modes
-        for key in modes:
+        for key in modes.keys():
 
+            productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
                                 
             # try Load Flux file
             try:
@@ -849,19 +858,25 @@ class Foresee(Utility):
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
-        return couplings, ctaus, nsignals, stat_p, stat_w
+        return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
 
     def get_events_interaction(self, mass, energy,
-            modes=None,
+            modes = None,
             couplings = np.logspace(-8,-3,51),
-            nsample=1,
-            preselectioncuts="th<0.01 and p>100",
-            coup_ref=1,
+            nsample = 1,
+            preselectioncuts = "th<0.01 and p>100",
+            coup_ref = 1,
         ):
 
         # setup different couplings to scan over
         model = self.model
-        if modes is None: modes = [key for key in model.production.keys()]
+        if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
+        for key in model.production.keys():
+            if key not in extend_to_low_pt_scales: extend_to_low_pt_scales[key] = None
+        nprods = max([len(modes[key]) for key in modes.keys()])
+        for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
+        
+        # setup different couplings to scan over
         nsignals, stat_p, stat_w = [], [], []
         for coupling in couplings:
             nsignals.append(0.)
@@ -869,11 +884,12 @@ class Foresee(Utility):
             stat_w.append([])
 
         # loop over production modes
-        for key in modes:
+        GeV2_in_invmeter2 = (5e15)**2
+        for key in modes.keys():
 
-            GeV2_in_invmeter2 = (5e15)**2
+            productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
+            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
 
             # try Load Flux file
             try:
@@ -902,7 +918,7 @@ class Foresee(Utility):
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_int)
 
-        return couplings, nsignals, stat_p, stat_w
+        return couplings, np.array(nsignals), stat_p, np.array(stat_w)
 
     ###############################
     #  Export Results as HEPMC File
@@ -926,7 +942,7 @@ class Foresee(Utility):
             momenta = [p1,p2]
         return pids, momenta
     
-    def write_hepmc_file(self, data, filename):
+    def write_hepmc_file(self, data, filename, weightnames):
         
         # open file
         f= open(filename,"w")
@@ -934,16 +950,16 @@ class Foresee(Utility):
         f.write("HepMC::IO_GenEvent-START_EVENT_LISTING\n")
         
         # loop over events
-        for ievent, (weight, position, momentum, pids, finalstate) in enumerate(data):
+        for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
             # Event Info
-            # int: event number / int: number of multi paricle interactions [-1] / double: event scale [-1.] / double: alpha QCD [-1.] / double: alpha QED [-1.] / int: signal process id [0] / int: barcode for signal process vertex [-1] / int: number of vertices in this event [1] /  int: barcode for beam particle 1 [1] / int: barcode for beam particle 2 [0] /  int: number of entries in random state list (may be zero) [0] / long: optional list of random state integers [-] /  int: number of entries in weight list (may be zero) [0] / double: optional list of weights [-]
-            f.write("E "+str(ievent)+" -1 -1. -1. -1. 0 -1 1 1 0 0 0\n")
+            # int: event number / int: number of multi particle interactions [-1] / double: event scale [-1.] / double: alpha QCD [-1.] / double: alpha QED [-1.] / int: signal process id [0] / int: barcode for signal process vertex [-1] / int: number of vertices in this event [1] /  int: barcode for beam particle 1 [1] / int: barcode for beam particle 2 [0] /  int: number of entries in random state list (may be zero) [0] / long: optional list of random state integers [-] /  int: number of entries in weight list (may be zero) [0] / double: optional list of weights [-]
+            f.write("E "+str(ievent)+" -1 -1. -1. -1. 0 -1 1 1 0 0 " +str(len(weightnames))+ " "+" ".join([str(w) for w in weights])+"\n")
             # int: number of entries in weight name list [0] /  std::string: list of weight names enclosed in quotes
-            #f.write("N 1 \"Weight\" \n")
+            f.write("N "+str(len(weightnames))+" "+" ".join(["\""+name+"\"" for name in weightnames]) + "\n")
             # std::string: momentum units (MEV or GEV) [GeV] /  std::string: length units (MM or CM) [MM]
             f.write("U GEV MM\n")
             # double: cross section in pb /  double: error associated with this cross section in pb [0.]
-            f.write("C "+str(weight)+" 0.\n")
+            f.write("C "+str(weights[0])+" 0.\n")
             # PDF info - doesn't apply here
             f.write("F 0 0 0 0 0 0 0 0 0\n")
                 
@@ -988,7 +1004,7 @@ class Foresee(Utility):
         f.write("particle_id,particle_type,process,vx,vy,vz,vt,px,py,pz,m,q\n")
         
         # loop over events
-        for ievent, (weight, position, momentum, pids, finalstate) in enumerate(data):
+        for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
             
             #vertex
             vx, vy = round(position.x*1000,10), round(position.y*1000,10)
@@ -1016,21 +1032,29 @@ class Foresee(Utility):
         f.close()
         
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc", preselectioncuts="th<0.01"):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
         
         #set random seed
         random.seed(seed)
         
+        #initialize weightnames if not defined
+        model = self.model
+        if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
+        nprods = max([len(modes[key]) for key in modes.keys()])
+        for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
+        if weightnames is None: weightnames = modes[list(modes.keys())[0]]
+        
         # get weighted sample of LLPs
         _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales, preselectioncuts=preselectioncuts)
+        baseweights = weights[0].T[0]
         
         # unweight sample
-        unweighted_raw_data = random.choices(weighted_raw_data[0], weights=weights[0], k=numberevent)
-        eventweight = sum(weights[0])/float(numberevent)
+        weighted_combined_data = [[p,w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
+        unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
+        eventweight = sum(baseweights)/float(numberevent)
         if decaychannels is not None:
             factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
             eventweight = eventweight * factor
-            # print (factor)
         
         # setup decay channels
         decaymodes = self.model.br_functions.keys()
@@ -1043,7 +1067,7 @@ class Foresee(Utility):
         
         # get LLP momenta and decay location
         unweighted_data = []
-        for momentum in unweighted_raw_data:
+        for momentum, weight in unweighted_raw_data:
             # determine choice of final state
             while True:
                 pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
@@ -1059,7 +1083,7 @@ class Foresee(Utility):
             # decay
             pids, finalstate = self.decay_llp(momentum, pids)
             # save
-            unweighted_data.append([eventweight, position, momentum, pids, finalstate])
+            unweighted_data.append([eventweight*weight, position, momentum, pids, finalstate])
         
         # prepare output filename
         dirname = self.model.modelpath+"model/events/"
@@ -1068,7 +1092,7 @@ class Foresee(Utility):
         else: filename = self.model.modelpath + filename
           
         # write to file file
-        if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data)
+        if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data, weightnames=weightnames)
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
         #return
