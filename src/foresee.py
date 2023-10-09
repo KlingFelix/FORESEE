@@ -225,17 +225,21 @@ class Model(Utility):
 
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
+        if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "generator": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
+        if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "generator": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
+        if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "generator": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
+        if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "condition": condition}
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
@@ -606,7 +610,7 @@ class Foresee(Utility):
         return out
         
     def coord(self,mom):
-        return np.array( [[np.arctan(mom.pt/mom.pz), mom.p]] )
+        return np.array( [np.arctan(mom.pt/mom.pz), mom.p] )
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
 
@@ -631,7 +635,7 @@ class Foresee(Utility):
                 pid1 = model.production[key]["pid1"]
                 pid2 = model.production[key]["pid2"]
                 br = model.production[key]["br"]
-                generator = model.production[key]["generator"]
+                generator = model.production[key]["generator"][0]
                 energy = model.production[key]["energy"]
                 nsample_had = model.production[key]["nsample_had"]
                 nsample = model.production[key]["nsample"]
@@ -660,21 +664,19 @@ class Foresee(Utility):
                 arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
                 arr_momenta_llp = np.array(momenta_llp)
                 momenta_lab = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
-                #momenta_lab = np.concatenate((momenta_lab, momenta_lab_add), axis=0)
                 
                 # weights
                 w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
                 weights_llp = np.array(weights_llp)
                 weights_lab = (weights_llp * w_decays[:, np.newaxis]).flatten()
-                #weights_lab = np.concatenate((weights_lab, weights_lab_add), axis=0)
                  
             # mixing with SM particles
             if model.production[key]["type"]=="mixing":
             
                 # load details of production channel
-                pid0 = model.production[key]["pid0"],
+                pid0 = model.production[key]["pid0"]
                 mixing = model.production[key]["mixing"]
-                generator = model.production[key]["generator"]
+                generator = model.production[key]["generator"][0]
                 energy = model.production[key]["energy"]
                 massrange = model.production[key]["massrange"]
                 
@@ -688,12 +690,10 @@ class Foresee(Utility):
                 
                 # momenta
                 momenta_lab = np.array([self.coord(p) for p in momenta_mother])
-                #momenta_lab = np.concatenate((momenta_lab, momenta_lab_add ), axis=0)
                 
                 # weights
                 mixing_angle = eval(mixing)
                 weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
-                #weights_lab = np.concatenate((weights_lab, weights_lab_add), axis=0)
 
             # direct production
             if model.production[key]["type"]=="direct":
@@ -702,7 +702,7 @@ class Foresee(Utility):
                 label = key
                 energy = model.production[key]["energy"]
                 coupling_ref =  model.production[key]["coupling_ref"]
-                condition =  model.production[key]["condition"]
+                condition =  model.production[key]["condition"][0]
                 masses =  model.production[key]["masses"]
                 
                 #determined mass benchmark below / above mass
@@ -722,16 +722,13 @@ class Foresee(Utility):
                     print ("did not find file:", filename0, "or", filename1)
                     continue
                 
-                #loop through events
-                momenta_lab, weights_lab =  np.array([[0.1,0.1]]), [0 ]
-                for p, w_lpp0, w_lpp1 in zip(momenta_llp0, weights_llp0, weights_llp1):
-                    if   condition is not None and eval(condition)==0: continue
-                    elif condition is None: factor=1
-                    else: factor = eval(condition)
-                    w_lpp = w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0)
-                    momenta_lab = np.concatenate((momenta_lab, self.coord(p)), axis=0)
-                    weights_lab.append(w_lpp*coupling**2/coupling_ref**2*factor)
-                weights_lab=np.array(weights_lab)
+                #momenta
+                momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
+                
+                # weights
+                factors = np.array([0 if (condition is not None) and (eval(condition)==0) else 1 if condition is None else eval(condition) for p in momenta_llp0])
+                weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
+                weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
                 
             #return statistcs
             if save_file==True:
