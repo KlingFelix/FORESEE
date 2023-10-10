@@ -239,7 +239,7 @@ class Model(Utility):
         if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
-    def add_production_direct(self, label, energy, coupling_ref=1, condition=None, masses=None, scaling=2):
+    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
         if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
 
