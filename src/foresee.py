@@ -52,6 +52,7 @@ class Utility():
         elif pid in ["521" ,"-521" ]: return 5.27929
         elif pid in ["531" ,"-531" ]: return 5.36679
         elif pid in ["541" ,"-541" ]: return 6.2749
+        elif pid in ["5122","-5122"]: return 5.6202
         elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
         elif pid in ["11"  ,"-11"  ]: return 0.000511
@@ -239,10 +240,16 @@ class Model(Utility):
         if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
-    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
-        if type(condition)==str: condition=[condition]
-        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
-
+    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2, generator="EPOSLHC"):
+        
+        if label=="Prim" and type(generator)==str: generator=[generator]
+        if label == "Brem" and type(condition)==str: condition=[condition]
+        
+        if label=="Prim":
+            self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": generator}
+        if label=="Brem":
+            self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
+            
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
@@ -714,12 +721,11 @@ class Foresee(Utility):
 
             # direct production
             if model.production[key]["type"]=="direct":
-
+                
                 # load details of production channel
                 label = key
                 energy = model.production[key]["energy"]
                 coupling_ref =  model.production[key]["coupling_ref"]
-                condition =  model.production[key]["production"]
                 masses =  model.production[key]["masses"]
                 
                 #determined mass benchmark below / above mass
@@ -728,30 +734,63 @@ class Foresee(Utility):
                 for xmass in masses:
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
+                                        
+#################################################################
+
+
+                if label == "Brem":
+                    condition =  model.production[key]["production"]
+                    #load benchmark data
+                    filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+                    filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+                    try:
+                        momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
+                        momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+                    except:
+                        print ("did not find file:", filename0, "or", filename1)
+                        continue
+
+                    #momenta
+                    momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
+
+                    # weights
+                    factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
+                    weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
+                    weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
+
+###########################################################
+
+                if label == "Prim":
+                    generator = model.production[key]["production"]
+                    #load benchmark data
+                    filename0=[self.model.modelpath+"model/direct/"+energy+"TeV/"+gen+"/"+gen+"_"+label+"_"+energy+"TeV_"+str(mass0)+".txt" for gen in generator]
+                    filename1=[self.model.modelpath+"model/direct/"+energy+"TeV/"+gen+"/"+gen+"_"+label+"_"+energy+"TeV_"+str(mass1)+".txt" for gen in generator]
+                    try:
+                        momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
+                        momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+                    except:
+                        print ("did not find file:", filename0, "or", filename1)
+                        continue
+
+                    #momenta
+                    momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
+
+                    # weights
+                    #factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
+                    weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
+                    #weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
+                    weights_lab = np.array([w*coupling**2/coupling_ref**2 for w in weights_llp])
                     
-                #load benchmark data
-                filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-                filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
-                try:
-                    momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-                    momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
-                except:
-                    print ("did not find file:", filename0, "or", filename1)
-                    continue
-                
-                #momenta
-                momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
-                
-                # weights
-                factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
-                weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
-                weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
-                
+#################################################################
+
+
             #return statistcs
             if save_file==True:
                 for iproduction, production in enumerate(model.production[key]["production"]):
                     filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
+
+            
             if do_plot:
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
                 weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
@@ -857,7 +896,6 @@ class Foresee(Utility):
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
-
         return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
 
     def get_events_interaction(self, mass, energy,
@@ -1126,7 +1164,7 @@ class Foresee(Utility):
 
     def plot_reach(self,
             setups, bounds, projections, bounds2=[],
-            title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
+            title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
             fs_label=14,
@@ -1186,7 +1224,7 @@ class Foresee(Utility):
             masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
-            ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
+            ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
