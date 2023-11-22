@@ -850,24 +850,93 @@ class Foresee(Utility):
     ###############################
     #  Export Results as HEPMC File
     ###############################
+    
+    def threebody_decay_pureps(self, p0, m0, m1, m2, m3):
+        """
+        function that decays p0 > p1 p2 p2 and returns p1,p2,p3
+        following pure phase space
+        """
+    
+        p1, p2, p3 = None, None, None
+        while p1 == None:
+            #randomly draw mij^2
+            m122 = random.uniform((m1+m2)**2, (m0-m3)**2)
+            m232 = random.uniform((m2+m3)**2, (m0-m1)**2)
+            m132 = m0**2+m1**2+m2**2+m3**2-m122-m232
+
+            #calculate energy and momenta
+            e1 = (m0**2+m1**2-m232)/(2*m0)
+            e2 = (m0**2+m2**2-m132)/(2*m0)
+            e3 = (m0**2+m3**2-m122)/(2*m0)
+            
+            if (e1<m1) or (e2<m2) or (e3<m3): continue
+            mom1 = np.sqrt(e1**2-m1**2)
+            mom2 = np.sqrt(e2**2-m2**2)
+            mom3 = np.sqrt(e3**2-m3**2)
+            
+            #calculate angles
+            costh12 = (-m122 + m1**2 + m2**2 + 2*e1*e2)/(2*mom1*mom2)
+            costh13 = (-m132 + m1**2 + m3**2 + 2*e1*e3)/(2*mom1*mom3)
+            costh23 = (-m232 + m2**2 + m3**2 + 2*e2*e3)/(2*mom2*mom3)
+            if (abs(costh12)>1) or (abs(costh13)>1) or (abs(costh23)>1): continue
+                
+            sinth12 =  np.sqrt(1-costh12**2)
+            sinth13 =  np.sqrt(1-costh13**2)
+            sinth23 =  np.sqrt(1-costh23**2)
+            
+            #construct momenta
+            p1 = LorentzVector(mom1,0,0,e1)
+            p2 = LorentzVector(mom2*costh12, mom2*sinth12,0,e2)
+            p3 = LorentzVector(mom3*costh13,-mom3*sinth13,0,e3)
+            break
+    
+        #randomly rotation of p2, p3 around p1
+        xaxis=Vector3D(1,0,0)
+        phi = random.uniform(-math.pi,math.pi)
+        p1=p1.rotate(phi,xaxis)
+        p2=p2.rotate(phi,xaxis)
+        p3=p3.rotate(phi,xaxis)
+        
+        #randomly rotation of p1 in ref frame
+        phi = random.uniform(-math.pi,math.pi)
+        costh = random.uniform(-1,1)
+        theta = np.arccos(costh)
+        axis=Vector3D(np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta))
+        rotaxis=axis.cross(p1.vector).unit()
+        rotangle=axis.angle(p1.vector)
+        p1=p1.rotate(rotangle,rotaxis)
+        p2=p2.rotate(rotangle,rotaxis)
+        p3=p3.rotate(rotangle,rotaxis)
+
+        #boost in p0 restframe
+        p1_=p1.boost(-1.*p0.boostvector)
+        p2_=p2.boost(-1.*p0.boostvector)
+        p3_=p3.boost(-1.*p0.boostvector)
+        
+        return p1_, p2_, p3_
 
     def decay_llp(self, momentum, pids):
         
         # unspecified decays - can't do anything
         if pids==None:
             pids, momenta = None, []
-        # not 2-body decays - not implemented yet
-        elif len(pids)!=2:
-            pids, momenta = None, []
-        # 2=body decays
-        else:
-            m0 = momentum.m
+        # 2-body decays
+        elif len(pids)==2:
             phi = random.uniform(-math.pi,math.pi)
             cos = random.uniform(-1.,1.)
-            m1, m2 = self.masses(str(pids[0])), self.masses(str(pids[1]))
+            m0, m1, m2 = momentum.m, self.masses(str(pids[0])), self.masses(str(pids[1]))
             p1, p2 = self.twobody_decay(momentum,m0,m1,m2,phi,cos)
-            momenta = [p1,p2]
-        return pids, momenta
+            return pids, [p1,p2]
+        # 3-body decays
+        elif len(pids)==3:
+            m0 = momentum.m
+            m1, m2, m3 = self.masses(str(pids[0])), self.masses(str(pids[1])), self.masses(str(pids[2]))
+            p1, p2, p3 = self.threebody_decay_pureps(momentum,m0,m1,m2,m3)
+            return pids, [p1,p2,p3]
+        # not 2/3 body decays - not yet implemented
+        else:
+            pids, momenta = None, []
+            
     
     def write_hepmc_file(self, data, filename):
         
