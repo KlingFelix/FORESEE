@@ -240,15 +240,9 @@ class Model(Utility):
         if type(generator)==str: generator=[generator]
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
-    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2, generator="EPOSLHC"):
-        
-        if label=="Prim" and type(generator)==str: generator=[generator]
-        if label == "Brem" and type(condition)==str: condition=[condition]
-        
-        if label=="Prim":
-            self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": generator}
-        if label=="Brem":
-            self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
+    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
+        if type(condition)==str: condition=[condition]
+        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
             
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         scaling = self.production[key]["scaling"]
@@ -476,15 +470,16 @@ class Foresee(Utility):
 
     def get_decay_prob(self, pid, momentum):
 
-        # return 1 when decaying promptly
+        # return 1 when decaying promptly or has negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
-
+        if momentum.pz<0: return 0
+        
         # lifetime and kinematics
         ctau = self.ctau(pid)
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
-
+    
         # probability to decay in beampipe
         if pid in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
@@ -716,16 +711,20 @@ class Foresee(Utility):
                 momenta_lab = np.array([self.coord(p) for p in momenta_mother])
                 
                 # weights
-                mixing_angle = eval(mixing)
-                weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
-
+                if type(mixing)==str:
+                    mixing_angle = eval(mixing)
+                    weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
+                else:
+                    weights_lab = np.array([w_mother*mixing(mass, coupling, p_mother)**2 for p_mother,w_mother in zip(momenta_mother,weights_mother)])
+                
             # direct production
             if model.production[key]["type"]=="direct":
-                
+
                 # load details of production channel
                 label = key
                 energy = model.production[key]["energy"]
                 coupling_ref =  model.production[key]["coupling_ref"]
+                condition =  model.production[key]["production"]
                 masses =  model.production[key]["masses"]
                 
                 #determined mass benchmark below / above mass
@@ -734,55 +733,24 @@ class Foresee(Utility):
                 for xmass in masses:
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
-                                        
-#################################################################
 
-
-                if label == "Brem":
-                    condition =  model.production[key]["production"]
-                    #load benchmark data
-                    filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-                    filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
-                    try:
-                        momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-                        momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
-                    except:
-                        print ("did not find file:", filename0, "or", filename1)
-                        continue
-
-                    #momenta
-                    momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
-
-                    # weights
-                    factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
-                    weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
-                    weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
-
-###########################################################
-
-                if label == "Prim":
-                    generator = model.production[key]["production"]
-                    #load benchmark data
-                    filename0=[self.model.modelpath+"model/direct/"+energy+"TeV/"+gen+"/"+gen+"_"+label+"_"+energy+"TeV_"+str(mass0)+".txt" for gen in generator]
-                    filename1=[self.model.modelpath+"model/direct/"+energy+"TeV/"+gen+"/"+gen+"_"+label+"_"+energy+"TeV_"+str(mass1)+".txt" for gen in generator]
-                    try:
-                        momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-                        momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
-                    except:
-                        print ("did not find file:", filename0, "or", filename1)
-                        continue
-
-                    #momenta
-                    momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
-
-                    # weights
-                    #factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
-                    weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
-                    #weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
-                    weights_lab = np.array([w*coupling**2/coupling_ref**2 for w in weights_llp])
-                    
-#################################################################
-
+                #load benchmark data
+                filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+                filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+                try:
+                    momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
+                    momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+                except:
+                    print ("did not find file:", filename0, "or", filename1)
+                    continue
+                
+                #momenta
+                momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
+                
+                # weights
+                factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
+                weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
+                weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
 
             #return statistcs
             if save_file==True:
@@ -790,7 +758,6 @@ class Foresee(Utility):
                     filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
 
-            
             if do_plot:
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
                 weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
@@ -803,7 +770,9 @@ class Foresee(Utility):
     ###############################
 
     def set_detector(
-            self,distance=480,
+            self,
+            distance=480,
+            distance_prod=0,
             selection="np.sqrt(x.x**2 + x.y**2)< 1",
             length=5,
             luminosity=3000,
@@ -813,6 +782,7 @@ class Foresee(Utility):
             ermax=1,
         ):
         self.distance=distance
+        self.distance_prod=distance_prod
         self.selection=selection
         self.length=length
         self.luminosity=luminosity
@@ -820,7 +790,7 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
-
+        
     def event_passes(self,momentum):
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
@@ -891,11 +861,12 @@ class Foresee(Utility):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
-                    prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    prob_decay = math.exp(-(self.distance-self.distance_prod)/dbar)-math.exp(-(self.distance+self.length-self.distance_prod)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
+
         return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
 
     def get_events_interaction(self, mass, energy,
@@ -1070,7 +1041,9 @@ class Foresee(Utility):
         f.close()
         
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None,
+        decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
+        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
         
         #set random seed
         random.seed(seed)
@@ -1087,7 +1060,7 @@ class Foresee(Utility):
         baseweights = weights[0].T[0]
         
         # unweight sample
-        weighted_combined_data = [[p,w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
+        weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
         unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
         if decaychannels is not None:
@@ -1101,8 +1074,8 @@ class Foresee(Utility):
         channels = [[[fs, mode], br] for mode, br, fs in zip(decaymodes, branchings, finalstates)]
         br_other = 1-sum(branchings)
         if br_other>0: channels.append([[None,"unspecified"], br_other])
-        channels=np.array(channels).T
-        
+        channels=np.array(channels,dtype='object').T
+                
         # get LLP momenta and decay location
         unweighted_data = []
         for momentum, weight in unweighted_raw_data:
@@ -1134,7 +1107,7 @@ class Foresee(Utility):
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
         #return
-        if return_data: return weighted_raw_data[0], weights, unweighted_raw_data
+        if return_data: return weighted_raw_data[0], weights[0], unweighted_raw_data
         
     ###############################
     #  Plotting and other final processing
