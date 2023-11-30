@@ -1107,7 +1107,7 @@ class Foresee(Utility):
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
         #return
-        if return_data: return weighted_raw_data[0], weights[0], unweighted_raw_data
+        if return_data: return weighted_raw_data[0], weights[0], unweighted_data
         
     ###############################
     #  Plotting and other final processing
