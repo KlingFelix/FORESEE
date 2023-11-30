@@ -1111,7 +1111,7 @@ class Foresee(Utility):
         
            
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None,
-        decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
+        notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
         
         #set random seed
@@ -1132,9 +1132,6 @@ class Foresee(Utility):
         weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
         unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
-        if decaychannels is not None:
-            factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
-            eventweight = eventweight * factor
         
         # setup decay channels
         decaymodes = self.model.br_functions.keys()
@@ -1151,7 +1148,7 @@ class Foresee(Utility):
             # determine choice of final state
             while True:
                 pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
-                if (decaychannels is None) or (mode in decaychannels): break
+                if (self.channels is None) or (mode in self.channels): break
             # position
             thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
             posz = random.uniform(0,self.length)
