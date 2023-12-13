@@ -867,6 +867,10 @@ class Foresee(Utility):
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
+        # prepare results directory
+        dirname = self.model.modelpath+"model/results/"
+        if not os.path.exists(dirname): os.mkdir(dirname)
+
         return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
 
     def get_events_interaction(self, mass, energy,
