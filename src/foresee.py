@@ -828,7 +828,7 @@ class Foresee(Utility):
                 for channel in self.channels: br+=model.get_br(channel, mass, coupling)
             ctaus.append(ctau)
             brs.append(br)
-            nsignals.append(0.)
+            nsignals.append([0. for _ in range(nprods)])
             stat_p.append([])
             stat_w.append([])
 
@@ -1005,7 +1005,7 @@ class Foresee(Utility):
         
         # unspecified decays - can't do anything
         if pids==None:
-            pids, momenta = None, []
+            return None, []
         # 2-body decays
         elif len(pids)==2:
             phi = random.uniform(-math.pi,math.pi)
@@ -1021,7 +1021,7 @@ class Foresee(Utility):
             return pids, [p1,p2,p3]
         # not 2/3 body decays - not yet implemented
         else:
-            pids, momenta = None, []
+            return None, []
             
     
     def write_hepmc_file(self, data, filename, weightnames):
