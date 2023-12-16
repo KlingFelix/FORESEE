@@ -52,6 +52,7 @@ class Utility():
         elif pid in ["521" ,"-521" ]: return 5.27929
         elif pid in ["531" ,"-531" ]: return 5.36679
         elif pid in ["541" ,"-541" ]: return 6.2749
+        elif pid in ["5122","-5122"]: return 5.6202
         elif pid in ["4"   ,"-4"   ]: return 1.5
         elif pid in ["5"   ,"-5"   ]: return 4.5
         elif pid in ["11"  ,"-11"  ]: return 0.000511
@@ -242,7 +243,7 @@ class Model(Utility):
     def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
         if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
-
+            
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
@@ -469,15 +470,16 @@ class Foresee(Utility):
 
     def get_decay_prob(self, pid, momentum):
 
-        # return 1 when decaying promptly
+        # return 1 when decaying promptly or has negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
-
+        if momentum.pz<0: return 0
+        
         # lifetime and kinematics
         ctau = self.ctau(pid)
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
-
+    
         # probability to decay in beampipe
         if pid in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
@@ -709,9 +711,12 @@ class Foresee(Utility):
                 momenta_lab = np.array([self.coord(p) for p in momenta_mother])
                 
                 # weights
-                mixing_angle = eval(mixing)
-                weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
-
+                if type(mixing)==str:
+                    mixing_angle = eval(mixing)
+                    weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
+                else:
+                    weights_lab = np.array([w_mother*mixing(mass, coupling, p_mother)**2 for p_mother,w_mother in zip(momenta_mother,weights_mother)])
+                
             # direct production
             if model.production[key]["type"]=="direct":
 
@@ -728,7 +733,7 @@ class Foresee(Utility):
                 for xmass in masses:
                     if xmass<=mass and xmass>mass0: mass0=xmass
                     if xmass> mass and xmass<mass1: mass1=xmass
-                    
+
                 #load benchmark data
                 filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
                 filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
@@ -746,12 +751,13 @@ class Foresee(Utility):
                 factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
                 weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
                 weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
-                
+
             #return statistcs
             if save_file==True:
                 for iproduction, production in enumerate(model.production[key]["production"]):
                     filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
+
             if do_plot:
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
                 weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
@@ -764,7 +770,9 @@ class Foresee(Utility):
     ###############################
 
     def set_detector(
-            self,distance=480,
+            self,
+            distance=480,
+            distance_prod=0,
             selection="np.sqrt(x.x**2 + x.y**2)< 1",
             length=5,
             luminosity=3000,
@@ -774,6 +782,7 @@ class Foresee(Utility):
             ermax=1,
         ):
         self.distance=distance
+        self.distance_prod=distance_prod
         self.selection=selection
         self.length=length
         self.luminosity=luminosity
@@ -781,7 +790,7 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
-
+        
     def event_passes(self,momentum):
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
@@ -819,7 +828,7 @@ class Foresee(Utility):
                 for channel in self.channels: br+=model.get_br(channel, mass, coupling)
             ctaus.append(ctau)
             brs.append(br)
-            nsignals.append(0.)
+            nsignals.append([0. for _ in range(nprods)])
             stat_p.append([])
             stat_w.append([])
 
@@ -852,11 +861,15 @@ class Foresee(Utility):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
                     dbar = ctau*p.p/mass
-                    prob_decay = math.exp(-(self.distance)/dbar)-math.exp(-(self.distance+self.length)/dbar)
+                    prob_decay = math.exp(-(self.distance-self.distance_prod)/dbar)-math.exp(-(self.distance+self.length-self.distance_prod)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
                     stat_p[icoup].append(p)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
+
+        # prepare results directory
+        dirname = self.model.modelpath+"model/results/"
+        if not os.path.exists(dirname): os.mkdir(dirname)
 
         return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
 
@@ -992,7 +1005,7 @@ class Foresee(Utility):
         
         # unspecified decays - can't do anything
         if pids==None:
-            pids, momenta = None, []
+            return None, []
         # 2-body decays
         elif len(pids)==2:
             phi = random.uniform(-math.pi,math.pi)
@@ -1008,7 +1021,7 @@ class Foresee(Utility):
             return pids, [p1,p2,p3]
         # not 2/3 body decays - not yet implemented
         else:
-            pids, momenta = None, []
+            return None, []
             
     
     def write_hepmc_file(self, data, filename, weightnames):
@@ -1101,7 +1114,9 @@ class Foresee(Utility):
         f.close()
         
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None, decaychannels=None, notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={}, filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None,
+        notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
+        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
         
         #set random seed
         random.seed(seed)
@@ -1118,12 +1133,9 @@ class Foresee(Utility):
         baseweights = weights[0].T[0]
         
         # unweight sample
-        weighted_combined_data = [[p,w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
+        weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
         unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
-        if decaychannels is not None:
-            factor = sum([float(self.model.get_br(mode,mass,coupling)) for mode in decaychannels])
-            eventweight = eventweight * factor
         
         # setup decay channels
         decaymodes = self.model.br_functions.keys()
@@ -1132,15 +1144,15 @@ class Foresee(Utility):
         channels = [[[fs, mode], br] for mode, br, fs in zip(decaymodes, branchings, finalstates)]
         br_other = 1-sum(branchings)
         if br_other>0: channels.append([[None,"unspecified"], br_other])
-        channels=np.array(channels).T
-        
+        channels=np.array(channels,dtype='object').T
+                
         # get LLP momenta and decay location
         unweighted_data = []
         for momentum, weight in unweighted_raw_data:
             # determine choice of final state
             while True:
                 pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
-                if (decaychannels is None) or (mode in decaychannels): break
+                if (self.channels is None) or (mode in self.channels): break
             # position
             thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
             posz = random.uniform(0,self.length)
@@ -1165,7 +1177,7 @@ class Foresee(Utility):
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
         #return
-        if return_data: return weighted_raw_data[0], weights, unweighted_raw_data
+        if return_data: return weighted_raw_data[0], weights[0], unweighted_data
         
     ###############################
     #  Plotting and other final processing
@@ -1195,7 +1207,7 @@ class Foresee(Utility):
 
     def plot_reach(self,
             setups, bounds, projections, bounds2=[],
-            title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
+            title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
             fs_label=14,
@@ -1255,7 +1267,7 @@ class Foresee(Utility):
             masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
-            ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
+            ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
