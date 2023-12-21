@@ -3,6 +3,8 @@
 **/model/events
 **/model/results
 **/model/LLP_spectra
+**/Decay Data
+**/model/width
 
 #old files
 oldfiles/
