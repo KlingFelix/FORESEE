@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 from cycler import cycler
+#import HeavyNeutralLepton as hnl
+
 
 src_path = "../.."
 sys.path.append(src_path)
@@ -62,15 +64,15 @@ Vckm = {'ud':0.97373 , 'us':0.2243, 'ub':3.82E-3 ,
 # Meson Decay Constants (Helo, Kovalenko, Schmidt 2018: https://arxiv.org/abs/1005.1607) 
 def f(x): 
     
-    if x == 'rho+' or anti(x) == 'rho+': return 0.220 
-    elif x == 'K+*' or anti(x) =='K+*': return 0.217
+    if x == 'rho+' or anti(x) == 'rho+': return 0.210 
+    elif x == 'K+*' or anti(x) =='K+*': return 0.204
     elif x == 'rho0' or anti(x) =='rho0': return 0.220
     elif x == 'omega' or anti(x) =='omega': return 0.195
-    elif x =='pi+' or anti(x) =='pi+': return  0.1307
-    elif x =='K+' or anti(x) =='K+': return 0.1598
-    elif x =='pi0' or anti(x) =='pi0': return 0.130
-    elif x =='eta' or anti(x) =='eta': return 0.1647
-    elif x =='eta_p' or anti(x) =='eta_p': return 0.1529
+    elif x =='pi+' or anti(x) =='pi+': return  0.1303
+    elif x =='K+' or anti(x) =='K+': return 0.1564
+    elif x =='pi0' or anti(x) =='pi0': return 0.1303
+    elif x =='eta' or anti(x) =='eta': return 0.0784
+    elif x =='eta_p' or anti(x) =='eta_p': return -0.0957
            
     
 
@@ -87,29 +89,36 @@ def Lambda(x,y,z):
     
     return x**2 + y**2 + z**2 - 2*x*y - 2*y*z - 2*x*z
 
-def I1(x,y,z):
-    integrand = lambda s: (1/s) * (s - x**2 - y**2) * (1 + z**2 - s)* np.sqrt(Lambda(s,x**2,y**2)) * np.sqrt(Lambda(1,s,z**2))
-    
-    integral,error = integrate.quad(integrand,(x+y)**2,(1-z)**2)
-    
-    result = 12*integral
-    return result
 
-def I2(x,y,z):
-    integrand = lambda s: (1/s) * (1 + x**2 - s)* np.sqrt(Lambda(s,y**2,z**2)) * np.sqrt(Lambda(1,s,x**2))
+def I_1_2body(x,y):
     
-    integral,error = integrate.quad(integrand,(y+z)**2,(1-x)**2)
-    
-    result = 24*y*z*integral
-    return result
+    return np.sqrt(Lambda(1,x,y)) * ((1 - x)**2 - y*(1 + x)) 
 
-def F_P(x,y):
+def I_2_2body(x,y): 
     
-    return np.sqrt(Lambda(1,x**2,y**2)) * ((1+x**2)*(1+x**2-y**2) - 4*x**2)
+    return np.sqrt(Lambda(1,x,y)) * ((1+ x - y)*(1 + x + 2*y) - 4*x)
 
-def F_V(x,y):
+def I_1_3body(x,y,z): 
     
-    return np.sqrt(Lambda(1,x**2,y**2)) * ((1-x**2)**2 + (1+x**2) * y**2 - 2*y**4) 
+    #changed 1->s 
+    
+    integrand = lambda s: (1/s)*(s - x - y)*(1 + z - s)*np.sqrt(Lambda(s,x,y))*np.sqrt(Lambda(1,s,z))
+    
+    integral,error = integrate.quad(integrand, (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2)
+    
+    
+    return 12*integral
+
+ 
+def I_2_3body(x,y,z): 
+    
+    integrand = lambda s: (1/s)*(1 + x - s)*np.sqrt(Lambda(s,y,z))*np.sqrt(Lambda(1,s,x))
+    
+    integral,error = integrate.quad(integrand, (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2)
+  
+    
+    return 24*np.sqrt(y*z)*integral
+
 
 def delta(l1,l2):
     
@@ -118,12 +127,7 @@ def delta(l1,l2):
     else: 
         return 0   
 
-def F_P(x,y):
-    return ((1+x**2)*(1+x**2-y**2) - 4*x**2)*np.sqrt(Lambda(1,x**2,y**2))
 
-def F_V(x,y):
-    return ((1-x**2)**2 + (y**2)*(1+x**2) - 2*y**4)*np.sqrt(Lambda(1,x**2,y**2))
- 
        
     
 """
@@ -144,12 +148,9 @@ def Gamma_lP(self,m,mode,cutoff=Quark_level_cutoff):
               'anti_K+': Vckm['us'] #K-
     }
     
-    #check coupling
-    if l == 'e' or l == anti('e'): U = self.couplings[0]
-    elif l == 'mu' or l == anti('mu'): U = self.couplings[1]   
-    elif l == 'tau' or l == anti('tau'): U = self.couplings[2]
+    
 
-    prefactor = U**2 * Gf**2 * m**3 * f(P)**2 * V_dict[P]**2 / (16*np.pi) 
+    prefactor = self.U[l]**2 * Gf**2 * m**3 * f(P)**2 * V_dict[P]**2 / (16*np.pi) 
 
     yl1 = FORESEE.masses(pid(l))/m
 
@@ -160,40 +161,37 @@ def Gamma_lP(self,m,mode,cutoff=Quark_level_cutoff):
     if cutoff == None:
 
         if 1 >= yl1 + yP:
-            return prefactor*F_P(yl1,yP)
+            return prefactor*I_1_2body(yl1**2,yP**2)
         else:
             return 0
     else:
 
         if 1 >= yl1 + yP and m <= cutoff:
-            return prefactor*F_P(yl1,yP)
+            return prefactor*I_1_2body(yl1**2,yP**2)
         else:
             return 0 
 
-#N -> nu_alpha P 
+#N -> nu P 
 def Gamma_nuP(self,m,mode,cutoff=Quark_level_cutoff):
 
     nu,P  = mode
 
-    #check couplings
-    if nu == 've' or nu == anti('ve'): U = self.couplings[0]
-    elif nu == 'vmu' or nu == anti('vmu'): U = self.couplings[1]   
-    elif nu == 'vtau' or nu == anti('vtau'): U = self.couplings[2]
 
-
-    prefactor =   U**2 * Gf**2 * m**3 * f(P)**2 / (64*np.pi)
+    prefactor =   (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * Gf**2 * m**3 * f(P)**2 / (16*np.pi)
 
     yP = FORESEE.masses(pid(P))/m
-
+    
+    gamma = prefactor*I_1_2body(0,yP**2)
+    
     #evaluate mass thresholds
     if cutoff == None:
         if 1 >= yP:
-            return prefactor*(1-yP**2)**2
+            return gamma
         else:
             return 0 
     else: 
         if 1>= yP and m <= cutoff:
-            return prefactor*(1-yP**2)**2
+            return gamma
         else:
             return 0 
 
@@ -202,11 +200,6 @@ def Gamma_lV(self,m,mode,cutoff=Quark_level_cutoff):
 
     l,V = mode
     
-    #check coupling
-    if l == 'e' or l == anti('e'): U = self.couplings[0]
-    elif l == 'mu' or l == anti('mu'): U = self.couplings[1]   
-    elif l == 'tau' or l == anti('tau'): U = self.couplings[2]
-
 
     V_dict = {'rho+': Vckm['ud'],
               'anti_rho+': Vckm['ud'],
@@ -214,23 +207,26 @@ def Gamma_lV(self,m,mode,cutoff=Quark_level_cutoff):
               'anti_K+*': Vckm['us'],
              }
 
-    prefactor =   U**2*Gf**2 * m**3 * f(V)**2 * V_dict[V]**2 / (16*np.pi) 
+    prefactor =   self.U[l]**2*Gf**2 * m**3 * f(V)**2 * V_dict[V]**2 / (16*np.pi) 
 
 
     yl1 = FORESEE.masses(pid(l))/m
 
     yV = FORESEE.masses(pid(V))/m
     
+    
+    gamma = prefactor*I_2_2body(yl1**2,yV**2)
+    
     #evaluate mass threshold
     if cutoff == None:
         if 1 >= yV+yl1:
-            return prefactor*F_V(yl1,yV)
+            return gamma
         else:
             return 0   
 
     else:
         if 1 >= yV+yl1 and m<=cutoff:
-            return prefactor*F_V(yl1,yV)
+            return gamma
         else:
             return 0  
 
@@ -239,31 +235,31 @@ def Gamma_nuV(self,m,mode,cutoff=Quark_level_cutoff):
 
     nu,V = mode
 
-    #check couplings
-    if nu == 've' or nu == anti('ve'): U = self.couplings[0]
-    elif nu == 'vmu' or nu == anti('vmu'): U = self.couplings[1]   
-    elif nu == 'vtau' or nu == anti('vtau'): U = self.couplings[2]
-
-    k_V = {'rho0': sin2w/3, 
-           'anti_rho0': sin2w/3,
-           'omega': sin2w/3,
-           'anti_omega': sin2w/3,
+    k_V = {#'rho0': 1-sin2w, 
+           'rho0': 1-2*sin2w, 
+           'anti_rho0': 1-2*sin2w,
+           'omega': 4*sin2w/3,
+           'anti_omega': 4*sin2w/3,
           }
 
-    prefactor = U**2*Gf**2 * m**3 * f(V)**2 * k_V[V]**2 / (2*np.pi)
+    prefactor = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * Gf**2 * m**3 * f(V)**2 * k_V[V]**2 / (16*np.pi)
 
     yV = FORESEE.masses(pid(V))/m
 
+    
+    gamma =  prefactor*I_2_2body(0,yV**2)
+    
+    
     #evaluate mass thresholds
     if cutoff == None:
         if 1 >= yV:
-            return prefactor*(1-yV**2)**2 * (1+2*yV**2)
+            return gamma
         else:
             return 0   
 
     else:
         if 1 >= yV and m<=cutoff:
-            return prefactor*(1-yV**2)**2 * (1+2*yV**2)
+            return gamma
         else:
             return 0  
 
@@ -273,19 +269,23 @@ def Gamma_llnu(self,m,mode,cutoff=None):
 
     l1,l2,nu = mode
 
-    #check couplings
-    if l1 == 'e' or l1 == anti('e'): U = self.couplings[0]
-    elif l1 == 'mu' or l1 == anti('mu'): U = self.couplings[1]   
-    elif l1 == 'tau' or l1 == anti('tau'): U = self.couplings[2]
+    
         
     yl1 = FORESEE.masses(pid(l1))/m
     yl2 = FORESEE.masses(pid(l2))/m
-
+    
+    
     ynu = 0
-
+    
+    
+    
+    gamma = Gf**2 * m**5 * ( self.U[l1]**2 * I_1_3body(0, yl1**2, yl2**2) + self.U[l2]**2 * I_1_3body(0,yl2**2,yl1**2) ) / (192 * np.pi**3)
+    
+    
+    
     #evaluate mass thresholds 
     if 1 >= yl1 + yl2:
-        return U**2*Gf**2 * m**5 * I1(yl1,ynu,yl2) *(1-delta(int(pid(l1)),int(pid(l2)))) / (192*np.pi**3)
+        return gamma
     else:
         return 0   
 
@@ -293,26 +293,30 @@ def Gamma_llnu(self,m,mode,cutoff=None):
 def Gamma_null(self,m,mode,cutoff=None):
     nu,l1,l2 = mode
 
-    #check couplings
-    if nu == 've' or nu == anti('ve'): U = self.couplings[0]
-    elif nu == 'vmu' or nu == anti('vmu'): U = self.couplings[1]   
-    elif nu == 'vtau' or nu == anti('vtau'): U = self.couplings[2]
-
-    yl1 = FORESEE.masses(pid(l1))/m
-    yl2 = FORESEE.masses(pid(l2))/m
+    yl = FORESEE.masses(pid(l1))/m
+    
 
     ynu = 0
 
+    del_e = delta(int(pid('e')),int(pid(l1)))
+    del_mu = delta(int(pid('mu')),int(pid(l1)))
+    del_tau = delta(int(pid('tau')),int(pid(l1)))
+    
 
-    prefactor = U**2*Gf**2 * m**5 / (96*np.pi**3)
+    prefactor =  Gf**2 * m**5 / (96*np.pi**3)
 
-    term1 =  (glL*glR + delta(abs(int(pid(nu)))-1,abs(int(pid(l2))))*glR)*I2(ynu,yl2,yl2) 
-
-    term2 = (glL**2 + glR**2 + delta(abs(int(pid(nu)))-1,abs(int(pid(l2))))*(1+2*glL))*I1(ynu,yl2,yl2)
+    term_e = self.U['e']**2 * (  ( glL*glR + glR*del_e )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_e)*I_1_3body(0,yl**2,yl**2))
+                                                                                                                   
+    term_mu = self.U['mu']**2 * (  ( glL*glR + glR*del_mu )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_mu)*I_1_3body(0,yl**2,yl**2))
+    
+    term_tau = self.U['tau']**2 * (  ( glL*glR + glR*del_tau )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_tau)*I_1_3body(0,yl**2,yl**2))
+    
+                                                                                                                   
+    gamma = prefactor*(term_e + term_mu + term_tau)
 
     #evaluate mass thresholds
-    if 1 >= yl1 + yl2:
-        return prefactor*(term1 + term2)
+    if 1 >= 2*yl:
+        return gamma
     else:
         return 0   
 
@@ -320,12 +324,8 @@ def Gamma_null(self,m,mode,cutoff=None):
 def Gamma_nu3(self,m,mode,cutoff=None):
     nu,_,_ = mode
 
-    #check couplings
-    if nu == 've' or nu == anti('ve'): U = self.couplings[0]
-    elif nu == 'vmu' or nu == anti('vmu'): U = self.couplings[1]   
-    elif nu == 'vtau' or nu == anti('vtau'): U = self.couplings[2]
 
-    gamma = U**2*Gf**2 * m**5 / (96*np.pi**3)
+    gamma = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2)*Gf**2 * m**5 / (96*np.pi**3)
 
     return gamma
 
@@ -337,10 +337,7 @@ def Gamma_lud(self,m,mode,cutoff=Quark_level_cutoff):
 
     l,u,d = mode
 
-    #check couplings
-    if l == 'e' or l == anti('e'): U = self.couplings[0]
-    elif l == 'mu' or l == anti('mu'): U = self.couplings[1]   
-    elif l == 'tau' or l == anti('tau'): U = self.couplings[2]
+ 
 
 
     yu = FORESEE.masses(pid(u))/m
@@ -351,16 +348,19 @@ def Gamma_lud(self,m,mode,cutoff=Quark_level_cutoff):
     if 'anti' in d: V = Vckm[u+anti(d)]
     else: V = Vckm[anti(u)+d]
 
+        
+    gamma = self.U[l]**2*Gf**2 * V**2 * m**5 * I_1_3body(yl**2,yu**2,yd**2) / (64 * np.pi**3)
+    
     #evaluate mass thresholds
     if cutoff == None:
         if 1 >= yu+yd+yl:
-            return U**2*Gf**2 * V**2 * m**5 * I1(yl,yu,yd) / (64 * np.pi**3)
+            return gamma
         else:
             return 0
 
     else:
         if 1 >= yu+yd+yl and m>=cutoff:
-            return U**2*Gf**2 * V**2 * m**5 * I1(yl,yu,yd) / (64 * np.pi**3)
+            return gamma
         else:
             return 0  
 
@@ -370,17 +370,13 @@ def Gamma_nuqq(self,m,mode,cutoff=Quark_level_cutoff):
 
     nu,q,qbar = mode 
 
-    #check couplings
-    if nu == 've' or nu == anti('ve'): U = self.couplings[0]
-    elif nu == 'vmu' or nu == anti('vmu'): U = self.couplings[1]   
-    elif nu == 'vtau' or nu == anti('vtau'): U = self.couplings[2]
-
+   
     yq = FORESEE.masses(pid(q))/m
 
     ynu = 0 
 
 
-    prefactor = U**2 * Gf**2 * m**5  / (32*np.pi**3)
+    prefactor = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * Gf**2 * m**5  / (32*np.pi**3)
     
     #pick out coupling constants
     if q  in self.particle_content['quarks']['up'] or qbar in self.particle_content['quarks']['up']:
@@ -391,9 +387,9 @@ def Gamma_nuqq(self,m,mode,cutoff=Quark_level_cutoff):
         gqR = gdR
 
 
-    term1 = gqL*gqR*I2(ynu,yq,yq)
+    term1 = gqL*gqR*I_2_3body(ynu**2,yq**2,yq**2)
 
-    term2 = (gqL**2 + gqR**2)*I1(ynu,yq,yq)
+    term2 = (gqL**2 + gqR**2)*I_1_3body(ynu,yq**2,yq**2)
 
     #evaluate mass threshold
     if cutoff == None:
@@ -401,12 +397,12 @@ def Gamma_nuqq(self,m,mode,cutoff=Quark_level_cutoff):
             return prefactor*(term1 + term2)
 
         else:
-            return 0 
+            return 0
     else:
         if 1 >= yq+yq and m>=cutoff:
             return prefactor*(term1 + term2)
         else:
-            return 0  
+            return 0
 
 
 """
@@ -421,6 +417,136 @@ def anti(x):
         
     elif 'anti_' in x:  return x.replace('anti_','')
     
+plot_labels = {
+        #Leptons
+        'e': r'$e$',
+        anti('e'): r'$e$',
+    
+        'mu': r'$\mu$',
+        anti('mu'): r'$\mu$',
+        
+        'tau': r'$\tau$',
+        anti('tau'): r'$\tau$',
+        
+        've': r'$\nu_e$',
+        anti('ve'): r'$\overline{\nu}_e$',
+    
+        'vmu': r'$\nu_\mu$',
+        anti('vmu'): r'$\overline{\nu}_\mu$',
+        
+        'vtau': r'$\nu_\tau$',
+        anti('vtau'): r'$\overline{\nu}_\tau$',
+        'nu':r'$\nu$',
+    
+        #Pseudos
+        'pi+':r'$\pi^+$',
+        anti('pi+'):r'$\pi^-$',
+    
+        'pi0':r'$\pi^0$',
+    
+        'K+': r'$K^+$',
+        anti('K+'): r'$K^-$',
+    
+        'eta': r'$\eta$',
+    
+        #Vectors
+        'rho+':r'$\rho^+$',
+        anti('rho+'):r'$\rho^-$',
+    
+        'rho0':r'$\rho^0$',
+    
+        'K+*':r'$K^{*+}$',
+        anti('K+*'):r'$K^{*-}$',
+    
+        'omega':r'$\omega$',
+        
+        #Quarks
+        'd': r'$d$',
+        anti('d'): r'$\overline{d}$',
+        
+        'u': r'$u$',
+        anti('u'): r'$\overline{u}$',
+        
+        'c': r'$c$',
+        anti('c'): r'$\overline{c}$',
+    
+        's': r'$s$',
+        anti('s'): r'$\overline{s}$',
+    
+        't': r'$t$',
+        anti('t'): r'$\overline{t}$',
+    
+        'b': r'$b$',
+        anti('b'): r'$\overline{b}$',
+        
+            
+        }
+
+plot_labels_neut = {
+        #Leptons
+        'e': r'$e$',
+        anti('e'): r'$e$',
+    
+        'mu': r'$\mu$',
+        anti('mu'): r'$\mu$',
+        
+        'tau': r'$\tau$',
+        anti('tau'): r'$\tau$',
+        
+        've': r'$\nu_e$',
+        anti('ve'): r'$\overline{\nu}_e$',
+    
+        'vmu': r'$\nu_\mu$',
+        anti('vmu'): r'$\overline{\nu}_\mu$',
+        
+        'vtau': r'$\nu_\tau$',
+        anti('vtau'): r'$\overline{\nu}_\tau$',
+        'nu':'$\nu$',
+    
+        #Pseudos
+        'pi+':r'$\pi$',
+        anti('pi+'):r'$\pi$',
+    
+        'pi0':r'$\pi^0$',
+    
+        'K+': r'$K$',
+        anti('K+'): r'$K$',
+    
+        'eta': r'$\eta$',
+    
+        #Vectors
+        'rho+':r'$\rho$',
+        anti('rho+'):r'$\rho$',
+    
+        'rho0':r'$\rho^0$',
+    
+        'K+*':r'$K^{*}$',
+        anti('K+*'):r'$K^{*}$',
+    
+        'omega':r'$\omega$',
+        
+        #Quarks
+        'd': r'$d$',
+        anti('d'): r'$\overline{d}$',
+        
+        'u': r'$u$',
+        anti('u'): r'$\overline{u}$',
+        
+        'c': r'$c$',
+        anti('c'): r'$\overline{c}$',
+    
+        's': r'$s$',
+        anti('s'): r'$\overline{s}$',
+    
+        't': r'$t$',
+        anti('t'): r'$\overline{t}$',
+    
+        'b': r'$b$',
+        anti('b'): r'$\overline{b}$',
+        
+            
+        }
+
 
 pid_conversions = {    
         #Leptons
@@ -490,18 +616,22 @@ class HNL_Decay:
         
         
         self.cutoff = cutoff
+        self.U = {'e':couplings[0], 'anti_e': couplings[0],
+                  'mu':couplings[1], 'anti_mu': couplings[1],
+                  'tau':couplings[2], 'anti_tau': couplings[2]} 
         
-        self.couplings = couplings
+        
+        
         
 
         #define particle content
         leptons = ['e','mu','tau']
 
-        neutrinos = ['ve','vmu','vtau']
-
         vectors = {'charged':['rho+','K+*'], 'neutral': ['rho0','omega'] }
 
         pseudos = {'charged':['pi+','K+'], 'neutral':['pi0','eta'] }
+        
+        neutrinos = ['nu']
         
         quarks = {'up':['u','c','t'], 'down': ['d','s','b']}
 
@@ -512,53 +642,25 @@ class HNL_Decay:
         ##Compile all allowed decay modes for each decay channel##
         
         #N -> nu_alpha l_beta l_beta
-        null = []
+        null = [('nu','e','anti_e'),('nu','mu','anti_mu'),('nu','tau','anti_tau')]
 
-        for nu in neutrinos: 
-
-            for l in leptons: 
-
-                mode = (nu,anti(l),l)
-
-                null.append(mode)
+        
         
         #N -> l_alpha l_beta nu
-        llnu = [] 
+        llnu = [
+        ('e',anti('mu'),'nu'), ('mu',anti('e'),'nu'),
+        ('e',anti('tau'),'nu'), ('tau',anti('e'),'nu'),
+        ('mu',anti('tau'),'nu'), ('tau',anti('mu'),'nu')    
+        ] 
 
-        for l1 in leptons: 
-
-            for flavor, l2 in enumerate(leptons): 
-                
-                if l1 != l2: 
-
-                    mode = (l1, anti(l2), neutrinos[flavor])
-
-                    llnu.append(mode)
-                    
-                    #conjugate mode
-                    llnu.append((anti(l1),l2,neutrinos[flavor]))
-        
-        #N -> nu_alpha nu nu 
-        nu3 = []
-
-        for nu1 in neutrinos:
-
-            mode = (nu1,'nu','nu')
-            nu3.append(mode)
+        #N -> nu nu nu
+        nu3 = [('nu','nu','nu')]
     
-                
-            
         #N -> nu_alpha P    
-        nuP = []
+        nuP = [('nu','pi0'),('nu','eta')]
 
-        for nu in neutrinos:
+     
 
-            for P in pseudos['neutral']:
-
-                mode = (nu,P)
-
-                nuP.append(mode)
-      
         #N -> l_alpha P
         lP = []
 
@@ -576,13 +678,13 @@ class HNL_Decay:
         #N -> nu_alpha V
         nuV = []
 
-        for nu in neutrinos:
+        
 
-            for V in vectors['neutral']:
+        for V in vectors['neutral']:
 
-                mode = (nu,V)
+            mode = ('nu',V)
 
-                nuV.append(mode)
+            nuV.append(mode)
 
         #N -> l_alpha V 
         lV = []
@@ -601,13 +703,13 @@ class HNL_Decay:
         #N -> nu_alpha q q 
         nuqq = []
         
-        for nu in neutrinos: 
+        
             
-            for q in quarks['up'] + quarks['down']:
-                
-                mode = (nu,q,anti(q))
-                
-                nuqq.append(mode)
+        for q in quarks['up'] + quarks['down']:
+
+            mode = ('nu',q,anti(q))
+
+            nuqq.append(mode)
                 
         #N -> l_alpha u d      
         lud = []
@@ -640,28 +742,19 @@ class HNL_Decay:
             
             for mode in self.modes[channel]:
             
-                p_coupled = mode[0]
-
-                Ue,Umu,Utau = self.couplings
-
-
-                if p_coupled in ['e',anti('e'),'ve', anti('ve')]:  U =  Ue
-
-                elif p_coupled in ['mu',anti('mu'),'vmu', anti('vmu')]: U = Umu
-
-                elif p_coupled in ['tau',anti('tau'),'vtau', anti('vtau')]:  U = Utau
-
-                
-
-                if U == 0:
-
-                    modes_inactive.append(mode)
             
-                else:
-
-                    modes_active.append(mode)
-
-                   
+                if channel in ['null','nuqq','nuV','nuP','nu3']: modes_active.append(mode)
+                
+                elif channel in ['lV','lP','lud']: 
+                    if self.U[mode[0]] != 0: modes_active.append(mode)
+                    else: modes_inactive.append(mode)
+                
+                elif channel in ['llnu']:
+                    if self.U[mode[0]] != 0 or self.U[mode[1]] != 0: modes_active.append(mode)
+                    else: modes_inactive.append(mode)
+                        
+                     
+            
 
 
             
@@ -739,10 +832,14 @@ class HNL_Decay:
             for channel in self.modes_active.keys():
                 
                 for mode in self.modes_active[channel]:
-        
+                    
+                    
                     gamma = self.model_widths[channel][mode][i]
-            
+                    
+
+                    
                     gamma_T += gamma
+            
             
             total_width.append(gamma_T)
         
@@ -795,7 +892,183 @@ class HNL_Decay:
                 
             self.model_brs[channel] = channel_brs
                 
-             
+            
+    def plot_br(self,curves,ylims,title,xlims = None,xscale = 'log',yscale = 'log',show_negligible=True,savefig=False,filename=None,gamma = False):
+        
+        if xlims == None: xlims =  (min(self.mpts),max(self.mpts))
+        
+       
+        
+        
+        default_cycler = (cycler(linestyle=['-', '--'])*cycler('color', ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf','gray','lightblue']) 
+                  )
+
+       
+        
+        
+        plt.rc('axes', prop_cycle=default_cycler)
+        
+        
+        
+        
+      
+        
+        
+        fig,ax = plt.subplots()
+        
+        ax.set(xlim=xlims,ylim=ylims,xscale=xscale,yscale=yscale,title=title)
+        
+        
+        ax.set_xlabel(r'$m_N$ (GeV)', fontsize = 20) 
+        if gamma == False: ax.set_ylabel(r"$B(N\to X)$", fontsize = 20) 
+        if gamma == True:  ax.set_ylabel(r"$\Gamma(N\to X)$", fontsize = 20) 
+            
+        ax.tick_params(axis='both', which='major',direction='in' , labelsize=15,length=8, width=1,top=True,right=True)
+        ax.tick_params(axis='both', which='minor',direction='in' , labelsize=15,length=4, width=1,top=True,right=True)
+        
+        
+        fig.set_size_inches(9,6, forward=True)
+        negligible_curves = []
+                    
+        
+        for curve in curves: 
+            
+            in_range = 0 
+            
+            
+            
+            curve_type = type(curve)
+            
+            
+            
+            if curve_type is list:
+                
+                #These are collective modes
+                
+                curve_label = curve[0]
+                
+                curve_br_pts = []
+                
+                curve = curve[1:]
+                
+                for i in range(len(self.mpts)):
+            
+                    br_m = 0.0
+                    
+
+                    for mode in curve:
+                        
+                        for channel in self.model_brs.keys():
+                            
+                            
+                            
+                            if mode in self.model_brs[channel].keys():
+                                
+                                if channel in ['nuqq','lud'] and self.mpts[i] > Quark_level_cutoff:
+                                    
+                                    if gamma == False: br_m += self.model_brs[channel][mode][i]
+                                    elif gamma == True: br_m += self.model_widths[channel][mode][i]
+                                        
+                                elif channel in ['lV','nuV','nuP','lP'] and self.mpts[i] < Quark_level_cutoff:
+                                    if gamma == False: br_m += self.model_brs[channel][mode][i]
+                                    elif gamma == True: br_m += self.model_widths[channel][mode][i]
+                                    
+                                elif channel in ['null','llnu','nu3']:
+                                    if gamma == False: br_m += self.model_brs[channel][mode][i]
+                                    elif gamma == True: br_m += self.model_widths[channel][mode][i]
+                                else: 
+                                    br_m = np.nan
+                                
+
+                    if br_m != None:
+                        if br_m > ylims[0] and in_range == 0: 
+                            index_in_range = i
+                            in_range +=1
+
+                        curve_br_pts.append(br_m)
+                
+                if in_range > 0: 
+                    line,= ax.plot(self.mpts,curve_br_pts,label=curve_label)
+                    
+                else: 
+                    if not all(br== 0.0 for br in curve_br_pts):negligible_curves.append(curve_label)
+                
+                
+                
+                
+            else:
+                
+                #These are all the individual modes
+                
+
+                mode = curve
+                #print(curve)
+
+                for channel in self.model_brs.keys():
+
+                    if mode in self.model_brs[channel].keys():
+
+                        in_range = 0 
+
+
+
+
+
+                        if gamma == False: br_pts = self.model_brs[channel][mode]
+                        if gamma == True: br_pts = self.model_widths[channel][mode]
+                                
+
+                        for i,br in enumerate(br_pts): 
+
+                            if br > ylims[0]: 
+                                in_range +=1
+
+                                index_in_range = i
+                                break
+
+                        label = ""
+
+                        for p in mode:
+
+                            label += plot_labels[p]
+
+
+
+
+
+                        if in_range > 0: 
+                            line, = ax.plot(self.mpts,br_pts,label = label)
+
+
+                        else: 
+                            if not all(br== 0.0 for br in br_pts):negligible_curves.append(label)
+        
+        #relevant_legend = ax.legend(ncol=3,loc='upper left',framealpha=.4,bbox_to_anchor=(.49, .39),frameon=True, fontsize="12", columnspacing=0.5) #011
+        relevant_legend = ax.legend(ncol=3,loc='upper left',framealpha=.4,bbox_to_anchor=(.49, .45),frameon=True, fontsize="12", columnspacing=0.5) #111
+        #relevant_legend = ax.legend(ncol=2,loc='lower right',framealpha=.4,frameon=True, fontsize="14", columnspacing=0.5)
+        ax.add_artist(relevant_legend)
+        ax.axvline(x = Quark_level_cutoff, color = 'black', linestyle = 'dotted',alpha= .8,linewidth=1)
+        #print('Out of Figure Bounds: ', negligible_curves)
+        if len(negligible_curves)>0 and show_negligible == True: 
+            lines = []
+            for curve_label in negligible_curves:
+                line,= ax.plot([], [], ' ', label=curve_label)
+                lines.append(line)
+                
+            negligible_legend=ax.legend(handles=lines, loc='best',bbox_to_anchor=(1, 1),title=fr"$B(N\to X) < {ylims[0]:.1f}$")   
+            
+            ax.add_artist(negligible_legend)
+                
+         
+       
+        
+
+        
+        
+        if savefig == True: fig.savefig(filename,quality =100,bbox_inches='tight')
+            
+        return fig,ax
+                  
             
     def save_data(self,save_gamma,save_ctau,save_brs):
         
@@ -812,7 +1085,7 @@ class HNL_Decay:
             
             
 
-                self.gamma_path = f"Decay Data/{self.couplings}/gamma"
+                self.gamma_path = f"Decay Data/{(self.U['e'],self.U['mu'],self.U['tau'])}/gamma"
 
                 channel_path_gamma = os.path.join(self.gamma_path,channel)
 
@@ -856,7 +1129,7 @@ class HNL_Decay:
 
             df=pd.DataFrame(df_data)
 
-            save_path = f"Decay Data/{self.couplings}/ctau.txt"
+            save_path = f"Decay Data/{(self.U['e'],self.U['mu'],self.U['tau'])}/ctau.txt"
 
             df.to_csv(save_path,sep=' ',header=False,index=False)
 
@@ -868,7 +1141,7 @@ class HNL_Decay:
 
                 
 
-                self.br_path = f"Decay Data/{self.couplings}/br"
+                self.br_path = f"Decay Data/{(self.U['e'],self.U['mu'],self.U['tau'])}/br"
 
                 channel_path_br = os.path.join(self.br_path,channel)
 
