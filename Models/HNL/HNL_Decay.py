@@ -98,25 +98,36 @@ def I_2_2body(x,y):
     
     return np.sqrt(Lambda(1,x,y)) * ((1+ x - y)*(1 + x + 2*y) - 4*x)
 
-def I_1_3body(x,y,z): 
+def I_1_3body(x,y,z, manual=True):
     
-    #changed 1->s 
+    #changed 1->s
+    integrand = lambda s: (1/s)*(s - x - y)*(1 + z - s) * np.sqrt(Lambda(s,x,y)) * np.sqrt(Lambda(1,s,z))
     
-    integrand = lambda s: (1/s)*(s - x - y)*(1 + z - s)*np.sqrt(Lambda(s,x,y))*np.sqrt(Lambda(1,s,z))
-    
-    integral,error = integrate.quad(integrand, (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2)
-    
-    
+    if manual:
+        smin, smax, ns = (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2, 100
+        ds = (smax-smin)/float(ns)
+        integral=0
+        for s in np.linspace(smin+0.5*ds,smax-0.5*ds,ns):
+            integral += integrand(s)
+        integral*=ds
+    else:
+        integral,error = integrate.quad(integrand, (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2)
     return 12*integral
 
  
-def I_2_3body(x,y,z): 
+def I_2_3body(x,y,z, manual=True):
     
-    integrand = lambda s: (1/s)*(1 + x - s)*np.sqrt(Lambda(s,y,z))*np.sqrt(Lambda(1,s,x))
+    integrand = lambda s: (1/s)*(1 + x - s) * np.sqrt(Lambda(s,y,z)) * np.sqrt(Lambda(1,s,x))
     
-    integral,error = integrate.quad(integrand, (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2)
-  
-    
+    if manual:
+        smin, smax, ns = (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2, 100
+        ds = (smax-smin)/float(ns)
+        integral=0
+        for s in np.linspace(smin+0.5*ds,smax-0.5*ds,ns):
+            integral += integrand(s)
+        integral*=ds
+    else:
+        integral,error = integrate.quad(integrand, (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2)
     return 24*np.sqrt(y*z)*integral
 
 

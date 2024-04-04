@@ -18,6 +18,8 @@ class HeavyNeutralLepton(Utility):
         self.vcoupling = {"11": ve, "13":vmu, "15": vtau}   #HNL coupling to the electron, the muon and the tau lepton
         self.lepton = {"11": "e", "13":"mu", "15": "tau"}
         self.hadron = {"211": "pi", "321": "K", "213": "rho"}
+        self.generators_light = None
+        self.generators_heavy = None
     
     #decay constants
     def fH(self,pid):
@@ -141,6 +143,22 @@ class HeavyNeutralLepton(Utility):
     
     def GF(self):
         return 1.1663788*10**(-5)
+        
+    def set_generators(self,generators_light, generators_heavy):
+        self.generators = {
+            211: generators_light,
+            321: generators_light,
+            310: generators_light,
+            130: generators_light,
+            411: generators_heavy,
+            421: generators_heavy,
+            431: generators_heavy,
+            511: generators_heavy,
+            521: generators_heavy,
+            531: generators_heavy,
+            541: generators_heavy,
+            15:  generators_heavy,
+        }
 
     ###############################
     #  2-body decays
@@ -876,6 +894,7 @@ class HeavyNeutralLepton(Utility):
         coupling=f"self.vcoupling[str(abs(int(pid3))-1)]"
         br_q_bq_nu=f"(coupling**2*{GF}**2*mass**5/(32*np.pi**3))*({gL}*{gR}*{I2}+({gL}**2+{gR}**2)*{I1})"
         return(br_q_bq_nu)
+        
     ################################################################################################
 
     #input path to given folder and it removes all files in that folder
@@ -885,7 +904,7 @@ class HeavyNeutralLepton(Utility):
             os.remove(f)
 
 
-    def get_br_and_ctau(self,mpts):
+    def get_br_and_ctau(self,mpts = np.logspace(-3,1, 401)):
         """
         
         Generate Decay Data and save to Decay Data directory
@@ -942,4 +961,52 @@ class HeavyNeutralLepton(Utility):
         
         return modes,finalstates,filenames
             
+    ###############################
+    #  return list of decays
+    ###############################
+
+    def get_channels_2body(self,):
         
+        channels_2body = [
+            [r'$D^+ \to l^+ + N$'    , '411', '-'],
+            [r'$D^- \to l^- + N$'    ,'-411', '' ],
+            [r'$D_s^+ \to l^+ + N$'  , '431', '-'],
+            [r'$D_s^- \to l^- + N$'  ,'-431', '' ],
+            [r'$B^+ \to + l^+ + N$'  , '521', '-'],
+            [r'$B^- \to + l^- + N$'  ,'-521', '' ],
+            [r'$B_c^+ \to + l^+ + N$', '541', '-'],
+            [r'$B_c^- \to + l^- + N$','-541', '' ],
+            [r'$pi^+ \to + l^+ + N$' , '211', '-'],
+            [r'$pi^- \to + l^- + N$' ,'-211', '' ],
+            [r'$K^+ \to + l^+ + N$'  , '321', '-'],
+            [r'$K^- \to + l^- + N$'  ,'-321', '' ],
+        ]
+        
+        channels_2body_tau = [
+            [r'$\tau^- \to \pi^- + N$' , '15','211', '-' ],
+            [r'$\tau^+ \to \pi^+ + N$' ,'-15','211', ''  ],
+            [r'$\tau^- \to K^- + N$'   , '15','321', '-' ],
+            [r'$\tau^+ \to K^+ + N$'   ,'-15','321', ''  ],
+            [r'$\tau^- \to \rho^- + N$', '15','213', '-' ],
+            [r'$\tau^+ \to \rho^+ + N$','-15','213', ''  ],
+            [r'$\tau^- \to K^{*-} + N$', '15','313', '-' ],
+            [r'$\tau^+ \to K^{*+} + N$','-15','313', ''  ]
+        ]
+    
+        output=[]
+        for description, pid_had, sign_lep in channels_2body:
+            for pid_lep in ["11","13","15"]:
+                if self.vcoupling[pid_lep] <1e-9: continue
+                generator = self.generators[abs(int(pid_had))]
+                label= "2body_" + pid_had + "_" + sign_lep+pid_lep
+                br = self.get_2body_br(pid_had, sign_lep+pid_lep)
+                output.append([label, pid_had, sign_lep+pid_lep, br, generator, description])
+
+        for description, pid_tau, pid_had, sign_had in channels_2body_tau:
+                if self.vcoupling["15"] <1e-9: continue
+                generator = self.generators[15]
+                label= "2body_tau_" + pid_tau + "_" + sign_had+pid_had
+                br = self.get_2body_br_tau(pid_tau, sign_had+pid_had)
+                output.append([label, pid_tau, sign_had+pid_had, br, generator, description])
+
+        return output
