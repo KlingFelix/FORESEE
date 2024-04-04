@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import math
 import random
 import time
+import types
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
@@ -780,6 +781,7 @@ class Foresee(Utility):
             numberdensity=3.754e+29,
             ermin=0.03,
             ermax=1,
+            efficiency=1,
         ):
         self.distance=distance
         self.distance_prod=distance_prod
@@ -790,6 +792,8 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
+        self.efficiency=efficiency
+        self.efficiency_tpye = type(efficiency)
         
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -800,6 +804,14 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
+        
+    def get_efficiency(self,energy):
+        # calculate efficiency
+        if self.efficiency_tpye==str: return eval(self.efficiency)
+        if self.efficiency_tpye==float: return self.efficiency
+        if self.efficiency_tpye==int: return self.efficiency
+        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
+        return 1
 
     def get_events(self, mass, energy,
             modes = None,
@@ -854,7 +866,7 @@ class Foresee(Utility):
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
-                weight_event = w*self.luminosity*1000.
+                weight_event = w*self.luminosity*1000.*self.get_efficiency(p.p)
 
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
