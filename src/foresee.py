@@ -450,7 +450,7 @@ class Foresee(Utility):
             return list_t,list_p,list_w
 
     # show 2d hadronspectrum
-    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
+    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
