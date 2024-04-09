@@ -9,6 +9,7 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
+import pdg
 
 class Utility():
 
@@ -16,73 +17,42 @@ class Utility():
     #  Hadron Masses and Lifetimes
     ###############################
 
+    # Default: use the database associated with the PDG installation
+    pdgapi = pdg.connect(pedantic=False)
+    # Alternatively, download a database to FORESEE/files/ and use it for reproducibility
+    #pdgapi = pdg.connect('sqlite:///../files/pdgall-2023-v0.0.6.sqlite')    
+    
     def charges(self, pid):
-        if   pid in ["11", "13", "15"]: return -1
-        elif pid in ["-11", "-13", "-15"]: return 1
-        elif pid in ["2212"]: return 1
-        elif pid in ["-2212"]: return 1
-        elif pid in ["211", "321", "411", "431"]: return 1
-        elif pid in ["-211", "-321", "-411", "-431"]: return -1
-        else: return 0
+        try:
+            charge = self.pdgapi.get_particle_by_mcid(int(pid)).charge
+        except:
+            charge = 0.0
+        return charge if charge!=None else 0.0
         
     def masses(self,pid,mass=0):
-        if   pid in ["2112","-2112"]: return 0.938
-        elif pid in ["2212","-2212"]: return 0.938
-        elif pid in ["211" ,"-211" ]: return 0.13957
-        elif pid in ["321" ,"-321" ]: return 0.49368
-        elif pid in ["310" ,"130"  ]: return 0.49761
-        elif pid in ["111"         ]: return 0.135
-        elif pid in ["221"         ]: return 0.547
-        elif pid in ["331"         ]: return 0.957
-        elif pid in ["3122","-3122"]: return 1.11568
-        elif pid in ["3222","-3222"]: return 1.18937
-        elif pid in ["3112","-3112"]: return 1.19745
-        elif pid in ["3322","-3322"]: return 1.31486
-        elif pid in ["3312","-3312"]: return 1.32171
-        elif pid in ["3334","-3334"]: return 1.67245
-        elif pid in ["113"         ]: return 0.77545
-        elif pid in ["223"         ]: return 0.78266
-        elif pid in ["333"         ]: return 1.019461
-        elif pid in ["213" ,"-213" ]: return 0.77545
-        elif pid in ["411" ,"-411" ]: return 1.86961
-        elif pid in ["421" ,"-421" ]: return 1.86484
-        elif pid in ["431" ,"-431" ]: return 1.96830
-        elif pid in ["4122","-4122"]: return 2.28646
-        elif pid in ["511" ,"-511" ]: return 5.27961
-        elif pid in ["521" ,"-521" ]: return 5.27929
-        elif pid in ["531" ,"-531" ]: return 5.36679
-        elif pid in ["541" ,"-541" ]: return 6.2749
-        elif pid in ["5122","-5122"]: return 5.6202
-        elif pid in ["4"   ,"-4"   ]: return 1.5
-        elif pid in ["5"   ,"-5"   ]: return 4.5
-        elif pid in ["11"  ,"-11"  ]: return 0.000511
-        elif pid in ["13"  ,"-13"  ]: return 0.105658
-        elif pid in ["15"  ,"-15"  ]: return 1.777
-        elif pid in ["22"          ]: return 0
-        elif pid in ["23"          ]: return 91.
-        elif pid in ["24"  ,"-24"  ]: return 80.4
-        elif pid in ["25"          ]: return 125.
-        elif pid in ["0"           ]: return mass
-        elif pid in ["443"         ]: return 3.096
-        elif pid in ["100443"      ]: return 3.686
-        elif pid in ["553"         ]: return 9.460
-        elif pid in ["100553"      ]: return 10.023
-        elif pid in ["200553"      ]: return 10.355
-        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
+        pidabs = abs(int(pid))
+        #Treat select entries separately
+        if   pidabs in [0       ]: return mass
+        elif pidabs in [310,130 ]: return 0.49761  #K0S,K0L: No best property in PDG API
+        elif pidabs in [22      ]: return 0.0      #PDG API returns 1e-27 for photon
+        elif pidabs in [4       ]: return 1.5      #PDG API returns 1.27 for c quark
+        elif pidabs in [5       ]: return 4.5      #PDG API returns None for b quark
+        elif pidabs in [12,14,16]: return 0.0      #Neutrinos not found in PDG API    
+        #General case: fetch values from PDG database via API
+        else: return self.pdgapi.get_particle_by_mcid(pidabs).mass
 
     def ctau(self,pid):
-        if   pid in ["2112","-2112"]: tau = 10**8
-        elif pid in ["2212","-2212"]: tau = 10**8
-        elif pid in ["211","-211"  ]: tau = 2.603*10**-8
-        elif pid in ["321","-321"  ]: tau = 1.238*10**-8
-        elif pid in ["310"         ]: tau = 8.954*10**-11
-        elif pid in ["130"         ]: tau = 5.116*10**-8
-        elif pid in ["3122","-3122"]: tau = 2.60*10**-10
-        elif pid in ["3222","-3222"]: tau = 8.018*10**-11
-        elif pid in ["3112","-3112"]: tau = 1.479*10**-10
-        elif pid in ["3322","-3322"]: tau = 2.90*10**-10
-        elif pid in ["3312","-3312"]: tau = 1.639*10**-10
-        elif pid in ["3334","-3334"]: tau = 8.21*10**-11
+        tau=1
+        pidabs = abs(int(pid))
+        try:
+            prtcl = self.pdgapi.get_particle_by_mcid(pidabs)
+            if prtcl.has_lifetime_entry:
+                tau = prtcl.lifetime
+            elif pidabs in [3334]: tau = 8.21e-11  #Omega^- not found in PDG API
+            else:
+                print('WARNING ctau cannot be fetched for pid = '+str(pid))
+        except:
+            print('WARNING '+str(pid)+' cannot be obtained from PDG API')
         return 3*10**8 * tau
 
     ###############################
@@ -315,7 +285,7 @@ class Foresee(Utility):
         #return results
         return list_wx
 
-    # fuunction to read file and return momenta, weights
+    # function to read file and return momenta, weights
     def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
         
         if type(filenames) == str: filenames=[filenames]
@@ -323,7 +293,7 @@ class Foresee(Utility):
         for filename in filenames:
             if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
             elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
-            else: print ("ERROR: cannot rtead file type")
+            else: print ("ERROR: cannot read file type")
             if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
@@ -470,7 +440,7 @@ class Foresee(Utility):
 
     def get_decay_prob(self, pid, momentum):
 
-        # return 1 when decaying promptly or has negative pz.
+        # return 1 when decaying promptly or 0 if negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
         if momentum.pz<0: return 0
         
@@ -556,7 +526,7 @@ class Foresee(Utility):
 
         #integration boundary
         q2min,q2max = (m2+m3)**2,(m0-m1)**2
-        cthmin,cthmax = -1 , 1
+        cthmin,cthmax = -1. , 1.
         mass = m3
 
         #numerical integration
@@ -565,7 +535,7 @@ class Foresee(Utility):
 
             #Get kinematic Variables
             q2 = random.uniform(q2min,q2max)
-            cth = random.uniform(-1,1)
+            cth = random.uniform(cthmin,cthmax)
             th = np.arccos(cth)
             q  = math.sqrt(q2)
 
