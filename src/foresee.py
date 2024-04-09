@@ -1218,7 +1218,7 @@ class Foresee(Utility):
         f.close()
 
     def plot_reach(self,
-            setups, bounds, projections, bounds2=[],
+            setups, bounds, projections, bounds2=[], grids=[],
             title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
@@ -1281,6 +1281,17 @@ class Foresee(Utility):
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
+            ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
+            zorder+=1
+
+        # irregular grids
+        for label, points, values, color, ls in grids:
+            masses = np.logspace(np.log10(xlims[0]), np.log10(xlims[1]), 101)
+            couplings = np.logspace(np.log10(ylims[0]), np.log10(ylims[1]) ,101)
+            m, c = np.meshgrid(masses, couplings)
+            v = np.log10(np.array(values)+1e-20)
+            n = interpolate.griddata(points, v, (m,c), method='linear')
+            ax.contour (m,c,n, levels=[np.log10(level)] ,colors=color, zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
 
