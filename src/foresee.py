@@ -1289,6 +1289,8 @@ class Foresee(Utility):
             masses = np.logspace(np.log10(xlims[0]), np.log10(xlims[1]), 101)
             couplings = np.logspace(np.log10(ylims[0]), np.log10(ylims[1]) ,101)
             m, c = np.meshgrid(masses, couplings)
+            #grid = interpolate.griddata(points, values, (m,c), method='cubic')
+            #n = np.log10(np.array(grid)+1e-20)
             v = np.log10(np.array(values)+1e-20)
             n = interpolate.griddata(points, v, (m,c), method='linear')
             ax.contour (m,c,n, levels=[np.log10(level)] ,colors=color, zorder=zorder, linestyles=ls, linewidths=linewidths)
