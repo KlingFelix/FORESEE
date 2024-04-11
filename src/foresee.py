@@ -55,6 +55,14 @@ class Utility():
             print('WARNING '+str(pid)+' cannot be obtained from PDG API')
         return 3*10**8 * tau
 
+    def widths(self, pid):
+        try:
+            width = self.pdgapi.get_particle_by_mcid(int(pid)).width
+        except:
+            print('WARNING cannot fetch '+str(pid)+' width from PDG API, returning 0')
+            width = 0.0
+        return width if width!=None else 0.0
+
     ###############################
     #  Utility Functions
     ###############################
