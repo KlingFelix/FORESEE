@@ -861,6 +861,7 @@ class Foresee(Utility):
             nsample = 1,
             preselectioncuts = "th<0.01 and p>100",
             coup_ref = 1,
+            extend_to_low_pt_scales = {},
         ):
 
         # setup different couplings to scan over
