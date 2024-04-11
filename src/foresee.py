@@ -56,8 +56,9 @@ class Utility():
         return 3*10**8 * tau
 
     def widths(self, pid):
+        pidabs = abs(int(pid))
         try:
-            width = self.pdgapi.get_particle_by_mcid(int(pid)).width
+            width = self.pdgapi.get_particle_by_mcid(pidabs).width
         except:
             print('WARNING cannot fetch '+str(pid)+' width from PDG API, returning 0')
             width = 0.0
