@@ -9,22 +9,17 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
-import pdg
+from particle import Particle
 
 class Utility():
 
     ###############################
-    #  Hadron Masses and Lifetimes
+    #  Hadron Masses, lifetimes etc
     ###############################
-
-    # Default: use the database associated with the PDG installation
-    pdgapi = pdg.connect(pedantic=False)
-    # Alternatively, download a database to FORESEE/files/ and use it for reproducibility
-    #pdgapi = pdg.connect('sqlite:///../files/pdgall-2023-v0.0.6.sqlite')    
     
     def charges(self, pid):
         try:
-            charge = self.pdgapi.get_particle_by_mcid(int(pid)).charge
+            charge = Particle.from_pdgid(int(pid)).charge
         except:
             charge = 0.0
         return charge if charge!=None else 0.0
@@ -32,37 +27,31 @@ class Utility():
     def masses(self,pid,mass=0):
         pidabs = abs(int(pid))
         #Treat select entries separately
-        if   pidabs in [0       ]: return mass
-        elif pidabs in [310,130 ]: return 0.49761  #K0S,K0L: No best property in PDG API
-        elif pidabs in [22      ]: return 0.0      #PDG API returns 1e-27 for photon
-        elif pidabs in [4       ]: return 1.5      #PDG API returns 1.27 for c quark
-        elif pidabs in [5       ]: return 4.5      #PDG API returns None for b quark
-        elif pidabs in [12,14,16]: return 0.0      #Neutrinos not found in PDG API    
-        #General case: fetch values from PDG database via API
-        else: return self.pdgapi.get_particle_by_mcid(pidabs).mass
-
+        if   pidabs==0: return mass
+        elif pidabs==4: return 1.5   #GeV, scikit-particle returns 1.27 for c quark
+        elif pidabs==5: return 4.5   #GeV, scikit-particle returns 4.18 for b quark  
+        #General case: fetch values from scikit-particle
+        else: 
+            mret = Particle.from_pdgid(pidabs).mass   #MeV
+            return mret*0.001 if mret!=None else 0.0  #GeV
+                
     def ctau(self,pid):
-        tau=1
         pidabs = abs(int(pid))
+        ctau = 0.0
         try:
-            prtcl = self.pdgapi.get_particle_by_mcid(pidabs)
-            if prtcl.has_lifetime_entry:
-                tau = prtcl.lifetime
-            elif pidabs in [3334]: tau = 8.21e-11  #Omega^- not found in PDG API
-            else:
-                print('WARNING ctau cannot be fetched for pid = '+str(pid))
+            ctau = Particle.from_pdgid(pidabs).ctau
         except:
-            print('WARNING '+str(pid)+' cannot be obtained from PDG API')
-        return 3*10**8 * tau
+            print('WARNING '+str(pid)+' ctau not obtained from scikit-particle')
+        if pidabs in [2212]: ctau=8.51472e+48  #Avoid inf return value in code
+        return ctau*0.001
 
     def widths(self, pid):
-        pidabs = abs(int(pid))
+        width = 0.0
         try:
-            width = self.pdgapi.get_particle_by_mcid(pidabs).width
+            width = Particle.from_pdgid(int(pid)).width
         except:
-            print('WARNING cannot fetch '+str(pid)+' width from PDG API, returning 0')
-            width = 0.0
-        return width if width!=None else 0.0
+            print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
+        return width*1e-6 if width!=None else 0.0
 
     ###############################
     #  Utility Functions
