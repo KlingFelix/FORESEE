@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import math
 import random
 import time
+import types
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
@@ -750,6 +751,7 @@ class Foresee(Utility):
             numberdensity=3.754e+29,
             ermin=0.03,
             ermax=1,
+            efficiency=1,
         ):
         self.distance=distance
         self.distance_prod=distance_prod
@@ -760,6 +762,8 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
+        self.efficiency=efficiency
+        self.efficiency_tpye = type(efficiency)
         
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -770,6 +774,14 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
+        
+    def get_efficiency(self,energy):
+        # calculate efficiency
+        if self.efficiency_tpye==str: return eval(self.efficiency)
+        if self.efficiency_tpye==float: return self.efficiency
+        if self.efficiency_tpye==int: return self.efficiency
+        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
+        return 1
 
     def get_events(self, mass, energy,
             modes = None,
@@ -824,7 +836,7 @@ class Foresee(Utility):
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
-                weight_event = w*self.luminosity*1000.
+                weight_event = w*self.luminosity*1000.*self.get_efficiency(p.p)
 
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
@@ -1176,11 +1188,11 @@ class Foresee(Utility):
         f.close()
 
     def plot_reach(self,
-            setups, bounds, projections, bounds2=[],
+            setups, bounds, projections, bounds2=[], grids=[],
             title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
-            fs_label=14,
+            fs_label=14, confidence_interval=False,
         ):
 
         # initiate figure
@@ -1234,11 +1246,24 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
+            if type(level)==list: level_up, level, level_down = level
+            else: level_up, level_down = None, None
             masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
-            ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
+            if level_up is not None: ax.contourf(m,c,n, levels=[np.log10(level_up),np.log10(level_down)],colors=color,zorder=zorder, alpha=alpha)
+            ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
+            zorder+=1
+
+        # irregular grids
+        for label, points, values, color, ls in grids:
+            masses = np.logspace(np.log10(xlims[0]), np.log10(xlims[1]), 101)
+            couplings = np.logspace(np.log10(ylims[0]), np.log10(ylims[1]) ,101)
+            m, c = np.meshgrid(masses, couplings)
+            v = np.log10(np.array(values)+1e-20)
+            n = interpolate.griddata(points, v, (m,c), method='linear')
+            ax.contour (m,c,n, levels=[np.log10(level)] ,colors=color, zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
 
