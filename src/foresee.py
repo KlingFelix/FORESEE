@@ -5,85 +5,54 @@ from matplotlib import pyplot as plt
 import math
 import random
 import time
+import types
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
+from particle import Particle
 
 class Utility():
 
     ###############################
-    #  Hadron Masses and Lifetimes
+    #  Hadron Masses, lifetimes etc
     ###############################
-
+    
     def charges(self, pid):
-        if   pid in ["11", "13", "15"]: return -1
-        elif pid in ["-11", "-13", "-15"]: return 1
-        elif pid in ["2212"]: return 1
-        elif pid in ["-2212"]: return 1
-        elif pid in ["211", "321", "411", "431"]: return 1
-        elif pid in ["-211", "-321", "-411", "-431"]: return -1
-        else: return 0
+        try:
+            charge = Particle.from_pdgid(int(pid)).charge
+        except:
+            charge = 0.0
+        return charge if charge!=None else 0.0
         
     def masses(self,pid,mass=0):
-        if   pid in ["2112","-2112"]: return 0.938
-        elif pid in ["2212","-2212"]: return 0.938
-        elif pid in ["211" ,"-211" ]: return 0.13957
-        elif pid in ["321" ,"-321" ]: return 0.49368
-        elif pid in ["310" ,"130"  ]: return 0.49761
-        elif pid in ["111"         ]: return 0.135
-        elif pid in ["221"         ]: return 0.547
-        elif pid in ["331"         ]: return 0.957
-        elif pid in ["3122","-3122"]: return 1.11568
-        elif pid in ["3222","-3222"]: return 1.18937
-        elif pid in ["3112","-3112"]: return 1.19745
-        elif pid in ["3322","-3322"]: return 1.31486
-        elif pid in ["3312","-3312"]: return 1.32171
-        elif pid in ["3334","-3334"]: return 1.67245
-        elif pid in ["113"         ]: return 0.77545
-        elif pid in ["223"         ]: return 0.78266
-        elif pid in ["333"         ]: return 1.019461
-        elif pid in ["213" ,"-213" ]: return 0.77545
-        elif pid in ["411" ,"-411" ]: return 1.86961
-        elif pid in ["421" ,"-421" ]: return 1.86484
-        elif pid in ["431" ,"-431" ]: return 1.96830
-        elif pid in ["4122","-4122"]: return 2.28646
-        elif pid in ["511" ,"-511" ]: return 5.27961
-        elif pid in ["521" ,"-521" ]: return 5.27929
-        elif pid in ["531" ,"-531" ]: return 5.36679
-        elif pid in ["541" ,"-541" ]: return 6.2749
-        elif pid in ["5122","-5122"]: return 5.6202
-        elif pid in ["4"   ,"-4"   ]: return 1.5
-        elif pid in ["5"   ,"-5"   ]: return 4.5
-        elif pid in ["11"  ,"-11"  ]: return 0.000511
-        elif pid in ["13"  ,"-13"  ]: return 0.105658
-        elif pid in ["15"  ,"-15"  ]: return 1.777
-        elif pid in ["22"          ]: return 0
-        elif pid in ["23"          ]: return 91.
-        elif pid in ["24"  ,"-24"  ]: return 80.4
-        elif pid in ["25"          ]: return 125.
-        elif pid in ["0"           ]: return mass
-        elif pid in ["443"         ]: return 3.096
-        elif pid in ["100443"      ]: return 3.686
-        elif pid in ["553"         ]: return 9.460
-        elif pid in ["100553"      ]: return 10.023
-        elif pid in ["200553"      ]: return 10.355
-        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
-
+        pidabs = abs(int(pid))
+        #Treat select entries separately
+        if   pidabs==0: return mass
+        elif pidabs==4: return 1.5   #GeV, scikit-particle returns 1.27 for c quark
+        elif pidabs==5: return 4.5   #GeV, scikit-particle returns 4.18 for b quark  
+        #General case: fetch values from scikit-particle
+        else: 
+            mret = Particle.from_pdgid(pidabs).mass   #MeV
+            return mret*0.001 if mret!=None else 0.0  #GeV
+                
     def ctau(self,pid):
-        if   pid in ["2112","-2112"]: tau = 10**8
-        elif pid in ["2212","-2212"]: tau = 10**8
-        elif pid in ["211","-211"  ]: tau = 2.603*10**-8
-        elif pid in ["321","-321"  ]: tau = 1.238*10**-8
-        elif pid in ["310"         ]: tau = 8.954*10**-11
-        elif pid in ["130"         ]: tau = 5.116*10**-8
-        elif pid in ["3122","-3122"]: tau = 2.60*10**-10
-        elif pid in ["3222","-3222"]: tau = 8.018*10**-11
-        elif pid in ["3112","-3112"]: tau = 1.479*10**-10
-        elif pid in ["3322","-3322"]: tau = 2.90*10**-10
-        elif pid in ["3312","-3312"]: tau = 1.639*10**-10
-        elif pid in ["3334","-3334"]: tau = 8.21*10**-11
-        return 3*10**8 * tau
+        pidabs = abs(int(pid))
+        ctau = 0.0
+        try:
+            ctau = Particle.from_pdgid(pidabs).ctau
+        except:
+            print('WARNING '+str(pid)+' ctau not obtained from scikit-particle')
+        if pidabs in [2212]: ctau=8.51472e+48  #Avoid inf return value in code
+        return ctau*0.001
+
+    def widths(self, pid):
+        width = 0.0
+        try:
+            width = Particle.from_pdgid(int(pid)).width
+        except:
+            print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
+        return width*1e-6 if width!=None else 0.0
 
     ###############################
     #  Utility Functions
@@ -228,16 +197,19 @@ class Model(Utility):
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
+        if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'")
         self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
+        if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'").replace("'pid2'","'"+str(pid2)+"'")
         self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
         if type(generator)==str: generator=[generator]
+        if type(mixing   )==str: mixing=mixing.replace("'pid'","'"+str(pid)+"'")
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
@@ -315,7 +287,7 @@ class Foresee(Utility):
         #return results
         return list_wx
 
-    # fuunction to read file and return momenta, weights
+    # function to read file and return momenta, weights
     def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
         
         if type(filenames) == str: filenames=[filenames]
@@ -323,7 +295,7 @@ class Foresee(Utility):
         for filename in filenames:
             if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
             elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
-            else: print ("ERROR: cannot rtead file type")
+            else: print ("ERROR: cannot read file type")
             if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
@@ -450,7 +422,7 @@ class Foresee(Utility):
             return list_t,list_p,list_w
 
     # show 2d hadronspectrum
-    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
+    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
@@ -470,7 +442,7 @@ class Foresee(Utility):
 
     def get_decay_prob(self, pid, momentum):
 
-        # return 1 when decaying promptly or has negative pz.
+        # return 1 when decaying promptly or 0 if negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
         if momentum.pz<0: return 0
         
@@ -556,7 +528,7 @@ class Foresee(Utility):
 
         #integration boundary
         q2min,q2max = (m2+m3)**2,(m0-m1)**2
-        cthmin,cthmax = -1 , 1
+        cthmin,cthmax = -1. , 1.
         mass = m3
 
         #numerical integration
@@ -565,7 +537,7 @@ class Foresee(Utility):
 
             #Get kinematic Variables
             q2 = random.uniform(q2min,q2max)
-            cth = random.uniform(-1,1)
+            cth = random.uniform(cthmin,cthmax)
             th = np.arccos(cth)
             q  = math.sqrt(q2)
 
@@ -780,6 +752,7 @@ class Foresee(Utility):
             numberdensity=3.754e+29,
             ermin=0.03,
             ermax=1,
+            efficiency=1,
         ):
         self.distance=distance
         self.distance_prod=distance_prod
@@ -790,6 +763,8 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
+        self.efficiency=efficiency
+        self.efficiency_tpye = type(efficiency)
         
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -800,6 +775,14 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
+        
+    def get_efficiency(self,energy):
+        # calculate efficiency
+        if self.efficiency_tpye==str: return eval(self.efficiency)
+        if self.efficiency_tpye==float: return self.efficiency
+        if self.efficiency_tpye==int: return self.efficiency
+        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
+        return 1
 
     def get_events(self, mass, energy,
             modes = None,
@@ -854,7 +837,7 @@ class Foresee(Utility):
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
-                weight_event = w*self.luminosity*1000.
+                weight_event = w*self.luminosity*1000.*self.get_efficiency(p.p)
 
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
@@ -879,6 +862,7 @@ class Foresee(Utility):
             nsample = 1,
             preselectioncuts = "th<0.01 and p>100",
             coup_ref = 1,
+            extend_to_low_pt_scales = {},
         ):
 
         # setup different couplings to scan over
@@ -908,7 +892,8 @@ class Foresee(Utility):
             try:
                 particles_llp,weights_llp=self.convert_list_to_momenta(
                     filename=filename, mass=mass,
-                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
+                    extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except: continue
 
             # loop over particles, and record probablity to interact in volume
@@ -1206,11 +1191,11 @@ class Foresee(Utility):
         f.close()
 
     def plot_reach(self,
-            setups, bounds, projections, bounds2=[],
+            setups, bounds, projections, bounds2=[], grids=[],
             title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
-            fs_label=14,
+            fs_label=14, confidence_interval=False,
         ):
 
         # initiate figure
@@ -1264,11 +1249,24 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
+            if type(level)==list: level_up, level, level_down = level
+            else: level_up, level_down = None, None
             masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
-            ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
+            if level_up is not None: ax.contourf(m,c,n, levels=[np.log10(level_up),np.log10(level_down)],colors=color,zorder=zorder, alpha=alpha)
+            ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
+            zorder+=1
+
+        # irregular grids
+        for label, points, values, color, ls in grids:
+            masses = np.logspace(np.log10(xlims[0]), np.log10(xlims[1]), 101)
+            couplings = np.logspace(np.log10(ylims[0]), np.log10(ylims[1]) ,101)
+            m, c = np.meshgrid(masses, couplings)
+            v = np.log10(np.array(values)+1e-20)
+            n = interpolate.griddata(points, v, (m,c), method='linear')
+            ax.contour (m,c,n, levels=[np.log10(level)] ,colors=color, zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
 
