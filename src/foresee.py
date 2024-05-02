@@ -19,6 +19,18 @@ class Utility():
     ###############################
     
     def charges(self, pid):
+        """
+        Retrieve particle charges from scikit-particle API
+        
+        Parameters
+        ----------
+        pid:  int
+            The PDG ID for which to request charge
+        
+        Returns
+        -------
+        Particle charge as float
+        """
         try:
             charge = Particle.from_pdgid(int(pid)).charge
         except:
@@ -26,6 +38,20 @@ class Utility():
         return charge if charge!=None else 0.0
         
     def masses(self,pid,mass=0):
+        """
+        Retrieve particle masses from scikit-particle API
+        
+        Parameters
+        ----------
+        pid:  int
+            The PDG ID for which to request mass
+        mass: float
+            Default value returned if pid==0
+        
+        Returns
+        -------
+        Particle mass as float
+        """
         pidabs = abs(int(pid))
         #Treat select entries separately
         if   pidabs==0: return mass
@@ -37,20 +63,47 @@ class Utility():
             return mret*0.001 if mret!=None else 0.0  #GeV
                 
     def ctau(self,pid):
+        """
+        Retrieve particle lifetimes tau multiplied by the speed of light c
+        from scikit-particle API
+        
+        Parameters
+        ----------
+        pid:  int
+            The PDG ID for which to request c*tau
+        
+        Returns
+        -------
+        Particle c*tau as float
+        """
         pidabs = abs(int(pid))
         ctau = 0.0
         try:
             ctau = Particle.from_pdgid(pidabs).ctau
         except:
+            ctau = 0.0
             print('WARNING '+str(pid)+' ctau not obtained from scikit-particle')
-        if pidabs in [2212]: ctau=8.51472e+48  #Avoid inf return value in code
+        if ctau==None: ctau=0.0
+        if np.isinf(ctau): ctau=8.51472e+48  #Avoid inf return value in code
         return ctau*0.001
 
     def widths(self, pid):
-        width = 0.0
+        """
+        Retrieve particle widths from scikit-particle API
+        
+        Parameters
+        ----------
+        pid:  int
+            The PDG ID for which to request width
+        
+        Returns
+        -------
+        Particle width as float
+        """
         try:
             width = Particle.from_pdgid(int(pid)).width
         except:
+            width = 0.0
             print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
         return width*1e-6 if width!=None else 0.0
 
@@ -58,8 +111,19 @@ class Utility():
     #  Utility Functions
     ###############################
 
-    #function that reads a table in a .txt file and converts it to a numpy array
     def readfile(self,filename):
+        """
+        Function that reads a table in a .txt file and converts it to a numpy array
+
+        Parameters
+        ----------
+        filename:  str
+            The name/path of the file to be read
+        
+        Returns
+        -------
+        The recovered table as a numpy array
+        """
         array = []
         with open(filename) as f:
             for line in f:
