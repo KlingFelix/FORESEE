@@ -5,103 +5,54 @@ from matplotlib import pyplot as plt
 import math
 import random
 import time
+import types
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
+from particle import Particle
 
 class Utility():
 
     ###############################
-    #  Hadron Masses and Lifetimes
+    #  Hadron Masses, lifetimes etc
     ###############################
 
     def charges(self, pid):
-        if   pid in ["11", "13", "15"]: return -1
-        elif pid in ["-11", "-13", "-15"]: return 1
-        elif pid in ["2212"]: return 1
-        elif pid in ["-2212"]: return 1
-        elif pid in ["211", "321", "411", "431"]: return 1
-        elif pid in ["-211", "-321", "-411", "-431"]: return -1
-        else: return 0
-        
+        try:
+            charge = Particle.from_pdgid(int(pid)).charge
+        except:
+            charge = 0.0
+        return charge if charge!=None else 0.0
+
     def masses(self,pid,mass=0):
-        if   pid in ["2112","-2112"]: return 0.938
-        elif pid in ["2212","-2212"]: return 0.938
-        elif pid in ["211" ,"-211" ]: return 0.13957
-        elif pid in ["321" ,"-321" ]: return 0.49368
-        elif pid in ["310" ,"130"  ]: return 0.49761
-        elif pid in ["311" ,"-311" ]: return 0.49761
-        elif pid in ["313","-313"  ]: return 0.89166
-        elif pid in ["323" ,"-323" ]: return 0.89166
-        elif pid in ["111"         ]: return 0.135
-        elif pid in ["221"         ]: return 0.547
-        elif pid in ["331"         ]: return 0.957
-        elif pid in ["3122","-3122"]: return 1.11568
-        elif pid in ["3222","-3222"]: return 1.18937
-        elif pid in ["3112","-3112"]: return 1.19745
-        elif pid in ["3322","-3322"]: return 1.31486
-        elif pid in ["3312","-3312"]: return 1.32171
-        elif pid in ["3334","-3334"]: return 1.67245
-        elif pid in ["113"         ]: return 0.77545
-        elif pid in ["223"         ]: return 0.78266
-        elif pid in ["333"         ]: return 1.019461
-        elif pid in ["213" ,"-213" ]: return 0.77545
-        elif pid in ["411" ,"-411" ]: return 1.86961
-        elif pid in ["421" ,"-421" ]: return 1.86484
-        elif pid in ["431" ,"-431" ]: return 1.96830
-        elif pid in ["413" ,"-413" ]: return 2.010
-        elif pid in ["423" ,"-423" ]: return 2.007
-        elif pid in ["433" ,"-433" ]: return 1.96847
-        elif pid in ["443" ,"-443" ]: return 3.0969
-        elif pid in ["4122","-4122"]: return 2.28646
-        elif pid in ["511" ,"-511" ]: return 5.27961
-        elif pid in ["521" ,"-521" ]: return 5.27929
-        elif pid in ["531" ,"-531" ]: return 5.36679
-        elif pid in ["541" ,"-541" ]: return 6.2749
-        elif pid in ["513" ,"-513" ]: return 5.27965
-        elif pid in ["523",  "-523"]: return 5.32470
-        elif pid in ["533" ,"-533" ]: return 5.36688
-        elif pid in ["543" ,"-543" ]: return 6.400
-        elif pid in ["5122","-5122"]: return 5.6202
-        elif pid in ["4"   ,"-4"   ]: return 1.5
-        elif pid in ["5"   ,"-5"   ]: return 4.5
-        elif pid in ["11"  ,"-11"  ]: return 0.000511
-        elif pid in ["13"  ,"-13"  ]: return 0.105658
-        elif pid in ["15"  ,"-15"  ]: return 1.777
-        elif pid in ["22"          ]: return 0
-        elif pid in ["23"          ]: return 91.
-        elif pid in ["24"  ,"-24"  ]: return 80.4
-        elif pid in ["25"          ]: return 125.
-        elif pid in ["0"           ]: return mass
-        elif pid in ["443"         ]: return 3.096
-        elif pid in ["100443"      ]: return 3.686
-        elif pid in ["553"         ]: return 9.460
-        elif pid in ["100553"      ]: return 10.023
-        elif pid in ["200553"      ]: return 10.355
-        elif pid in ["12","-12","14","-14","16","-16"]:  return 0
-        elif pid in ["1"   ,"-1"   ]: return 0.00467
-        elif pid in ["2"   ,"-2"   ]: return 0.00216
-        elif pid in ["3"   ,"-3"   ]: return 0.093
-        elif pid in ["4"   ,"-4"   ]: return 1.5
-        elif pid in ["5"   ,"-5"   ]: return 4.5
-        elif pid in ["6"   ,"-6"   ]: return 172.76
-        elif pid in ["20"  ,"-20"  ]: return 0
+        pidabs = abs(int(pid))
+        #Treat select entries separately
+        if   pidabs==0: return mass
+        elif pidabs==4: return 1.5   #GeV, scikit-particle returns 1.27 for c quark
+        elif pidabs==5: return 4.5   #GeV, scikit-particle returns 4.18 for b quark
+        #General case: fetch values from scikit-particle
+        else:
+            mret = Particle.from_pdgid(pidabs).mass   #MeV
+            return mret*0.001 if mret!=None else 0.0  #GeV
 
     def ctau(self,pid):
-        if   pid in ["2112","-2112"]: tau = 10**8
-        elif pid in ["2212","-2212"]: tau = 10**8
-        elif pid in ["211","-211"  ]: tau = 2.603*10**-8
-        elif pid in ["321","-321"  ]: tau = 1.238*10**-8
-        elif pid in ["310"         ]: tau = 8.954*10**-11
-        elif pid in ["130"         ]: tau = 5.116*10**-8
-        elif pid in ["3122","-3122"]: tau = 2.60*10**-10
-        elif pid in ["3222","-3222"]: tau = 8.018*10**-11
-        elif pid in ["3112","-3112"]: tau = 1.479*10**-10
-        elif pid in ["3322","-3322"]: tau = 2.90*10**-10
-        elif pid in ["3312","-3312"]: tau = 1.639*10**-10
-        elif pid in ["3334","-3334"]: tau = 8.21*10**-11
-        return 3*10**8 * tau
+        pidabs = abs(int(pid))
+        ctau = 0.0
+        try:
+            ctau = Particle.from_pdgid(pidabs).ctau
+        except:
+            print('WARNING '+str(pid)+' ctau not obtained from scikit-particle')
+        if pidabs in [2212]: ctau=8.51472e+48  #Avoid inf return value in code
+        return ctau*0.001
+
+    def widths(self, pid):
+        width = 0.0
+        try:
+            width = Particle.from_pdgid(int(pid)).width
+        except:
+            print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
+        return width*1e-6 if width!=None else 0.0
 
     ###############################
     #  Utility Functions
@@ -187,7 +138,7 @@ class Model(Utility):
             nx = len(np.unique(data[0]))
             ny = int(len(data[0])/nx)
             self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
-            
+
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
             print ("No lifetime specified. You need to specify lifetime first!")
@@ -246,22 +197,25 @@ class Model(Utility):
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
-        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": None}
+        if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'")
+        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None, integration="dq2dcosth"):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
-        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": integration}
+        if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'").replace("'pid2'","'"+str(pid2)+"'")
+        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
         if type(generator)==str: generator=[generator]
+        if type(mixing   )==str: mixing=mixing.replace("'pid'","'"+str(pid)+"'")
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
         if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
-            
+
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
@@ -278,7 +232,7 @@ class Model(Utility):
 class Foresee(Utility):
 
     def __init__(self, path="../../"):
-    
+
         # initiate properties
         self.model = None
         self.shortlived = {"321": 20, "-321": 20, "321": 20,  }
@@ -305,7 +259,7 @@ class Foresee(Utility):
         yval = [data[iy,1] for iy in range(ny)]
         zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
         return np.array(xval),np.array(yval),np.array(zval)
-        
+
     # function to extend spectrum to low pT
     def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
 
@@ -333,25 +287,25 @@ class Foresee(Utility):
         #return results
         return list_wx
 
-    # fuunction to read file and return momenta, weights
+    # function to read file and return momenta, weights
     def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
-        
+
         if type(filenames) == str: filenames=[filenames]
         list_xs = []
         for filename in filenames:
             if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
             elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
-            else: print ("ERROR: cannot rtead file type")
+            else: print ("ERROR: cannot read file type")
             if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
 
     # function that converts input file into meson spectrum
     def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
-        
+
         #read file
         list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
-        
+
         particles, weights = [], []
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
 
@@ -382,10 +336,10 @@ class Foresee(Utility):
                 weights.append([w/float(nsample) for w in xs])
 
         return particles, np.array(weights)
-    
+
     # get_hist_list
     def get_hist_list(self, tx, px, weights, prange):
-    
+
         # define histogram
         tmin, tmax, tnum = prange[0]
         pmin, pmax, pnum = prange[1]
@@ -393,7 +347,7 @@ class Foresee(Utility):
         p_edges = np.logspace(pmin, pmax, num=pnum+1)
         t_centers = np.logspace(tmin+0.5*(tmax-tmin)/float(tnum), tmax-0.5*(tmax-tmin)/float(tnum), num=tnum)
         p_centers = np.logspace(pmin+0.5*(pmax-pmin)/float(pnum), pmax-0.5*(pmax-pmin)/float(pnum), num=pnum)
-        
+
         # fill histogram
         w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
 
@@ -404,16 +358,16 @@ class Foresee(Utility):
                 list_t.append(np.log10 ( t_centers[it] ) )
                 list_p.append(np.log10 ( p_centers[ip] ) )
                 list_w.append(w[it][ip])
-        
+
         # return
         return list_t,list_p,list_w
-        
-        
+
+
     def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
-    
+
         matplotlib.rcParams.update({'font.size': 15})
         fig = plt.figure(figsize=(7,5.5))
-        
+
         #get plot
         tmin, tmax, tnum = prange[0]
         pmin, pmax, pnum = prange[1]
@@ -436,7 +390,7 @@ class Foresee(Utility):
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(pmin, pmax)
         return plt
-    
+
     # convert list of momenta to 2D histogram, and plot
     def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
 
@@ -459,7 +413,7 @@ class Foresee(Utility):
         if filename is not None:
             print ("save data to file:", filename)
             np.save(filename,[list_t,list_p,list_w])
-            
+
         # plot ?
         if do_plot:
             plt=self.make_spectrumplot(list_t, list_p, list_w, prange, vmin=vmin, vmax=vmax)
@@ -468,7 +422,7 @@ class Foresee(Utility):
             return list_t,list_p,list_w
 
     # show 2d hadronspectrum
-    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 120],[ 0, 5, 50]]):
+    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
@@ -488,16 +442,16 @@ class Foresee(Utility):
 
     def get_decay_prob(self, pid, momentum):
 
-        # return 1 when decaying promptly or has negative pz.
+        # return 1 when decaying promptly or 0 if negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
         if momentum.pz<0: return 0
-        
+
         # lifetime and kinematics
         ctau = self.ctau(pid)
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
-    
+
         # probability to decay in beampipe
         if pid in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
@@ -565,7 +519,7 @@ class Foresee(Utility):
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample, integration):
-    
+
         if integration == "dq2dcosth":
             return self.decay_in_restframe_3body_dq2dcosth(br, coupling, m0, m1, m2, m3, nsample)
         if integration == "dq2dE":
@@ -578,7 +532,7 @@ class Foresee(Utility):
             return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
 
     def decay_in_restframe_3body_dq2dcosth(self,br, coupling, m0, m1, m2, m3, nsample):
-    
+
         # prepare output
         particles, weights = [], []
 
@@ -587,7 +541,7 @@ class Foresee(Utility):
 
         #integration boundary
         q2min,q2max = (m2+m3)**2,(m0-m1)**2
-        cthmin,cthmax = -1 , 1
+        cthmin,cthmax = -1. , 1.
         mass = m3
 
         #numerical integration
@@ -596,7 +550,7 @@ class Foresee(Utility):
 
             #Get kinematic Variables
             q2 = random.uniform(q2min,q2max)
-            cth = random.uniform(-1,1)
+            cth = random.uniform(cthmin,cthmax)
             th = np.arccos(cth)
             q  = math.sqrt(q2)
 
@@ -617,7 +571,7 @@ class Foresee(Utility):
             weights.append(brval)
 
         return particles,weights
-        
+
     def decay_in_restframe_3body_dq2dE(self, br, coupling, m0, m1, m2, m3, nsample):
 
         # prepare output
@@ -659,7 +613,7 @@ class Foresee(Utility):
             #save
             particles.append(p_3)
             weights.append(brval)
-            
+
         return particles,weights
 
     def decay_in_restframe_3body_dE(self, br, coupling, m0, m1, m2, m3, nsample):
@@ -692,7 +646,7 @@ class Foresee(Utility):
             #save
             particles.append(p_3)
             weights.append(brval)
-            
+
         return(particles, weights)
 
     def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
@@ -719,26 +673,26 @@ class Foresee(Utility):
             weights.append(brval)
 
         return particles,weights
-        
-        
+
+
     @staticmethod
     @jit
     def boostlist(arr_particle, arr_boost):
-            
+
         # intialize output
         out, i = np.zeros((len(arr_particle)*len(arr_boost),2)), 0
 
         # loop over 3D boost vectors
         for bx, by, bz in arr_boost:
-        
+
             b2 = bx**2 + by**2 + bz**2
             gamma = 1.0 / (1.0 - b2)**0.5
             if b2 > 0.0: gamma2 = (gamma - 1.0) / b2
             else: gamma2 = 0.0
-                   
+
             # Loop over LorentzVectors
             for xx, xy, xz, xt in arr_particle:
-                
+
                 bp = bx * xx + by * xy + bz * xz
                 xp = xx + gamma2 * bp * bx - gamma * bx * xt
                 yp = xy + gamma2 * bp * by - gamma * by * xt
@@ -748,12 +702,12 @@ class Foresee(Utility):
                 pt = np.sqrt(xp**2+yp**2)
                 th = math.pi/2 if zp==0 else np.arctan(pt/zp)
                 pm = np.sqrt(pt**2+zp**2)
-            
+
                 out[i,0]= th
                 out[i,1]= pm
                 i+=1
         return out
-        
+
     def coord(self,mom):
         return np.array( [np.arctan(mom.pt/mom.pz), mom.p] )
 
@@ -771,10 +725,10 @@ class Foresee(Utility):
 
             # selected channels only
             if key not in channels: continue
-            
+
             # decays
             if model.production[key]["type"] in ["2body", "3body"]:
-            
+
                 # load details of production channel
                 pid0 = model.production[key]["pid0"]
                 pid1 = model.production[key]["pid1"]
@@ -787,7 +741,7 @@ class Foresee(Utility):
                 massrange = model.production[key]["massrange"]
                 preselectioncut = model.production[key]["preselectioncut"]
                 integration = model.production[key]["integration"]
-                     
+
                 # check if in mass range
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
@@ -797,7 +751,7 @@ class Foresee(Utility):
                 # load mother particle spectrum
                 filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
-                
+
                 # get sample of LLP momenta in the mother's rest frame
                 if model.production[key]["type"] == "2body":
                     m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
@@ -805,53 +759,53 @@ class Foresee(Utility):
                 if model.production[key]["type"] == "3body":
                     m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
                     momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample, integration)
-                 
+
                 # boost
                 arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
                 arr_momenta_llp = np.array(momenta_llp)
                 momenta_lab = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
-                
+
                 # weights
                 w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
                 weights_llp = np.array(weights_llp)
                 weights_lab = (weights_llp * w_decays[:, :, np.newaxis])
                 weights_lab = np.concatenate([w.T for w in weights_lab])
-                
+
                 # previous code does the same as below, but is 100 times faster
                 #weights_lab=[]
                 #for w_decay in w_decays:
                 #    for weight_llp in weights_llp:
                 #        weights_lab.append(weight_llp*w_decay)
                 #weights_lab=np.array(weights_lab)
-                 
+
             # mixing with SM particles
             if model.production[key]["type"]=="mixing":
-            
+
                 # load details of production channel
                 pid0 = model.production[key]["pid0"]
                 mixing = model.production[key]["mixing"]
                 generator = model.production[key]["production"]
                 energy = model.production[key]["energy"]
                 massrange = model.production[key]["massrange"]
-                
+
                 # check if in mass range
                 if massrange is not None:
                     if mass<massrange[0] or mass>massrange[1]: continue
-                    
+
                 # load mother particle spectrum
                 filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
                 momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
-                
+
                 # momenta
                 momenta_lab = np.array([self.coord(p) for p in momenta_mother])
-                
+
                 # weights
                 if type(mixing)==str:
                     mixing_angle = eval(mixing)
                     weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
                 else:
                     weights_lab = np.array([w_mother*mixing(mass, coupling, p_mother)**2 for p_mother,w_mother in zip(momenta_mother,weights_mother)])
-                
+
             # direct production
             if model.production[key]["type"]=="direct":
 
@@ -861,7 +815,7 @@ class Foresee(Utility):
                 coupling_ref =  model.production[key]["coupling_ref"]
                 condition =  model.production[key]["production"]
                 masses =  model.production[key]["masses"]
-                
+
                 #determined mass benchmark below / above mass
                 if mass<masses[0] or mass>masses[-1]: continue
                 mass0, mass1 = 0, 1e10
@@ -878,10 +832,10 @@ class Foresee(Utility):
                 except:
                     print ("did not find file:", filename0, "or", filename1)
                     continue
-                
+
                 #momenta
                 momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
-                
+
                 # weights
                 factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
                 weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
@@ -915,6 +869,7 @@ class Foresee(Utility):
             numberdensity=3.754e+29,
             ermin=0.03,
             ermax=1,
+            efficiency=1,
         ):
         self.distance=distance
         self.distance_prod=distance_prod
@@ -925,7 +880,9 @@ class Foresee(Utility):
         self.numberdensity=numberdensity
         self.ermin=ermin
         self.ermax=ermax
-        
+        self.efficiency=efficiency
+        self.efficiency_tpye = type(efficiency)
+
     def event_passes(self,momentum):
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
@@ -935,6 +892,14 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
+
+    def get_efficiency(self,energy):
+        # calculate efficiency
+        if self.efficiency_tpye==str: return eval(self.efficiency)
+        if self.efficiency_tpye==float: return self.efficiency
+        if self.efficiency_tpye==int: return self.efficiency
+        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
+        return 1
 
     def get_events(self, mass, energy,
             modes = None,
@@ -952,7 +917,7 @@ class Foresee(Utility):
             if key not in extend_to_low_pt_scales: extend_to_low_pt_scales[key] = None
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
-            
+
         #setup ctau and other arrays
         ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
         for coupling in couplings:
@@ -973,7 +938,7 @@ class Foresee(Utility):
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
             filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
-                                
+
             # try Load Flux file
             try:
                 # print "load", filename
@@ -989,7 +954,7 @@ class Foresee(Utility):
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
-                weight_event = w*self.luminosity*1000.
+                weight_event = w*self.luminosity*1000.*self.get_efficiency(p.p)
 
                 #loop over couplings
                 for icoup,coup in enumerate(couplings):
@@ -1014,6 +979,7 @@ class Foresee(Utility):
             nsample = 1,
             preselectioncuts = "th<0.01 and p>100",
             coup_ref = 1,
+            extend_to_low_pt_scales = {},
         ):
 
         # setup different couplings to scan over
@@ -1023,7 +989,7 @@ class Foresee(Utility):
             if key not in extend_to_low_pt_scales: extend_to_low_pt_scales[key] = None
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
-        
+
         # setup different couplings to scan over
         nsignals, stat_p, stat_w = [], [], []
         for coupling in couplings:
@@ -1043,7 +1009,8 @@ class Foresee(Utility):
             try:
                 particles_llp,weights_llp=self.convert_list_to_momenta(
                     filename=filename, mass=mass,
-                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
+                    extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except: continue
 
             # loop over particles, and record probablity to interact in volume
@@ -1071,13 +1038,13 @@ class Foresee(Utility):
     ###############################
     #  Export Results as HEPMC File
     ###############################
-    
+
     def threebody_decay_pureps(self, p0, m0, m1, m2, m3):
         """
         function that decays p0 > p1 p2 p2 and returns p1,p2,p3
         following pure phase space
         """
-    
+
         p1, p2, p3 = None, None, None
         while p1 == None:
             #randomly draw mij^2
@@ -1089,35 +1056,35 @@ class Foresee(Utility):
             e1 = (m0**2+m1**2-m232)/(2*m0)
             e2 = (m0**2+m2**2-m132)/(2*m0)
             e3 = (m0**2+m3**2-m122)/(2*m0)
-            
+
             if (e1<m1) or (e2<m2) or (e3<m3): continue
             mom1 = np.sqrt(e1**2-m1**2)
             mom2 = np.sqrt(e2**2-m2**2)
             mom3 = np.sqrt(e3**2-m3**2)
-            
+
             #calculate angles
             costh12 = (-m122 + m1**2 + m2**2 + 2*e1*e2)/(2*mom1*mom2)
             costh13 = (-m132 + m1**2 + m3**2 + 2*e1*e3)/(2*mom1*mom3)
             costh23 = (-m232 + m2**2 + m3**2 + 2*e2*e3)/(2*mom2*mom3)
             if (abs(costh12)>1) or (abs(costh13)>1) or (abs(costh23)>1): continue
-                
+
             sinth12 =  np.sqrt(1-costh12**2)
             sinth13 =  np.sqrt(1-costh13**2)
             sinth23 =  np.sqrt(1-costh23**2)
-            
+
             #construct momenta
             p1 = LorentzVector(mom1,0,0,e1)
             p2 = LorentzVector(mom2*costh12, mom2*sinth12,0,e2)
             p3 = LorentzVector(mom3*costh13,-mom3*sinth13,0,e3)
             break
-    
+
         #randomly rotation of p2, p3 around p1
         xaxis=Vector3D(1,0,0)
         phi = random.uniform(-math.pi,math.pi)
         p1=p1.rotate(phi,xaxis)
         p2=p2.rotate(phi,xaxis)
         p3=p3.rotate(phi,xaxis)
-        
+
         #randomly rotation of p1 in ref frame
         phi = random.uniform(-math.pi,math.pi)
         costh = random.uniform(-1,1)
@@ -1133,11 +1100,11 @@ class Foresee(Utility):
         p1_=p1.boost(-1.*p0.boostvector)
         p2_=p2.boost(-1.*p0.boostvector)
         p3_=p3.boost(-1.*p0.boostvector)
-        
+
         return p1_, p2_, p3_
 
     def decay_llp(self, momentum, pids):
-        
+
         # unspecified decays - can't do anything
         if pids==None:
             return None, []
@@ -1157,15 +1124,15 @@ class Foresee(Utility):
         # not 2/3 body decays - not yet implemented
         else:
             return None, []
-            
-    
+
+
     def write_hepmc_file(self, data, filename, weightnames):
-        
+
         # open file
         f= open(filename,"w")
         f.write("HepMC::Version 2.06.09\n")
         f.write("HepMC::IO_GenEvent-START_EVENT_LISTING\n")
-        
+
         # loop over events
         for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
             # Event Info
@@ -1179,7 +1146,7 @@ class Foresee(Utility):
             f.write("C "+str(weights[0])+" 0.\n")
             # PDF info - doesn't apply here
             f.write("F 0 0 0 0 0 0 0 0 0\n")
-                
+
             #vertex
             npids= "0" if pids==None else str(len(pids))
             f.write("V -1 0 ")
@@ -1188,7 +1155,7 @@ class Foresee(Utility):
             f.write(str(round(position.z*1000,10))+" ")
             f.write(str(round(position.t*1000,10))+" ")
             f.write("1 "+npids+" 0\n")
-            
+
             # LLP
             status= "1" if pids==None else "2"
             f.write("P 1 32 ") # First particle, ID for Z'
@@ -1209,24 +1176,24 @@ class Foresee(Utility):
                 f.write(str(round(particle.e,10))+" ")
                 f.write(str(round(particle.m,10))+" ")
                 f.write("1 0 0 0 0\n")
-                
+
         # close file
         f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
         f.close()
-        
+
     def write_csv_file(self, data, filename):
-        
+
         # open file
         f= open(filename,"w")
         f.write("particle_id,particle_type,process,vx,vy,vz,vt,px,py,pz,m,q\n")
-        
+
         # loop over events
         for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
-            
+
             #vertex
             vx, vy = round(position.x*1000,10), round(position.y*1000,10)
             vz, vt = round(position.z*1000,10), round(position.t*1000,10)
-                        
+
             # LLP
             px, py = round(momentum.px,10), round(momentum.py,10)
             pz, m, q = round(momentum.pz,10), round(momentum.m ,10), 0
@@ -1234,7 +1201,7 @@ class Foresee(Utility):
             f.write(str(particle_id)+","+str(particle_type)+","+str(process)+",")
             f.write(str(vx)+","+str(vy)+","+str(vz)+","+str(vt)+",")
             f.write(str(px)+","+str(py)+","+str(pz)+","+str(m)+","+str(q)+"\n")
-            
+
             #decay products
             if pids is None: continue
             for iparticle, (pid, particle) in enumerate(zip(pids, finalstate)):
@@ -1244,34 +1211,34 @@ class Foresee(Utility):
                 f.write(str(particle_id)+","+str(particle_type)+","+str(process)+",")
                 f.write(str(vx)+","+str(vy)+","+str(vz)+","+str(vt)+",")
                 f.write(str(px)+","+str(py)+","+str(pz)+","+str(m)+","+str(q)+"\n")
-                
+
         # close file
         f.close()
-        
-           
+
+
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
-        
+
         #set random seed
         random.seed(seed)
-        
+
         #initialize weightnames if not defined
         model = self.model
         if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
         if weightnames is None: weightnames = modes[list(modes.keys())[0]]
-        
+
         # get weighted sample of LLPs
         _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales, preselectioncuts=preselectioncuts)
         baseweights = weights[0].T[0]
-        
+
         # unweight sample
         weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
         unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
-        
+
         # setup decay channels
         decaymodes = self.model.br_functions.keys()
         branchings = [float(self.model.get_br(mode,mass,coupling)) for mode in decaymodes]
@@ -1280,7 +1247,7 @@ class Foresee(Utility):
         br_other = 1-sum(branchings)
         if br_other>0: channels.append([[None,"unspecified"], br_other])
         channels=np.array(channels,dtype='object').T
-                
+
         # get LLP momenta and decay location
         unweighted_data = []
         for momentum, weight in unweighted_raw_data:
@@ -1300,20 +1267,20 @@ class Foresee(Utility):
             pids, finalstate = self.decay_llp(momentum, pids)
             # save
             unweighted_data.append([eventweight*weight, position, momentum, pids, finalstate])
-        
+
         # prepare output filename
         dirname = self.model.modelpath+"model/events/"
         if not os.path.exists(dirname): os.mkdir(dirname)
         if filename==None: filename = dirname+str(mass)+"_"+str(coupling)+"."+filetype
         else: filename = self.model.modelpath + filename
-          
+
         # write to file file
         if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data, weightnames=weightnames)
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
-        
+
         #return
         if return_data: return weighted_raw_data[0], weights[0], unweighted_data
-        
+
     ###############################
     #  Plotting and other final processing
     ###############################
@@ -1341,11 +1308,11 @@ class Foresee(Utility):
         f.close()
 
     def plot_reach(self,
-            setups, bounds, projections, bounds2=[],
+            setups, bounds, projections, bounds2=[], grids=[],
             title=None, linewidths=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
             xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
             branchings=None, branchingsother=None,
-            fs_label=14,
+            fs_label=14, confidence_interval=False,
         ):
 
         # initiate figure
@@ -1399,11 +1366,24 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level = setup
+            if type(level)==list: level_up, level, level_down = level
+            else: level_up, level_down = None, None
             masses,couplings,nsignals=np.load(self.model.modelpath+"model/results/"+filename, allow_pickle=True, encoding='latin1')
             m, c = np.meshgrid(masses, couplings)
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls, linewidths=linewidths)
-            ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
+            if level_up is not None: ax.contourf(m,c,n, levels=[np.log10(level_up),np.log10(level_down)],colors=color,zorder=zorder, alpha=alpha)
+            ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
+            zorder+=1
+
+        # irregular grids
+        for label, points, values, color, ls in grids:
+            masses = np.logspace(np.log10(xlims[0]), np.log10(xlims[1]), 101)
+            couplings = np.logspace(np.log10(ylims[0]), np.log10(ylims[1]) ,101)
+            m, c = np.meshgrid(masses, couplings)
+            v = np.log10(np.array(values)+1e-20)
+            n = interpolate.griddata(points, v, (m,c), method='linear')
+            ax.contour (m,c,n, levels=[np.log10(level)] ,colors=color, zorder=zorder, linestyles=ls, linewidths=linewidths)
             ax.plot([0,0],[0,0], color=color,zorder=-1000, linestyle=ls, label=label)
             zorder+=1
 
@@ -1441,7 +1421,7 @@ class Foresee(Utility):
             return plt, ax, ax2
 
         return plt
-        
+
     def plot_production(self,
         masses, productions, condition="True", energy="14",
         xlims=[0.01,1],ylims=[10**-6,10**-3],
@@ -1456,7 +1436,7 @@ class Foresee(Utility):
         # loop over production channels
         dirname = self.model.modelpath+"model/LLP_spectra/"
         for production in productions:
-            
+
             # get arguments
             channels = production['channels']
             if 'massrange' in production.keys(): massrange = production['massrange']
@@ -1469,11 +1449,11 @@ class Foresee(Utility):
             else: label=None
             if 'generators' in production.keys(): generators = production['generators']
             else: generators=None
-            
+
             # fix format
             if isinstance(generators, (list, tuple, np.ndarray))== False: channels=[generators]
             if isinstance(channels, (list, tuple, np.ndarray))== False: channels=[channels]
-                        
+
             # loop over generators
             xvals, yvals = [], [[] for _ in generators]
             for igen, generator in enumerate(generators):
@@ -1493,7 +1473,7 @@ class Foresee(Utility):
                             continue
                     if igen==0: xvals.append(mass)
                     yvals[igen].append(total+1e-10)
-                
+
             # add to plot
             yvals = np.array(yvals)
             yvals_min = [min(row) for row in yvals.T]
@@ -1529,7 +1509,7 @@ class Foresee(Utility):
         model = self.model
         coupling = 1
         for key, color, label in productions:
-        
+
             # load details of production channel
             pid0 = model.production[key]["pid0"]
             pid1 = model.production[key]["pid1"]
@@ -1552,7 +1532,7 @@ class Foresee(Utility):
                         m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
                         _, weights = self.decay_in_restframe_3body(br, 1, m0, m1, m2, m3, nsample=nsample, integration=integration)
                         yvals.append(sum(weights))
-    
+
             # add to plot
             ax.plot(xvals, yvals, color=color, label=label)
 
