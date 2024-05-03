@@ -2078,7 +2078,7 @@ pid_conversions = {
         've': 12,
         'vmu': 14,
         'vtau': 16,
-        'nu':20,
+        'nu':12,
 
 
         #Pseudos

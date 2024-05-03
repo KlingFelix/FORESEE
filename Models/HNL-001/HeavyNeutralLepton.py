@@ -9,9 +9,6 @@ from os.path import exists
 import pandas as pd
 
 
-
-
-
 class HeavyNeutralLepton(Utility):
 
     ###############################
@@ -143,9 +140,6 @@ class HeavyNeutralLepton(Utility):
         elif pid in ["323"]: return r"$K^{*+}$"
         elif pid in ["413"]: return r"$D^{*+}$"
         elif pid in ["433"]: return r"$D^{*+}_s$"
-
-
-
 
     #for HNL decays to neutral vector mesons
     def kV(self,pid):
@@ -2078,7 +2072,7 @@ pid_conversions = {
         've': 12,
         'vmu': 14,
         'vtau': 16,
-        'nu':20,
+        'nu':12,
 
 
         #Pseudos
