@@ -991,6 +991,10 @@ class Foresee(Utility):
         # unspecified decays - can't do anything
         if pids==None:
             return None, []
+        # 1-body decays
+        elif len(pids)==1:
+            p1 = LorentzVector(momentum.x,momentum.y,momentum.z,np.sqrt(momentum.p**2 + self.masses(pids[0])**2 ) )
+            return pids, [p1]
         # 2-body decays
         elif len(pids)==2:
             phi = random.uniform(-math.pi,math.pi)
