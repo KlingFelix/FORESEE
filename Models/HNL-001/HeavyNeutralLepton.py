@@ -6,7 +6,11 @@ from os import listdir
 import glob
 import os
 from os.path import exists
-from HNL_Decay import *
+import pandas as pd
+
+
+
+
 
 class HeavyNeutralLepton(Utility):
 
@@ -15,21 +19,29 @@ class HeavyNeutralLepton(Utility):
     ###############################
 
     def __init__(self, ve=1, vmu=0, vtau=0):
-        self.vcoupling = {"11": ve, "13":vmu, "15": vtau}   #HNL coupling to the electron, the muon and the tau lepton
+        
+        mag = np.sqrt(ve**2 + vmu**2 + vtau**2)
+        
+        
+        self.vcoupling = {"11": ve/mag, "13":vmu/mag, "15": vtau/mag}   #HNL coupling to the electron, the muon and the tau lepton
         self.lepton = {"11": "e", "13":"mu", "15": "tau"}
         self.hadron = {"211": "pi", "321": "K", "213": "rho"}
         self.generators_light = None
         self.generators_heavy = None
+        
+        self.HNL_Decay_init(couplings = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15']))
     
     #decay constants
     def fH(self,pid):
         if   pid in ["211","-211","111"]: return 0.1303
         elif pid in ["221","-221"]: return 0.0784   
+        #elif pid in ["213","-213"]: return 0.166  
         elif pid in ["213","-213"]: return 0.210        #https://iopscience.iop.org/article/10.1088/1674-1137/42/7/073102/pdf
         elif pid in ["113"]       : return 0.220       #https://arxiv.org/pdf/1005.1607.pdf
+        #elif pid in ["113"]       : return 0.166
         elif pid in ["223","-223"]: return 0.195    #https://arxiv.org/pdf/1005.1607.pdf
         elif pid in ["333"]: return 0.241               #for phi meson found here https://iopscience.iop.org/article/10.1088/1674-1137/abcd8f/pdf
-        elif pid in ["313","-313","323","-323"]: return 0.204     
+        elif pid in ["313","-313","323","-323"]: return 0.204 
         elif pid in ["311","-311","321","-321"]: return 0.1564 
         elif pid in ["331","-331"]: return -0.0957
         elif pid in ["421","-421","411","-411"]: return 0.2226 
@@ -72,7 +84,7 @@ class HeavyNeutralLepton(Utility):
 
     # CKM matrix elements
     def VH(self,pid):
-        if   pid in ["211","-211"]: return 0.97373 #Vud
+        if   pid in ["211","-211","213","-213"]: return 0.97373 #Vud
         elif pid in ["321","-321","323","-323"]: return 0.2243 #Vus
         elif pid in ["213","-213"]: return 0.97373
         elif pid in ["411","-411"]: return 0.221
@@ -230,7 +242,7 @@ class HeavyNeutralLepton(Utility):
         V43=Vcs
         V45=Vcb
 
-        if   pid0 in ["2","-2"    ] and pid1 in ["1","-1"    ]: return 0.97373 #Vud
+        if   pid0 in ["2","-2","1","-1"    ] and pid1 in ["1","-1","2","-2" ]: return 0.97373 #Vud
         if   pid0 in ["2","-2","3","-3"] and pid1 in ["3","-3","2","-2"    ]: return 0.2243 #Vus
         if   pid0 in ["4","-4","1","-1"    ] and pid1 in ["1","-1","4","-4"   ]: return 0.221 #Vcd
         if   pid0 in ["4","-4","3","-3"    ] and pid1 in ["3","-3" ,"4","-4"   ]: return 0.975 #Vcs
@@ -793,107 +805,107 @@ class HeavyNeutralLepton(Utility):
     #############HNL decay channel branching ratios############
     #NOTE: the branching ratios for HNL given below are actually decay widths
     #corresponds lepton pids to a greek index ranging from 1 to 3
-    def analyze_pid1_pid3(self,pid1,pid3):
-        if pid1 in ["11","-11"]:
-            beta=1
-        if pid1 in ["13","-13"]:
-            beta=2
-        if pid1 in ["15","-15"]:
-            beta=3
-        if pid3 in ["12","-12"]:
-            alpha=1
-        if pid3 in ["14","-14"]:
-            alpha=2
-        if pid3 in ["16","-16"]:
-            alpha=3
-        return(alpha,beta)
+#     def analyze_pid1_pid3(self,pid1,pid3):
+#         if pid1 in ["11","-11"]:
+#             beta=1
+#         if pid1 in ["13","-13"]:
+#             beta=2
+#         if pid1 in ["15","-15"]:
+#             beta=3
+#         if pid3 in ["12","-12"]:
+#             alpha=1
+#         if pid3 in ["14","-14"]:
+#             alpha=2
+#         if pid3 in ["16","-16"]:
+#             alpha=3
+#         return(alpha,beta)
 
-    #for N->l_beta^+ l_beta^- nu_alpha decay width
-    def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
-        GF=1.166378*10**(-5)
-        delta=lambda l1,l2: 1 if l1==l2 else 0
-        xl=f"(self.masses(pid1)/mass)"
-        xw=f"(0.231)" #xw=sin(theta_w)^2
-        L=f"np.log((1-3*{xl}**2-(1-{xl}**2)*np.sqrt(1-4*{xl}**2))/({xl}**2*(1+np.sqrt(1-4*{xl}**2))))"
-        C1=f"(1/4)*(1-4*{xw}+8*{xw}**2)"
-        C2=f"(1/2)*{xw}*(2*{xw}-1)"
-        C3=f"(1/4)*(1+4*{xw}+8*{xw}**2)"
-        C4=f"(1/2)*{xw}*(2*{xw}+1)"
-        alpha,beta=analyze_pid1_pid3(pid1,pid3)
-        coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
-        br_lb_lb_nua=f"({GF}**2*mass**5/(192*np.pi**3))*{coupling}**2*(({C1}*(1-{delta(alpha,beta)})+{C3}*{delta(alpha,beta)})*((1-14*{xl}**2-2*{xl}**4-12*{xl}**6)*np.sqrt(1-4*{xl}**2)+12*{xl}**4*({xl}**4-1)*{L})+4*({C2}*(1-{delta(alpha,beta)})+{C4}*{delta(alpha,beta)})*({xl}**2*(2+10*{xl}**2-12*{xl}**4)*np.sqrt(1-4*{xl}**2)+6*{xl}**4*(1-2*{xl}**2+2*{xl}**4)*{L}))"
-        return(br_lb_lb_nua)
+#     #for N->l_beta^+ l_beta^- nu_alpha decay width
+#     def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
+#         GF=1.166378*10**(-5)
+#         delta=lambda l1,l2: 1 if l1==l2 else 0
+#         xl=f"(self.masses(pid1)/mass)"
+#         xw=f"(0.231)" #xw=sin(theta_w)^2
+#         L=f"np.log((1-3*{xl}**2-(1-{xl}**2)*np.sqrt(1-4*{xl}**2))/({xl}**2*(1+np.sqrt(1-4*{xl}**2))))"
+#         C1=f"(1/4)*(1-4*{xw}+8*{xw}**2)"
+#         C2=f"(1/2)*{xw}*(2*{xw}-1)"
+#         C3=f"(1/4)*(1+4*{xw}+8*{xw}**2)"
+#         C4=f"(1/2)*{xw}*(2*{xw}+1)"
+#         alpha,beta=analyze_pid1_pid3(pid1,pid3)
+#         coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
+#         br_lb_lb_nua=f"({GF}**2*mass**5/(192*np.pi**3))*{coupling}**2*(({C1}*(1-{delta(alpha,beta)})+{C3}*{delta(alpha,beta)})*((1-14*{xl}**2-2*{xl}**4-12*{xl}**6)*np.sqrt(1-4*{xl}**2)+12*{xl}**4*({xl}**4-1)*{L})+4*({C2}*(1-{delta(alpha,beta)})+{C4}*{delta(alpha,beta)})*({xl}**2*(2+10*{xl}**2-12*{xl}**4)*np.sqrt(1-4*{xl}**2)+6*{xl}**4*(1-2*{xl}**2+2*{xl}**4)*{L}))"
+#         return(br_lb_lb_nua)
 
-    #for N->l_beta^+ l_beta^- nu_alpha decay width
-    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
-    I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
-    I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
-    from scipy.integrate import quad
-    def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
-        xw=f"0.231"
-        GF=1.166378*10**(-5)
-        delta=lambda l1,l2: 1 if l1==l2 else 0
-        if pid2=="11":
-            l2=1
-        if pid2=="13":
-            l2=2
-        if pid2=="15":
-            l2=3
-        if pid3=="12":
-            l1=1
-        if pid3=="14":
-            l1=2
-        if pid3=="16":
-            l1=3
-        gL=f"(-(1/2)+{xw})"
-        gR=f"{xw}"
-        x=f"0"
-        y=f"(self.masses({pid2})/mass)"
-        z=y
-        I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
-        I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
-        coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
-        br_lb_lb_nua=f"({coupling}**2*{GF}**2*mass**5/(96*np.pi**3))*(({gL}*{gR}+{delta(l1,l2)}*{gR})*{I2}+({gL}**2+{gR}**2+{delta(l1,l2)}*(1+2*{gL}))*{I1})"
-        return(br_lb_lb_nua)
+#     #for N->l_beta^+ l_beta^- nu_alpha decay width
+#     lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+#     I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+#     I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
+#     from scipy.integrate import quad
+#     def calc_br_lb_lb_nua(self,pid1,pid2,pid3):
+#         xw=f"0.231"
+#         GF=1.166378*10**(-5)
+#         delta=lambda l1,l2: 1 if l1==l2 else 0
+#         if pid2=="11":
+#             l2=1
+#         if pid2=="13":
+#             l2=2
+#         if pid2=="15":
+#             l2=3
+#         if pid3=="12":
+#             l1=1
+#         if pid3=="14":
+#             l1=2
+#         if pid3=="16":
+#             l1=3
+#         gL=f"(-(1/2)+{xw})"
+#         gR=f"{xw}"
+#         x=f"0"
+#         y=f"(self.masses({pid2})/mass)"
+#         z=y
+#         I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+#         I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
+#         coupling=f"self.vcoupling[str(abs(int({pid3}))-1)]"
+#         br_lb_lb_nua=f"({coupling}**2*{GF}**2*mass**5/(96*np.pi**3))*(({gL}*{gR}+{delta(l1,l2)}*{gR})*{I2}+({gL}**2+{gR}**2+{delta(l1,l2)}*(1+2*{gL}))*{I1})"
+#         return(br_lb_lb_nua)
     
 
-    #for N->U bar{D} l_alpha^- decay width (inclusive mode)
-    I_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
-    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
-    def calc_br_u_bd_l(self,pid1,pid2,pid3):
-        GF=1.166378*10**(-5)
-        xd=f"(self.masses({pid2})/mass)"
-        xu=f"(self.masses({pid1})/mass)"
-        xl=f"(self.masses({pid3})/mass)"
-        x=xl
-        y=xu
-        z=xd
-        I=f"quad(I_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
-        coupling=f"self.vcoupling[str(abs(int({pid3})))]"
-        br_u_d_l=f"(self.VHHp({pid1},{pid2})**2*{GF}**2*mass**5*coupling**2/(32*np.pi**3))*{I}"
-        return(br_u_d_l)
+#     #for N->U bar{D} l_alpha^- decay width (inclusive mode)
+#     I_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+#     lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+#     def calc_br_u_bd_l(self,pid1,pid2,pid3):
+#         GF=1.166378*10**(-5)
+#         xd=f"(self.masses({pid2})/mass)"
+#         xu=f"(self.masses({pid1})/mass)"
+#         xl=f"(self.masses({pid3})/mass)"
+#         x=xl
+#         y=xu
+#         z=xd
+#         I=f"quad(I_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+#         coupling=f"self.vcoupling[str(abs(int({pid3})))]"
+#         br_u_d_l=f"(self.VHHp({pid1},{pid2})**2*{GF}**2*mass**5*coupling**2/(32*np.pi**3))*{I}"
+#         return(br_u_d_l)
     
-    lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
-    x=0
-    xq=f"(self.masses(pid1)/mass)"
-    y=xq
-    z=xq
-    xw=f"(0.231)" #xw=sin(theta_w)^2
-    I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
-    I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
-    def calc_br_q_bq_nu(self,pid1,pid3):
-        GF=1.166378*10**(-5)
-        if pid1 in quarks_u:
-            gL=f"(1/2-(2/3)*{xw})"
-            gR=f"(-(2/3)*{xw})" #article had 2 g_R^U so I assumed one was supposed to have a D
-        if pid1 in quarks_d:
-            gL=f"(-1/2+(1/3)*{xw})"
-            gR=f"((1/3)*{xw})"
-        I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
-        I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
-        coupling=f"self.vcoupling[str(abs(int(pid3))-1)]"
-        br_q_bq_nu=f"(coupling**2*{GF}**2*mass**5/(32*np.pi**3))*({gL}*{gR}*{I2}+({gL}**2+{gR}**2)*{I1})"
-        return(br_q_bq_nu)
+#     lamda=lambda a,b,c: a**2+b**2+c**2-2*a*b-2*b*c-2*c*a
+#     x=0
+#     xq=f"(self.masses(pid1)/mass)"
+#     y=xq
+#     z=xq
+#     xw=f"(0.231)" #xw=sin(theta_w)^2
+#     I1_integrand=lambda s,x,y,z: (12/s)*(s-x**2-y**2)*(1+z**2-s)*np.sqrt(lamda(s,x**2,y**2))*np.sqrt(lamda(1,s,z**2))
+#     I2_integrand=lambda s,x,y,z: (24*y*z/s)*(1+x**2-s)*np.sqrt(lamda(s,y**2,z**2))*np.sqrt(lamda(1,s,x**2))
+#     def calc_br_q_bq_nu(self,pid1,pid3):
+#         GF=1.166378*10**(-5)
+#         if pid1 in quarks_u:
+#             gL=f"(1/2-(2/3)*{xw})"
+#             gR=f"(-(2/3)*{xw})" #article had 2 g_R^U so I assumed one was supposed to have a D
+#         if pid1 in quarks_d:
+#             gL=f"(-1/2+(1/3)*{xw})"
+#             gR=f"((1/3)*{xw})"
+#         I1=f"quad(I1_integrand,({x}+{y})**2,(1-{z})**2,args=({x},{y},{z}))[0]"
+#         I2=f"quad(I2_integrand,({y}+{z})**2,(1-{x})**2,args=({x},{y},{z}))[0]"
+#         coupling=f"self.vcoupling[str(abs(int(pid3))-1)]"
+#         br_q_bq_nu=f"(coupling**2*{GF}**2*mass**5/(32*np.pi**3))*({gL}*{gR}*{I2}+({gL}**2+{gR}**2)*{I1})"
+#         return(br_q_bq_nu)
         
     ################################################################################################
 
@@ -911,20 +923,20 @@ class HeavyNeutralLepton(Utility):
         
         """
         
-        #define coupling tuple
-        coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
+#         #define coupling tuple
+#         coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
         
-        #create HNL_Decay Object
-        Decay = HNL_Decay(couplings = coupling)
+#         #create HNL_Decay Object
+#         Decay = HNL_Decay(couplings = coupling)
         
         #Generate ctau (stored in Decay.ctau)
-        Decay.gen_ctau(mpts)
+        self.gen_ctau(mpts)
         
         #Generate branching ratios (stored in Decay.model_brs)
-        Decay.gen_brs()
+        self.gen_brs()
         
         #Write ctau, branching ratios, and decay widths to the Decay Width directory
-        Decay.save_data(True,True,True)
+        self.save_data(True,True)
         
         
     def set_brs(self):
@@ -933,21 +945,18 @@ class HeavyNeutralLepton(Utility):
         Create list of decay modes, final states, and the location of thhe respective branching fraction to be passed to FORESEE
         """
         #define coupling tuple
-        coupling = (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
         
-        #create HNL_Decay Object
-        Decay = HNL_Decay(couplings = coupling)
         
         modes =  [] 
         filenames = []
         #iterate over decay modes
-        for channel in Decay.modes_active.keys():
+        for channel in self.modes_active.keys():
             
-            for mode in Decay.modes_active[channel]: 
+            for mode in self.modes_active[channel]: 
                 
                 modes.append(mode)
                 
-                csv_path = fr"Decay Data/{(Decay.U['e'],Decay.U['mu'],Decay.U['tau'])}/br/{channel}/{mode}.csv"
+                csv_path = fr"model/br/{channel}/{mode}.csv"
                 
                 filenames.append(csv_path)
         
@@ -962,10 +971,11 @@ class HeavyNeutralLepton(Utility):
         return modes,finalstates,filenames
             
     ###############################
-    #  return list of decays
+    #  return list of productions
     ###############################
 
     def get_channels_2body(self,):
+        lep = {"11":r"e","13":r"\mu","15":r"\tau"}
         
         channels_2body = [
             [r'$D^+ \to l^+ + N$'    , '411', '-'],
@@ -976,8 +986,8 @@ class HeavyNeutralLepton(Utility):
             [r'$B^- \to + l^- + N$'  ,'-521', '' ],
             [r'$B_c^+ \to + l^+ + N$', '541', '-'],
             [r'$B_c^- \to + l^- + N$','-541', '' ],
-            [r'$pi^+ \to + l^+ + N$' , '211', '-'],
-            [r'$pi^- \to + l^- + N$' ,'-211', '' ],
+            [r'$\pi^+ \to + l^+ + N$' , '211', '-'],
+            [r'$\pi^- \to + l^- + N$' ,'-211', '' ],
             [r'$K^+ \to + l^+ + N$'  , '321', '-'],
             [r'$K^- \to + l^- + N$'  ,'-321', '' ],
         ]
@@ -989,8 +999,8 @@ class HeavyNeutralLepton(Utility):
             [r'$\tau^+ \to K^+ + N$'   ,'-15','321', ''  ],
             [r'$\tau^- \to \rho^- + N$', '15','213', '-' ],
             [r'$\tau^+ \to \rho^+ + N$','-15','213', ''  ],
-            [r'$\tau^- \to K^{*-} + N$', '15','313', '-' ],
-            [r'$\tau^+ \to K^{*+} + N$','-15','313', ''  ]
+            [r'$\tau^- \to K^{*-} + N$', '15','323', '-' ],
+            [r'$\tau^+ \to K^{*+} + N$','-15','323', ''  ]
         ]
     
         output=[]
@@ -1000,13 +1010,1115 @@ class HeavyNeutralLepton(Utility):
                 generator = self.generators[abs(int(pid_had))]
                 label= "2body_" + pid_had + "_" + sign_lep+pid_lep
                 br = self.get_2body_br(pid_had, sign_lep+pid_lep)
-                output.append([label, pid_had, sign_lep+pid_lep, br, generator, description])
+                output.append([label, pid_had, sign_lep+pid_lep, br, generator, description.replace("l",lep[pid_lep])])
 
         for description, pid_tau, pid_had, sign_had in channels_2body_tau:
                 if self.vcoupling["15"] <1e-9: continue
                 generator = self.generators[15]
                 label= "2body_tau_" + pid_tau + "_" + sign_had+pid_had
                 br = self.get_2body_br_tau(pid_tau, sign_had+pid_had)
-                output.append([label, pid_tau, sign_had+pid_had, br, generator, description])
+                output.append([label, pid_tau, sign_had+pid_had, br, generator, description.replace("l",lep[pid_lep])])
 
         return output
+
+    def get_channels_3body(self,):
+        
+        lep = {"11":r"e","13":r"\mu","15":r"\tau"}
+        
+        channels_pseudo = [
+            [r'$D^0 \to K^- + l^+ + N$'             , '421' , '-321' , '-'],
+            [r'$D^0 \to K^+ + l^- + N$'             , '-421', '321'  , '' ],
+            [r'$D^+ \to \bar{K}^0 + l^+ + N$'       , '411' , '-311' , '-'],
+            [r'$D^- \to K^0 + l^- + N$'             ,'-411' , '311'  , '' ],
+            [r'$B^+ \to \bar{D}^0 + l^+ + N$'       , '521' ,  '-421', '-'],
+            [r'$B^- \to D^0 + l^- + N$'             , '-521',  '421' , '' ],
+            [r'$B^0 \to D^- + l^+ + N$'             , '511' , '-411' , '-'],
+            [r'$B^0 \to D^+ + l^- + N$'             , '-511', '411'  , '' ],
+            [r'$B^0_s \to D^-_s + l^+ + N$'         , '531' , '-431' , '-'],
+            [r'$B^0_s \to D^+_s + l^- + N$'         , '-531', '431'  , '' ],
+            [r'$B^+_c \to B^0 + l^+ + N$'           , '541' ,  '511' , '-'],
+            [r'$B^-_c \to \bar{B}^0 + l^- + N$'     , '-541',  '-511', '' ],
+            [r'$B^+_c \to B^0_s + l^+ + N$'         , '541' ,  '531' , '-'],
+            [r'$B^-_c \to \bar{B}^0_s + l^- + N$'   , '-541',  '-531', '' ],
+            [r'$K^0_S \to \pi^+ + l^- + N$'         , '310' , '211'  , '' ], 
+            [r'$K^0_S \to \pi^- + l^+ + N$'         , '310' , '-211' , '-'],
+            [r'$K^0_L \to \pi^+ + l^- + N$'         , '130' , '211'  , '' ],
+            [r'$K^0_L \to \pi^- + l^+ + N$'         , '130' , '-211' , '-'],
+            [r'$K^+ \to \pi^0 + l^+ + N$'           , '321' , '111'  , '-'], 
+            [r'$K^- \to \pi^0 + l^- + N$'           , '-321', '111'  , '' ], 
+            [r'$D_s^+ \to \eta + l^+ + N$'          , '431' , '221'  , '-'],
+            [r'$D_s^- \to \eta + l^- + N$'          , '-431', '221'  , '' ],
+            [r'$D_s^+ \to \eta\' + l^+ + N$'        , '431' , '331'  , '-'],
+            [r'$D_s^- \to \eta\' + l^- + N$'        , '-431', '331'  , '' ],
+            [r'$B^+ \to \pi^0 + l^+ + N$'           , '521' , '111'  , '-'],
+            [r'$B^- \to \pi^0 + l^- + N$'           , '-521', '111'  , '' ],
+            [r'$B^+_c \to D^0 + l^+ + N$'           , '541' , '421'  , '-'],
+            [r'$B^-_c \to \bar{D}^0 + l^- + N$'     , '-541', '-421' , '' ],
+            [r'$B^+_c \to \eta_c + l^+ + N$'        , '541' , '441'  , '-'],
+            [r'$B^-_c \to \eta_c + l^- + N$'        , '-541', '441'  , '' ],
+            [r'$D^0 \to \pi^- + l^+ + N$'           , '421' , '-211' , '-'],
+            [r'$\bar{D}^0 \to \pi^+ + l^- + N$'     , '-421', '211'  , '' ],
+            [r'$D^+ \to \pi^0 + l^+ + N$'           , '411' , '111'  , '-'],
+            [r'$D^- \to \pi^0 + l^- + N$'           , '-411', '111'  , '' ],
+            [r'$D_s^+ \to K^0 + l^+ + N$'           , '431' , '311'  , '-'],
+            [r'$D_s^- \to \bar{K}^0 + l^- + N$'     , '-431', '-311' , '' ],
+            [r'$B^0 \to \pi^- + l^+ + N$'           , '511' , '-211' , '-'],
+            [r'$\bar{B}^0 \to \pi^+ + l^- + N$'     , '-511', '211'  , '' ],
+            [r'$B^0_s \to K^- + l^+ + N$'           , '531' , '-321' , '-'],
+            [r'$\bar{B}^0_s \to K^+ + l^- + N$'     , '-531', '321'  , '' ],
+            [r'$D^+ \to \eta + l^+ + N$'            , '411' , '221'  , '-'],
+            [r'$D^- \to \eta + l^- + N$'            , '-411' , '221'  , ''],
+            [r'$D^+ \to \eta\' + l^+ + N$'          , '411' , '331'  , '-'],
+            [r'$D^- \to \eta\' + l^- + N$'          , '-411' , '331'  , ''],
+            [r'$B^+ \to \eta + l^+ + N$'            , '521' , '221'  , '-'],
+            [r'$B^- \to \eta + l^- + N$'            , '-521' , '221'  , ''],
+            [r'$B^+ \to \eta\' + l^+ + N$'          , '521' , '331'  , '-'],
+            [r'$B^- \to \eta\' + l^- + N$'          , '-521' , '331'  , '']
+        ]
+        channels_vector = [
+            [r'$D^0 \to K^{*-} + l^+ + N$'                  ,'421' ,'-323', '-' ],
+            [r'$D^0 \to K^{*+} + l^- + N$'                  ,'-421', '323', ''  ],
+            [r'$B^+ \to \bar{D}^*0 + l^+ + N$'              ,'521' ,'-423', '-' ],
+            [r'$B^- \to D^*0 + l^- + N$'                    ,'-521','423' , ''  ],
+            [r'$B^0 \to D^{*-} + l^+ + N$'                  ,'511' ,'-413', '-' ],
+            [r'$B^0 \to D^{*+} + l^- + N$'                  ,'-511','413' , ''  ],
+            [r'$B^0_s \to D^{*-}_s + l^+ + N$'              ,'531' ,'-433', '-' ],
+            [r'$B^0_s \to D^{*+}_s + l^- + N$'              ,'-531','433' , ''  ],
+            [r'$B^+_c \to B^{*0} + l^+ + N$'                ,'541' ,'513' , '-' ],
+            [r'$B^-_c \to \bar{B}^{*0} + l^- + N$'          ,'-541','-513', ''  ],
+            [r'$B^+_c \to B^{*0}_s+ l^+ + N$'               ,'541' ,'533' , '-' ],
+            [r'$B^-_c \to \bar{B}^{*0}_s+ l^- + N$'         ,'-541','-533', ''  ],
+            [r'$B^+ \to \rho^0 + l^+ + N$'                  , '521', '113', '-' ],
+            [r'$B^- \to \rho^0 + l^- + N$'                  ,'-521', '113', ''  ],
+            [r'$B^+_c \to J/\psi + l^+ + N$'                , '541', '443', '-' ],
+            [r'$B^-_c \to J/\psi + l^- + N$'                ,'-541', '443', ''  ],
+            [r'$D^0 \to \rho^- + l^+ + N$'                  , '421','-213', '-' ],
+            [r'$\bar{D}^0 \to \rho^+ + l^- + N$'            ,'-421', '213', ''  ],
+            [r'$D^+ \to \rho^0 + l^+ + N$'                  , '411', '113', '-' ],
+            [r'$D^- \to \rho^0 + l^- + N$'                  ,'-411', '113', ''  ],
+            [r'$D^- \to K^{*0} + l^- + N$'                  ,'-411', '313', ''  ],
+            [r'$D^+ \to \bar{K}^{*0} + l^+ + N$'            ,'-411', '-313', '-'],
+            [r'$D^+_s \to K^{*0} + l^+ + N$'                , '431', '313', '-' ],
+            [r'$D^-_s \to \bar{K}^{*0} + l^- + N$'          ,'-431','-313', '-' ],
+            [r'$D^+_s \to \phi + l^+ + N$'                  , '431', '333', '-' ],
+            [r'$D^-_s \to \phi + l^- + N$'                  ,'-431', '333', ''  ],
+            [r'$B^0 \to \rho^- + l^+ + N$'                  , '511','-213', '-' ],
+            [r'$\bar{B^0} \to \rho^+ + l^- + N$'            ,'-511', '213', ''  ],
+            [r'$B^0_s \to K^{*-} + l^+ + N$'                , '531','-323', '-' ],
+            [r'$\bar{B}^0_s \to K^{*+} + l^- + N$'          ,'-531', '323', ''  ],
+            [r'$B^+_c \to D^{*0} + l^+ + N$'                , '541', '423', '-' ],
+            [r'$B^-_c \to \bar{D}^{*0} + l^- + N$'          ,'-541','-423', ''  ],
+            [r'$D^- \to \omega + l^- + N$'                  ,'-411', '223', ''  ],
+            [r'$D^+ \to \omega + l^+ + N$'                  , '411', '223', '-' ],
+            [r'$B^- \to \omega + l^- + N$'                  ,'-521', '223', ''  ],
+            [r'$B^+ \to \omega + l^+ + N$'                  , '521', '223', '-' ],
+        ]
+
+        channels_tau_1 =  [
+            [r'$\tau^- \to l^- + \nu_{\tau} + N$','15','16',''],
+            [r'$\tau^+ \to l^+ + \bar{\nu}_{\tau} + N$','-15','-16','-'],
+        ]
+
+        channels_tau_2 = [
+            [r'$\tau^- \to l^- + \bar{\nu}_l + N$','15',''],
+            [r'$\tau^+ \to l^+ + \nu_l + N$','-15','-']
+        ]
+        
+        output=[]
+        
+        #Pseudocalar
+        for description, pid_parent, pid_daughter, sign_lep in channels_pseudo: 
+            for pid_lep in ["11","13","15"]:
+                if self.vcoupling[pid_lep] <1e-9: continue
+                integration = "dq2dE"
+                generator = self.generators[abs(int(pid_parent))]
+                label = "3body_pseudo_" + pid_parent + "_" +pid_daughter+ "_" + sign_lep+pid_lep
+                br =  self.get_3body_dbr_pseudoscalar(pid_parent,pid_daughter,sign_lep+pid_lep)
+                output.append([label, pid_parent,pid_daughter,sign_lep+pid_lep, br, generator,integration, description.replace("l",lep[pid_lep])])
+        
+
+        #Vector
+        for description, pid_parent, pid_daughter, sign_lep in channels_vector: 
+            for pid_lep in ["11","13","15"]:
+                if self.vcoupling[pid_lep] <1e-9: continue
+                integration = "dq2dE"
+                generator = self.generators[abs(int(pid_parent))]
+                label = "3body_vector_" + pid_parent + "_" +pid_daughter+ "_" + sign_lep+pid_lep
+                br =  self.get_3body_dbr_vector(pid_parent,pid_daughter,sign_lep+pid_lep)
+                output.append([label, pid_parent,pid_daughter,sign_lep+pid_lep, br, generator,integration, description.replace("l",lep[pid_lep])])
+        
+        
+        
+
+        #Tau
+        for description, pid_parent, pid_nu, sign_lep in channels_tau_1: 
+                for pid_lep in ["11","13"]:
+                    if self.vcoupling[pid_lep] <1e-9: continue
+                    integration = "dE"
+                    generator = self.generators[abs(int(pid_parent))]
+                    label = "3body_tau_" + pid_parent + "_" +sign_lep+pid_lep+ "_" + pid_nu
+                    br =  self.get_3body_dbr_tau(pid_parent,sign_lep+pid_lep,pid_nu)
+                    output.append([label, pid_parent,sign_lep+pid_lep,pid_nu, br, generator,integration, description.replace("l",lep[pid_lep])])
+            
+        
+
+        for description, pid_parent, sign_lep in channels_tau_2: 
+                for pid_lep in ["11","13"]:
+                    pid_nu = str(int(pid_lep)+1)
+                    if self.vcoupling["15"] <1e-9: continue
+                    integration = "dE"
+                    generator = self.generators[abs(int(pid_parent))]
+                    label = "3body_tau_" + pid_parent + "_" +sign_lep+pid_lep+ "_" + pid_nu
+                    br =  self.get_3body_dbr_tau(pid_parent,sign_lep+pid_lep,pid_nu)
+                    output.append([label, pid_parent,sign_lep+pid_lep,pid_nu, br, generator,integration, description.replace("l",lep[pid_lep])])
+            
+        return output
+
+    def get_bounds(self):
+
+        coupling =  (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
+
+        bounds_100 = [
+     ['bounds_100/bounds_atlas_2022.txt'  , 'Atlas \n (2022)'        , 6.05   , 0.00035  ,  -35 ], 
+     ['bounds_100/bounds_charm.txt'       , 'CHARM'                  , 0.8  , 0.00019    , -35], 
+     ['bounds_100/bounds_bebc_barouki.txt', 'BEBC \n (Barouki et al)', 1.114 , 0.000055 ,  -15 ], 
+    ['bounds_100/bounds_belle.txt'       , 'Belle'                  , 1.0 , 0.005  ,  -20 ], 
+    ['bounds_100/bounds_delphi_long.txt' , 'Delphi \n (long)'       , 2.17 , 0.0028   ,  -27 ], 
+     ['bounds_100/bounds_t2k.txt'         , 'T2K'                    , 0.45 , 2.6e-05 ,  50], 
+     ['bounds_100/bounds_cosmo.txt'       , 'BBN'                    , 0.38  , 1.3e-5 , -40], 
+     ['bounds_100/bounds_cms_2022.txt'    , 'CMS \n (2022)'          , 6.0   , 0.001   , -35], 
+     ['bounds_100/bounds_pienu_2017.txt'  , 'PIENU \n (2017)'        , 0.117, 0.0001  ,  75], 
+     ['bounds_100/bounds_na62.txt'        , 'NA62'                   , 0.17 , 4.0e-05 ,   -15]
+    ]
+        bounds_010 = [
+    ['bounds_010/bounds_microboone_higgs.txt', r'$\mu$BooNe'    , 0.144, 0.00038   ,-50],
+    ['bounds_010/bounds_t2k.txt'             , 'T2K'            , 0.30, 3.5e-05,-50],
+    ['bounds_010/bounds_cosmo.txt'           , 'BBN'            , 0.41, 1.1e-05  ,-40],
+    ['bounds_010/bounds_nutev.txt'           , 'NuTeV'          , 0.765, 0.00019   ,-30],
+    ['bounds_010/bounds_bebc.txt'            , 'BEBC'           , .9, 0.000374   ,-40],
+    ['bounds_010/bounds_na62.txt'            , 'NA62'           , 0.26, 0.000151   ,0  ],
+    ['bounds_010/bounds_cms_2022.txt'        , 'CMS \n (2022)'  , 5.0  , 0.000303   ,-30],
+    ['bounds_010/bounds_na3.txt'             , 'NA3'            , 1.26, 0.0041    ,-40],
+]
+
+        bounds_001 = [
+    ['bounds_001/bounds_delphi_short.txt', 'Delphi \n (short)'       , 5.8, 0.0023  ,0  ],
+    ['bounds_001/bounds_cosmo.txt'       , 'BBN'                     , 0.14, 1.5e-04,-70],
+    ['bounds_001/bounds_bebc_barouki.txt', 'BEBC \n (Barouki et al.)', 0.41, 0.00048,-45 ],
+    ['bounds_001/bounds_charm_2021.txt'  , 'CHARM \n (2021)'         , 0.52, 0.0017 , -40],
+    ['bounds_001/bounds_delphi_long.txt' , 'Delphi \n (long)'        , 2.162, 0.00236 ,-30 ],
+    ['bounds_001/bounds_babar_2022.txt'  , 'BaBar'                   , 0.857, 0.00377 ,-70 ],
+    ]
+        if coupling == (1,0,0): return bounds_100
+        elif coupling ==  (0,1,0): return bounds_010
+        elif coupling ==  (0,0,1): return bounds_001
+        else: return []
+
+    
+    #########################################################################################
+    
+    ## HNL Decay
+    
+    #########################################################################################
+    
+    def HNL_Decay_init(self,couplings):
+        
+        self.cutoff = self.masses('331')
+        
+        self.U = {'e':couplings[0], 'anti_e': couplings[0],
+                  'mu':couplings[1], 'anti_mu': couplings[1],
+                  'tau':couplings[2], 'anti_tau': couplings[2]} 
+        
+        self.Gf = 1.166378*10**(-5)
+        
+        self.sin2w = 0.23121 
+        
+        
+        self.GeVtoS = (6.582119569 * 10**-25) 
+        
+        self.c = c = 299792458 
+        
+        #define particle content
+        leptons = ['e','mu','tau']
+
+        vectors = {'charged':['rho+','K+star'], 'neutral': ['rho0','omega'] }
+
+        pseudos = {'charged':['pi+','K+'], 'neutral':['pi0','eta'] }
+        
+        neutrinos = ['nu']
+        
+        quarks = {'up':['u','c','t'], 'down': ['d','s','b']}
+
+        self.particle_content = {'leptons':leptons,'neutrinos':neutrinos,'vectors':vectors,'pseudos':pseudos,'quarks':quarks}
+
+
+
+        ##Compile all allowed decay modes for each decay channel##
+        
+        #N -> nu_alpha l_beta l_beta
+        null = [('nu','e','anti_e'),('nu','mu','anti_mu'),('nu','tau','anti_tau')]
+
+        
+        
+        #N -> l_alpha l_beta nu
+        llnu = [
+        ('e',anti('mu'),'nu'), ('mu',anti('e'),'nu'),
+        ('e',anti('tau'),'nu'), ('tau',anti('e'),'nu'),
+        ('mu',anti('tau'),'nu'), ('tau',anti('mu'),'nu')    
+        ] 
+
+        #N -> nu nu nu
+        nu3 = [('nu','nu','nu')]
+    
+        #N -> nu_alpha P    
+        nuP = [('nu','pi0'),('nu','eta')]
+
+     
+
+        #N -> l_alpha P
+        lP = []
+
+        for l in leptons:
+
+            for P in pseudos['charged']:
+
+                mode = (l,P)
+
+                lP.append(mode)
+                
+                #conjugate mode 
+                lP.append(conjugate(mode))
+        
+        #N -> nu_alpha V
+        nuV = []
+
+        
+
+        for V in vectors['neutral']:
+
+            mode = ('nu',V)
+
+            nuV.append(mode)
+
+        #N -> l_alpha V 
+        lV = []
+
+        for l in leptons:
+
+            for V in vectors['charged']:
+
+                mode = (l,V)
+
+                lV.append(mode)
+                
+                #conjugate mode
+                lV.append(conjugate(mode))
+                    
+        #N -> nu_alpha q q 
+        nuqq = []
+        
+        
+            
+        for q in quarks['up'] + quarks['down']:
+
+            mode = ('nu',q,anti(q))
+
+            nuqq.append(mode)
+                
+        #N -> l_alpha u d      
+        lud = []
+        
+        for l in leptons: 
+            
+            for u in quarks['up']:
+                
+                for d in quarks['down']:
+                    
+                    mode = (l,u,anti(d))
+                    
+                    lud.append(mode)
+                    
+                    lud.append(conjugate(mode))
+                
+
+        self.modes = {'null':null,'llnu':llnu,'nu3':nu3,'nuP':nuP,'lP':lP,'nuV':nuV, 'lV':lV,'lud':lud,'nuqq':nuqq}
+        
+        
+        
+        self.modes_inactive = {}
+        self.modes_active = {}
+        
+        #Compile all modes that are allowed by couplings and filter out those that are not
+        for channel in self.modes.keys():
+            
+            modes_inactive = []
+            modes_active = []
+            
+            for mode in self.modes[channel]:
+            
+            
+                if channel in ['null','nuqq','nuV','nuP','nu3']: modes_active.append(mode)
+                
+                elif channel in ['lV','lP','lud']: 
+                    if self.U[mode[0]] != 0: modes_active.append(mode)
+                    else: modes_inactive.append(mode)
+                
+                elif channel in ['llnu']:
+                    if self.U[mode[0]] != 0 or self.U[mode[1]] != 0: modes_active.append(mode)
+                    else: modes_inactive.append(mode)
+                        
+                     
+            
+
+
+            
+            
+            self.modes_inactive[channel] = modes_inactive
+            
+            self.modes_active[channel] = modes_active
+    
+    def gen_widths(self,mpts,full_range=False):
+        
+        """
+        
+        Generate decay widths for all active modes
+        
+        """
+        
+        channels = self.modes_active.keys()
+        
+        self.model_widths = {}
+        
+        self.mpts = mpts
+
+        Gamma = {'null': self.Gamma_null, 'llnu':self.Gamma_llnu, 'lP': self.Gamma_lP, 'nuP': self.Gamma_nuP ,
+         'lV': self.Gamma_lV, 'nuV': self.Gamma_nuV, 'nu3': self.Gamma_nu3, 'lud':self.Gamma_lud, 'nuqq':self.Gamma_nuqq}
+       
+        #iterate through each decay channel
+        for channel in channels:
+            
+            channel_widths = {}
+            
+            for mode in self.modes_active[channel]:
+                
+                scope = globals().update(locals())
+                
+                #Evaluate the decay width with or without a cutoff
+                
+                
+                gamma_pts = [Gamma[channel](m,mode) for m in self.mpts]
+   
+                channel_widths[mode] = gamma_pts
+            
+            self.model_widths[channel] = channel_widths
+
+    def gen_ctau(self,mpts):
+
+            """
+
+            Generate HNL Lifetime
+
+            """
+
+            self.mpts = mpts
+
+            #generate decay widths
+            self.gen_widths(mpts=self.mpts,full_range=False)
+
+            total_width = []
+
+            #iterate over mass points
+            for i in range(len(mpts)):
+
+                gamma_T = 0
+
+                #sum over individual decay widths 
+                for channel in self.modes_active.keys():
+
+                    for mode in self.modes_active[channel]:
+
+
+                        gamma = self.model_widths[channel][mode][i]
+
+
+
+                        gamma_T += gamma
+
+
+                total_width.append(gamma_T)
+
+            ctau = [(self.c/g)*self.GeVtoS for g in total_width]
+
+            self.total_width = total_width
+
+            self.ctau = ctau
+
+    def gen_brs(self):
+
+
+            """
+
+            Generate Branching ratios
+
+            """
+
+            channels = self.model_widths.keys()
+
+
+            self.model_brs = {}
+
+            #iterate over decay channels
+            for channel in channels:
+
+                channel_brs = {}
+
+                #sum over branching ratios
+                for mode in self.model_widths[channel]:
+
+                    mode_br = []
+
+
+                    for i in range(len(mpts)):
+
+                        gamma_partial = self.model_widths[channel][mode][i]
+
+                        gamma_total = self.total_width[i]
+
+
+
+                        mode_br.append( gamma_partial/gamma_total)
+
+
+                    channel_brs[mode] = mode_br
+
+
+                self.model_brs[channel] = channel_brs
+                
+    def save_data(self,save_ctau,save_brs):
+        
+        """
+        
+        Save decay data
+        
+        """
+        
+        
+    
+        if save_ctau: 
+
+            path = "model/ctau"
+            os.makedirs(path,exist_ok = True)
+            
+            #save ctau 
+            ctau_pts = self.ctau
+            
+            df_data = {'m': mpts,'ctau':ctau_pts}
+
+
+            df=pd.DataFrame(df_data)
+
+            save_path = f"{path}/ctau.txt"
+
+            df.to_csv(save_path,sep=' ',header=False,index=False)
+
+
+        if save_brs: 
+        
+            #clean br directories 
+            for channel in self.modes_active.keys():
+
+                
+                
+
+                channel_path_br = f"model/br/{channel}"
+
+                os.makedirs(channel_path_br,exist_ok = True)
+                try:
+                    for f in os.listdir(channel_path_br):
+                        os.remove(f"{channel_path_br}/{f}")
+
+
+                except:
+                    pass
+           
+             
+            #save branching ratios
+            for channel in self.model_brs.keys():
+
+                channel_path_br = f"model/br/{channel}"
+                
+                for mode in self.model_brs[channel]:
+                    
+                    br_pts = self.model_brs[channel][mode]
+                    
+                    df_data = {'m': mpts,'br':br_pts}
+
+
+                    df=pd.DataFrame(df_data)
+                    
+                   
+                    
+                    
+                    save_path = f"{channel_path_br}/{mode}.csv"
+
+                    df.to_csv(save_path,sep=' ',header=False,index=False)
+
+
+# Decay Widths
+#N-> l_alpha P
+    def Gamma_lP(self,m,mode,cutoff=True): 
+
+        l,P = mode
+
+        
+        
+
+        prefactor = self.U[l]**2 * self.Gf**2 * m**3 * self.fH(pid(P))**2 * self.VH(pid(P))**2 / (16*np.pi) 
+
+        yl1 = self.masses(pid(l))/m
+
+        yP = self.masses(pid(P))/m
+
+
+        #evaluate mass thresholds
+        if not cutoff:
+
+            if 1 >= yl1 + yP:
+                return prefactor*I_1_2body(yl1**2,yP**2)
+            else:
+                return 0
+        else:
+
+            if 1 >= yl1 + yP and m <= self.cutoff:
+                return prefactor*I_1_2body(yl1**2,yP**2)
+            else:
+                return 0 
+            
+    
+    #N -> nu P 
+    def Gamma_nuP(self,m,mode,cutoff=True):
+
+        nu,P  = mode
+        
+        
+
+        prefactor =   (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * self.Gf**2 * m**3 * self.fH(pid(P))**2 / (16*np.pi)
+
+        yP = self.masses(pid(P))/m
+
+        
+
+        #evaluate mass thresholds
+        if not cutoff:
+            if 1 >= yP:
+                gamma = prefactor*I_1_2body(0,yP**2)
+                return gamma
+            else:
+                return 0 
+        else: 
+            if 1>= yP and m <= self.cutoff:
+                gamma = prefactor*I_1_2body(0,yP**2)
+                return gamma
+            else:
+                return 0 
+
+    #N -> l_alpha V 
+    def Gamma_lV(self,m,mode,cutoff=True):
+
+        l,V = mode
+
+        
+
+        
+        prefactor =   self.U[l]**2*self.Gf**2 * m**3 * self.fH(pid(V))**2 * self.VH(pid(V))**2 / (16*np.pi) 
+
+
+        yl1 = self.masses(pid(l))/m
+
+        yV = self.masses(pid(V))/m
+
+
+        
+
+        #evaluate mass threshold
+        if not cutoff :
+            if 1 >= yV+yl1:
+                gamma = prefactor*I_2_2body(yl1**2,yV**2)
+                return gamma
+            else:
+                return 0   
+
+        else:
+            if 1 >= yV+yl1 and m<=self.cutoff:
+                gamma = prefactor*I_2_2body(yl1**2,yV**2)
+                return gamma
+            else:
+                return 0              
+
+    #N -> nu_alpha V 
+    def Gamma_nuV(self,m,mode,cutoff=True):
+
+        nu,V = mode
+
+        k_V = {
+               'rho0': 1-2*self.sin2w, 
+               'anti_rho0': 1-2*self.sin2w,
+               'omega': 4*self.sin2w/3,
+               'anti_omega': 4*self.sin2w/3,
+              }
+
+        prefactor = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * self.Gf**2 * m**3 * self.fH(pid(V))**2 * k_V[V]**2 / (16*np.pi)
+
+        yV = self.masses(pid(V))/m
+
+
+        
+
+
+        #evaluate mass thresholds
+        if not cutoff :
+            if 1 >= yV:
+                gamma =  prefactor*I_2_2body(0,yV**2)
+                return gamma
+            else:
+                return 0   
+
+        else:
+            if 1 >= yV and m<=self.cutoff:
+                gamma =  prefactor*I_2_2body(0,yV**2)
+                return gamma
+            else:
+                return 0  
+            
+
+    #N -> l_alpha l_beta nu_beta
+    def Gamma_llnu(self,m,mode,cutoff=False):
+
+        l1,l2,nu = mode
+
+
+
+        yl1 = self.masses(pid(l1))/m
+        yl2 = self.masses(pid(l2))/m
+
+
+        ynu = 0
+
+
+
+        
+
+
+
+        #evaluate mass thresholds 
+        #if 1 >= yl1 + yl2:
+        if m >= self.masses(pid(l1)) + self.masses(pid(l2)):
+            gamma = self.Gf**2 * m**5 * ( self.U[l1]**2 * I_1_3body(0, yl1**2, yl2**2) + self.U[l2]**2 * I_1_3body(0,yl2**2,yl1**2) ) / (192 * np.pi**3)
+            
+            return gamma
+        else:
+            return 0               
+
+
+    #N -> nu_alpha l_beta l_beta
+    def Gamma_null(self,m,mode,cutoff=False):
+        nu,l1,l2 = mode
+
+        yl = self.masses(pid(l1))/m
+        if 1 >= 2*yl:
+                
+            glL = -0.5 + self.sin2w
+    
+            glR = self.sin2w
+    
+            ynu = 0
+    
+            del_e = delta(int(pid('e')),int(pid(l1)))
+            del_mu = delta(int(pid('mu')),int(pid(l1)))
+            del_tau = delta(int(pid('tau')),int(pid(l1)))
+    
+    
+            prefactor =  self.Gf**2 * m**5 / (96*np.pi**3)
+    
+            term_e = self.U['e']**2 * (  ( glL*glR + glR*del_e )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_e)*I_1_3body(0,yl**2,yl**2))
+    
+            term_mu = self.U['mu']**2 * (  ( glL*glR + glR*del_mu )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_mu)*I_1_3body(0,yl**2,yl**2))
+    
+            term_tau = self.U['tau']**2 * (  ( glL*glR + glR*del_tau )*I_2_3body(0,yl**2,yl**2) + (glL**2 + glR**2 + (1+2*glL)*del_tau)*I_1_3body(0,yl**2,yl**2))
+    
+    
+            gamma = prefactor*(term_e + term_mu + term_tau)
+
+        #evaluate mass thresholds
+        
+            return gamma
+        else:
+            return 0   
+        
+    #N -> nu_alpha nu nu 
+    def Gamma_nu3(self,m,mode,cutoff=False):
+        nu,_,_ = mode
+
+
+        gamma = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2)*self.Gf**2 * m**5 / (96*np.pi**3)
+
+        return gamma
+
+
+    #N -> l_alpha u d
+    def Gamma_lud(self,m,mode,cutoff=True):
+
+        l,u,d = mode
+
+
+        V = self.VHHp(pid(u),pid(d))
+
+        yu = self.masses(pid(u))/m
+        yd = self.masses(pid(d))/m
+        yl = self.masses(pid(l))/m
+
+
+        
+
+        
+        #evaluate mass thresholds
+        if not cutoff:
+            if 1 >= yu+yd+yl:
+                gamma = self.U[l]**2*self.Gf**2 * V**2 * m**5 * I_1_3body(yl**2,yu**2,yd**2) / (64 * np.pi**3)
+
+                return gamma
+            else:
+                return 0
+
+        else:
+            if 1 >= yu+yd+yl and m>=self.cutoff:
+                gamma = self.U[l]**2*self.Gf**2 * V**2 * m**5 * I_1_3body(yl**2,yu**2,yd**2) / (64 * np.pi**3)
+
+                return gamma
+            else:
+                return 0  
+
+
+    #N -> nu_alpha q q
+    def Gamma_nuqq(self,m,mode,cutoff=True):
+
+        guL = 0.5 - (2*self.sin2w/3)
+
+        guR = -(2*self.sin2w/3)
+
+        gdL = -0.5 + (self.sin2w/3)
+
+        gdR = (self.sin2w/3)
+
+
+        glL = -0.5 + self.sin2w
+        glR = self.sin2w
+        guL = 0.5 - (2*self.sin2w/3)
+        guR = -(2*self.sin2w/3)
+        gdL = -0.5 + (self.sin2w/3)
+        gdR = (self.sin2w/3)
+
+        
+        
+        nu,q,qbar = mode 
+
+
+        yq = self.masses(pid(q))/m
+
+        ynu = 0 
+
+
+        prefactor = (self.U['e']**2 + self.U['mu']**2 + self.U['tau']**2) * self.Gf**2 * m**5  / (32*np.pi**3)
+
+        #pick out coupling constants
+        if q  in self.particle_content['quarks']['up'] or qbar in self.particle_content['quarks']['up']:
+            gqL = guL
+            gqR = guR
+        elif q  in self.particle_content['quarks']['down'] or qbar in self.particle_content['quarks']['down']:
+            gqL = gdL
+            gqR = gdR
+
+
+        
+
+        #evaluate mass threshold
+        if not cutoff:
+            if 1 >= yq+yq:
+                term1 = gqL*gqR*I_2_3body(ynu**2,yq**2,yq**2)
+
+                term2 = (gqL**2 + gqR**2)*I_1_3body(ynu,yq**2,yq**2)
+                
+                return prefactor*(term1 + term2)
+
+            else:
+                return 0
+        else:
+            if 1 >= yq+yq and m>=self.cutoff:
+                term1 = gqL*gqR*I_2_3body(ynu**2,yq**2,yq**2)
+
+                term2 = (gqL**2 + gqR**2)*I_1_3body(ynu,yq**2,yq**2)
+                
+                return prefactor*(term1 + term2)
+            else:
+                return 0
+
+        
+        
+        
+        
+"""
+
+Kinematic Functions
+
+"""
+
+def Lambda(x,y,z):
+    
+    return x**2 + y**2 + z**2 - 2*x*y - 2*y*z - 2*x*z
+
+
+def I_1_2body(x,y):
+    
+    return np.sqrt(Lambda(1,x,y)) * ((1 - x)**2 - y*(1 + x)) 
+
+def I_2_2body(x,y): 
+    
+    return np.sqrt(Lambda(1,x,y)) * ((1+ x - y)*(1 + x + 2*y) - 4*x)
+
+def I_1_3body(x,y,z, manual=True):
+    
+    #changed 1->s
+    integrand = lambda s: (1/s)*(s - x - y)*(1 + z - s) * np.sqrt(Lambda(s,x,y)) * np.sqrt(Lambda(1,s,z))
+    
+    if manual:
+        smin, smax, ns = (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2, 100
+        ds = (smax-smin)/float(ns)
+        integral=0
+        for s in np.linspace(smin+0.5*ds,smax-0.5*ds,ns):
+            integral += integrand(s)
+        integral*=ds
+    else:
+        integral,error = integrate.quad(integrand, (np.sqrt(x) + np.sqrt(y))**2, (1 - np.sqrt(z))**2)
+    return 12*integral
+
+ 
+def I_2_3body(x,y,z, manual=True):
+    
+    integrand = lambda s: (1/s)*(1 + x - s) * np.sqrt(Lambda(s,y,z)) * np.sqrt(Lambda(1,s,x))
+    
+    if manual:
+        smin, smax, ns = (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2, 100
+        ds = (smax-smin)/float(ns)
+        integral=0
+        for s in np.linspace(smin+0.5*ds,smax-0.5*ds,ns):
+            integral += integrand(s)
+        integral*=ds
+    else:
+        integral,error = integrate.quad(integrand, (np.sqrt(y) + np.sqrt(z))**2, (1 - np.sqrt(x))**2)
+    return 24*np.sqrt(y*z)*integral
+
+
+def delta(l1,l2):
+    
+    if l1 == l2 or l1 == -1*l2:
+        return 1
+    else: 
+        return 0   
+
+"""
+
+Additional Functions
+
+"""
+#returns the anti particle
+def anti(x):
+    
+    if 'anti_' not in x: return 'anti_'+x
+        
+    elif 'anti_' in x:  return x.replace('anti_','')
+    
+plot_labels = {
+        #Leptons
+        'e': r'$e$',
+        anti('e'): r'$e$',
+    
+        'mu': r'$\mu$',
+        anti('mu'): r'$\mu$',
+        
+        'tau': r'$\tau$',
+        anti('tau'): r'$\tau$',
+        
+        've': r'$\nu_e$',
+        anti('ve'): r'$\overline{\nu}_e$',
+    
+        'vmu': r'$\nu_\mu$',
+        anti('vmu'): r'$\overline{\nu}_\mu$',
+        
+        'vtau': r'$\nu_\tau$',
+        anti('vtau'): r'$\overline{\nu}_\tau$',
+        'nu':r'$\nu$',
+    
+        #Pseudos
+        'pi+':r'$\pi^+$',
+        anti('pi+'):r'$\pi^-$',
+    
+        'pi0':r'$\pi^0$',
+    
+        'K+': r'$K^+$',
+        anti('K+'): r'$K^-$',
+    
+        'eta': r'$\eta$',
+    
+        #Vectors
+        'rho+':r'$\rho^+$',
+        anti('rho+'):r'$\rho^-$',
+    
+        'rho0':r'$\rho^0$',
+    
+        'K+*':r'$K^{*+}$',
+        anti('K+*'):r'$K^{*-}$',
+    
+        'omega':r'$\omega$',
+        
+        #Quarks
+        'd': r'$d$',
+        anti('d'): r'$\overline{d}$',
+        
+        'u': r'$u$',
+        anti('u'): r'$\overline{u}$',
+        
+        'c': r'$c$',
+        anti('c'): r'$\overline{c}$',
+    
+        's': r'$s$',
+        anti('s'): r'$\overline{s}$',
+    
+        't': r'$t$',
+        anti('t'): r'$\overline{t}$',
+    
+        'b': r'$b$',
+        anti('b'): r'$\overline{b}$',
+        
+            
+        }
+
+plot_labels_neut = {
+        #Leptons
+        'e': r'$e$',
+        anti('e'): r'$e$',
+    
+        'mu': r'$\mu$',
+        anti('mu'): r'$\mu$',
+        
+        'tau': r'$\tau$',
+        anti('tau'): r'$\tau$',
+        
+        've': r'$\nu_e$',
+        anti('ve'): r'$\overline{\nu}_e$',
+    
+        'vmu': r'$\nu_\mu$',
+        anti('vmu'): r'$\overline{\nu}_\mu$',
+        
+        'vtau': r'$\nu_\tau$',
+        anti('vtau'): r'$\overline{\nu}_\tau$',
+        'nu':'$\nu$',
+    
+        #Pseudos
+        'pi+':r'$\pi$',
+        anti('pi+'):r'$\pi$',
+    
+        'pi0':r'$\pi^0$',
+    
+        'K+': r'$K$',
+        anti('K+'): r'$K$',
+    
+        'eta': r'$\eta$',
+    
+        #Vectors
+        'rho+':r'$\rho$',
+        anti('rho+'):r'$\rho$',
+    
+        'rho0':r'$\rho^0$',
+    
+        'K+star':r'$K^{*}$',
+        anti('K+*'):r'$K^{*}$',
+    
+        'omega':r'$\omega$',
+        
+        #Quarks
+        'd': r'$d$',
+        anti('d'): r'$\overline{d}$',
+        
+        'u': r'$u$',
+        anti('u'): r'$\overline{u}$',
+        
+        'c': r'$c$',
+        anti('c'): r'$\overline{c}$',
+    
+        's': r'$s$',
+        anti('s'): r'$\overline{s}$',
+    
+        't': r'$t$',
+        anti('t'): r'$\overline{t}$',
+    
+        'b': r'$b$',
+        anti('b'): r'$\overline{b}$',
+        
+            
+        }
+
+
+pid_conversions = {    
+        #Leptons
+        'e': 11,
+        'mu': 13, 
+        'tau': 15,
+
+        #Neutrinos
+        've': 12,
+        'vmu': 14,
+        'vtau': 16,
+        'nu':20,
+
+
+        #Pseudos
+        'pi+':211,
+        'pi0':111,
+        'K+':321,
+        'eta':221,
+
+        #Vectors
+        'rho+':213,
+        'rho0':113,
+        'K+star':323,
+        'omega':223,
+    
+        #Quarks
+        'd': 1,
+        'u':2,
+        's':3,
+        'c':4,
+        'b':5,
+        't':6,
+        }
+
+
+#returns the id given a particle
+def pid(x):
+      
+    if 'anti_' not in x: return str(pid_conversions[x])
+    
+    elif 'anti_' in x:  return str(-1*pid_conversions[x.replace('anti_','')])
+    
+
+#returns the conjugate mode
+def conjugate(x):
+    
+    conj_mode = []
+    
+    for p in x: conj_mode.append(anti(p))
+        
+    return tuple(conj_mode)
+    
+ 
+     
