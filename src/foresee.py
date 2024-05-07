@@ -877,14 +877,13 @@ class Foresee(Utility, Decay):
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
 
         # prepare output
-        model = self.model
-        if channels is None: channels = [key for key in model.production.keys()]
+        if channels is None: channels = [key for key in self.model.production.keys()]
         momenta_all, weights_all = np.array([[0.1,0.1]]), [0 ]
         dirname = self.model.modelpath+"model/LLP_spectra/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
         # loop over channels
-        for key in model.production.keys():
+        for key in self.model.production.keys():
 
             # selected channels only
             if key not in channels: continue
@@ -893,13 +892,14 @@ class Foresee(Utility, Decay):
             if self.model.production[key]["type"]=="mixing":
                 momenta, weights = self.get_spectrum_mixing(mass,coupling,key)
             if self.model.production[key]["type"]=="direct":
-            momenta, weights = self.get_spectrum_direct(mass,coupling,key)
+                momenta, weights = self.get_spectrum_direct(mass,coupling,key)
 
             #return statistcs
             if save_file==True:
-                for iproduction, production in enumerate(model.production[key]["production"]):
-                    filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
-                    self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
+                energy = self.model.production[key]["energy"]
+                for iproduction, production in enumerate(self.model.production[key]["production"]):
+                    filename = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
+                    self.convert_to_hist_list(momenta, weights[:,iproduction], do_plot=False, filename=filename)
 
             #store mome
             if do_plot:
