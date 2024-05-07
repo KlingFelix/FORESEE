@@ -12,7 +12,7 @@ sys.path.append(src_path)
 from src.foresee import Utility,Model,Foresee
 import pytest
 import numpy as np
-import import_ipynb
+#import import_ipynb
 
 #Test select parts of DarkPhoton notebook, applying only pion 2-body decay
 #@pytest.mark.skip  #Uncomment decorator to disable this test

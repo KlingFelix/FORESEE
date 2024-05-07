@@ -12,7 +12,7 @@ sys.path.append(src_path)
 from src.foresee import Utility,Model,Foresee
 import pytest
 import numpy as np
-import import_ipynb
+#import import_ipynb
 
 foresee = Foresee(path=src_path)
 
