@@ -1,8 +1,8 @@
-#To run the tests, isntall pytest and jupyter notebook importer:
+#To run the tests, install pytest and jupyter notebook importer:
 #  python3 -m pip install pytest
 #  python3 -m pip install import_ipynb
 #Then do
-#  pytest tests.py
+#  pytest test_Models.py
 
 import sys, os
 src_path = "../../"

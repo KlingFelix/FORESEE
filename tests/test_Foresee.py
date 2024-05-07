@@ -3,7 +3,7 @@
 #To run the tests, make sure pytest is installed:
 #  python3 -m pip install pytest
 #Then do
-#  pytest tests.py
+#  pytest test_Foresee.py
 
 import sys, os
 src_path = "../"
