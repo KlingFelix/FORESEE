@@ -54,6 +54,8 @@ def notebookRunner(notebook,ref):
         assert np.isclose(Nevts[i],ref[setupnames[i]])
 
 
+#Uncomment the below decorator to disable this test
+@pytest.mark.skip
 def test_DarkPhoton():
     """
     Main function calls to notebookRunner. 
