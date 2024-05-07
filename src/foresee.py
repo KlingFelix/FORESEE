@@ -11,6 +11,7 @@ from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
 from particle import Particle
+from copy import deepcopy
 
 class Utility():
 
@@ -306,6 +307,7 @@ class Foresee(Utility):
         self.distance = 480
         self.channels = None
         self.dirpath = path
+        self.rng = random.Random()
 
         #initiate jit functions by running with dummy input
         _ = self.boostlist(np.array([[0,0,0,1]]),np.array([[0,0,0]]))
@@ -382,9 +384,9 @@ class Foresee(Utility):
                 if not eval(preselectioncut): continue
 
             for n in range(nsample):
-                phi= random.uniform(-math.pi,math.pi)
-                fth = 10**np.random.uniform(-0.025, 0.025, 1)[0]
-                fp  = 10**np.random.uniform(-0.025, 0.025, 1)[0]
+                phi= self.rng.uniform(-math.pi,math.pi)
+                fth = 10**self.rng.uniform(-0.025, 0.025)
+                fp  = 10**self.rng.uniform(-0.025, 0.025)
 
                 th_sm=th*fth
                 p_sm=p*fp
@@ -574,8 +576,8 @@ class Foresee(Utility):
 
         #MC sampling of angles
         for i in range(nsample):
-            cos =random.uniform(-1.,1.)
-            phi =random.uniform(-math.pi,math.pi)
+            cos =self.rng.uniform(-1.,1.)
+            phi =self.rng.uniform(-math.pi,math.pi)
             p_1,p_2=self.twobody_decay(p_mother,m0,m1,m2,phi,cos)
             particles.append(p_2)
             weights.append(br/nsample)
@@ -600,16 +602,16 @@ class Foresee(Utility):
         for i in range(nsample):
 
             #Get kinematic Variables
-            q2 = random.uniform(q2min,q2max)
-            cth = random.uniform(cthmin,cthmax)
+            q2 = self.rng.uniform(q2min,q2max)
+            cth = self.rng.uniform(cthmin,cthmax)
             th = np.arccos(cth)
             q  = math.sqrt(q2)
 
             #decay meson and V
             cosQ =cth
-            phiQ =random.uniform(-math.pi,math.pi)
-            cosM =random.uniform(-1.,1.)
-            phiM =random.uniform(-math.pi,math.pi)
+            phiQ =self.rng.uniform(-math.pi,math.pi)
+            cosM =self.rng.uniform(-1.,1.)
+            phiM =self.rng.uniform(-math.pi,math.pi)
             p_1,p_q=self.twobody_decay(p_mother,m0 ,m1,q  ,phiM,cosM)
             p_2,p_3=self.twobody_decay(p_q     ,q  ,m2,m3 ,phiQ,cosQ)
 
@@ -995,8 +997,8 @@ class Foresee(Utility):
         p1, p2, p3 = None, None, None
         while p1 == None:
             #randomly draw mij^2
-            m122 = random.uniform((m1+m2)**2, (m0-m3)**2)
-            m232 = random.uniform((m2+m3)**2, (m0-m1)**2)
+            m122 = self.rng.uniform((m1+m2)**2, (m0-m3)**2)
+            m232 = self.rng.uniform((m2+m3)**2, (m0-m1)**2)
             m132 = m0**2+m1**2+m2**2+m3**2-m122-m232
 
             #calculate energy and momenta
@@ -1027,14 +1029,14 @@ class Foresee(Utility):
     
         #randomly rotation of p2, p3 around p1
         xaxis=Vector3D(1,0,0)
-        phi = random.uniform(-math.pi,math.pi)
+        phi = self.rng.uniform(-math.pi,math.pi)
         p1=p1.rotate(phi,xaxis)
         p2=p2.rotate(phi,xaxis)
         p3=p3.rotate(phi,xaxis)
         
         #randomly rotation of p1 in ref frame
-        phi = random.uniform(-math.pi,math.pi)
-        costh = random.uniform(-1,1)
+        phi = self.rng.uniform(-math.pi,math.pi)
+        costh = self.rng.uniform(-1,1)
         theta = np.arccos(costh)
         axis=Vector3D(np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta))
         rotaxis=axis.cross(p1.vector).unit()
@@ -1057,8 +1059,8 @@ class Foresee(Utility):
             return None, []
         # 2-body decays
         elif len(pids)==2:
-            phi = random.uniform(-math.pi,math.pi)
-            cos = random.uniform(-1.,1.)
+            phi = self.rng.uniform(-math.pi,math.pi)
+            cos = self.rng.uniform(-1.,1.)
             m0, m1, m2 = momentum.m, self.masses(str(pids[0])), self.masses(str(pids[1]))
             p1, p2 = self.twobody_decay(momentum,m0,m1,m2,phi,cos)
             return pids, [p1,p2]
@@ -1167,8 +1169,10 @@ class Foresee(Utility):
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
         
-        #set random seed
-        random.seed(seed)
+        #Temporarily (re)set random seed if specifically requested
+        if seed!=None:
+            rngorig = deepcopy(self.rng)  #Store previous state, reset to that at end
+            self.rng.seed(seed) #imhere
         
         #initialize weightnames if not defined
         model = self.model
@@ -1183,7 +1187,7 @@ class Foresee(Utility):
         
         # unweight sample
         weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
-        unweighted_raw_data = random.choices(weighted_combined_data, weights=baseweights, k=numberevent)
+        unweighted_raw_data = self.rng.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
         
         # setup decay channels
@@ -1200,11 +1204,11 @@ class Foresee(Utility):
         for momentum, weight in unweighted_raw_data:
             # determine choice of final state
             while True:
-                pids, mode = random.choices(channels[0], weights=channels[1], k=1)[0]
+                pids, mode = self.rng.choices(channels[0], weights=channels[1], k=1)[0]
                 if (self.channels is None) or (mode in self.channels): break
             # position
             thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
-            posz = random.uniform(0,self.length)
+            posz = self.rng.uniform(0,self.length)
             posx = thetax*self.distance
             posy = thetay*self.distance
             post = posz + t0
@@ -1225,6 +1229,9 @@ class Foresee(Utility):
         if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data, weightnames=weightnames)
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
+        #Restore random number generator state
+        if seed!=None: self.rng = rngorig        
+
         #return
         if return_data: return weighted_raw_data[0], weights[0], unweighted_data
         
