@@ -88,13 +88,15 @@ def test_DarkPhoton_decay():
         return_data = True,
         weightnames=setupnames,
         modes=modes,
-        seed=137,
     )
     
-    #Compare result to expected numbers of events
-    ref = {"EPOSLHC_pT=1":  165.52,\
-           "SIBYLL_pT=2":    88.906,\
-           "QGSJET_pT=0.5":  46.713,\
-           "PYTHIA_pT=1":   122.05,}
     for isetup, setup in enumerate(setupnames):
-        assert round(sum(weights[:,isetup]),3) == ref[setup]
+        print(setup,round(sum(weights[:,isetup]),3))
+    
+    #Compare result to expected numbers of events
+    ref = {"EPOSLHC_pT=1":  164.811,\
+           "SIBYLL_pT=2":    87.667,\
+           "QGSJET_pT=0.5":  46.119,\
+           "PYTHIA_pT=1":   121.333,}
+    for isetup, setup in enumerate(setupnames):
+        assert np.isclose(round(sum(weights[:,isetup]),3),ref[setup])

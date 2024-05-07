@@ -11,7 +11,6 @@ from scipy import interpolate
 from matplotlib import gridspec
 from numba import jit
 from particle import Particle
-from copy import deepcopy
 
 class Utility():
 
@@ -1165,14 +1164,9 @@ class Foresee(Utility):
         f.close()
         
            
-    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1, seed=None,
+    def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
-        
-        #Temporarily (re)set random seed if specifically requested
-        if seed!=None:
-            rngorig = deepcopy(self.rng)  #Store previous state, reset to that at end
-            self.rng.seed(seed) #imhere
         
         #initialize weightnames if not defined
         model = self.model
@@ -1229,9 +1223,6 @@ class Foresee(Utility):
         if filetype=="hepmc": self.write_hepmc_file(filename=filename, data=unweighted_data, weightnames=weightnames)
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
         
-        #Restore random number generator state
-        if seed!=None: self.rng = rngorig        
-
         #return
         if return_data: return weighted_raw_data[0], weights[0], unweighted_data
         
