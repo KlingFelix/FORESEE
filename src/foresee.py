@@ -12,6 +12,12 @@ from matplotlib import gridspec
 from numba import jit
 from particle import Particle
 
+##############################################
+##############################################
+#  Utilitiy Class
+##############################################
+##############################################
+    
 class Utility():
 
     ###############################
@@ -55,7 +61,7 @@ class Utility():
         return width*1e-6 if width!=None else 0.0
 
     ###############################
-    #  Utility Functions
+    #  Import Function
     ###############################
 
     #function that reads a table in a .txt file and converts it to a numpy array
@@ -67,6 +73,13 @@ class Utility():
                 words = [float(elt.strip()) for elt in line.split( )]
                 array.append(words)
         return np.array(array)
+        
+        
+##############################################
+##############################################
+#  Model Class
+##############################################
+##############################################
 
 class Model(Utility):
 
@@ -229,7 +242,191 @@ class Model(Utility):
         if self.production[key]["type"] == "direct":
             return (coupling/coupling_ref)**scaling
 
-class Foresee(Utility):
+
+
+##############################################
+##############################################
+#  DECAY Class
+##############################################
+##############################################
+
+class Decay():
+
+    ###############################
+    #  Kinematic Functions
+    ###############################
+    
+    def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
+        """
+        function that decays p0 > p1 p2 and returns p1,p2
+        """
+
+        #get axis of p0
+        zaxis=Vector3D(0,0,1)
+        rotaxis=zaxis.cross(p0.vector).unit()
+        rotangle=zaxis.angle(p0.vector)
+
+        #energy and momentum of p2 in the rest frame of p0
+        energy1   = (m0*m0+m1*m1-m2*m2)/(2.*m0)
+        energy2   = (m0*m0-m1*m1+m2*m2)/(2.*m0)
+        momentum1 = math.sqrt(energy1*energy1-m1*m1)
+        momentum2 = math.sqrt(energy2*energy2-m2*m2)
+
+        #4-momentum of p1 and p2 in the rest frame of p0
+        en1 = energy1
+        pz1 = momentum1 * costheta
+        py1 = momentum1 * math.sqrt(1.-costheta*costheta) * np.sin(phi)
+        px1 = momentum1 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
+        p1=LorentzVector(-px1,-py1,-pz1,en1)
+        if rotangle!=0: p1=p1.rotate(rotangle,rotaxis)
+
+        en2 = energy2
+        pz2 = momentum2 * costheta
+        py2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.sin(phi)
+        px2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
+        p2=LorentzVector(px2,py2,pz2,en2)
+        if rotangle!=0: p2=p2.rotate(rotangle,rotaxis)
+
+        #boost p2 in p0 restframe
+        p1_=p1.boost(-1.*p0.boostvector)
+        p2_=p2.boost(-1.*p0.boostvector)
+        return p1_,p2_
+        
+    def threebody_decay_pure_phase_space(self, p0, m0, m1, m2, m3):
+        """
+        function that decays p0 > p1 p2 p2 and returns p1,p2,p3
+        following pure phase space
+        """
+    
+        p1, p2, p3 = None, None, None
+        while p1 == None:
+            #randomly draw mij^2
+            m122 = random.uniform((m1+m2)**2, (m0-m3)**2)
+            m232 = random.uniform((m2+m3)**2, (m0-m1)**2)
+            m132 = m0**2+m1**2+m2**2+m3**2-m122-m232
+
+            #calculate energy and momenta
+            e1 = (m0**2+m1**2-m232)/(2*m0)
+            e2 = (m0**2+m2**2-m132)/(2*m0)
+            e3 = (m0**2+m3**2-m122)/(2*m0)
+            
+            if (e1<m1) or (e2<m2) or (e3<m3): continue
+            mom1 = np.sqrt(e1**2-m1**2)
+            mom2 = np.sqrt(e2**2-m2**2)
+            mom3 = np.sqrt(e3**2-m3**2)
+            
+            #calculate angles
+            costh12 = (-m122 + m1**2 + m2**2 + 2*e1*e2)/(2*mom1*mom2)
+            costh13 = (-m132 + m1**2 + m3**2 + 2*e1*e3)/(2*mom1*mom3)
+            costh23 = (-m232 + m2**2 + m3**2 + 2*e2*e3)/(2*mom2*mom3)
+            if (abs(costh12)>1) or (abs(costh13)>1) or (abs(costh23)>1): continue
+                
+            sinth12 =  np.sqrt(1-costh12**2)
+            sinth13 =  np.sqrt(1-costh13**2)
+            sinth23 =  np.sqrt(1-costh23**2)
+            
+            #construct momenta
+            p1 = LorentzVector(mom1,0,0,e1)
+            p2 = LorentzVector(mom2*costh12, mom2*sinth12,0,e2)
+            p3 = LorentzVector(mom3*costh13,-mom3*sinth13,0,e3)
+            break
+    
+        #randomly rotation of p2, p3 around p1
+        xaxis=Vector3D(1,0,0)
+        phi = random.uniform(-math.pi,math.pi)
+        p1=p1.rotate(phi,xaxis)
+        p2=p2.rotate(phi,xaxis)
+        p3=p3.rotate(phi,xaxis)
+        
+        #randomly rotation of p1 in ref frame
+        phi = random.uniform(-math.pi,math.pi)
+        costh = random.uniform(-1,1)
+        theta = np.arccos(costh)
+        axis=Vector3D(np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta))
+        rotaxis=axis.cross(p1.vector).unit()
+        rotangle=axis.angle(p1.vector)
+        p1=p1.rotate(rotangle,rotaxis)
+        p2=p2.rotate(rotangle,rotaxis)
+        p3=p3.rotate(rotangle,rotaxis)
+
+        #boost in p0 restframe
+        p1_=p1.boost(-1.*p0.boostvector)
+        p2_=p2.boost(-1.*p0.boostvector)
+        p3_=p3.boost(-1.*p0.boostvector)
+        
+        return p1_, p2_, p3_
+
+    ###############################
+    #  sample hadron decays n times
+    ###############################
+    
+    def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
+
+        # prepare output
+        particles, weights = [], []
+
+        #create parent 4-vector
+        p_mother=LorentzVector(0,0,0,m0)
+
+        #MC sampling of angles
+        for i in range(nsample):
+            cos =random.uniform(-1.,1.)
+            phi =random.uniform(-math.pi,math.pi)
+            p_1,p_2=self.twobody_decay(p_mother,m0,m1,m2,phi,cos)
+            particles.append(p_2)
+            weights.append(br/nsample)
+
+        return particles,weights
+
+    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
+
+        # prepare output
+        particles, weights = [], []
+
+        #create parent 4-vector
+        p_mother=LorentzVector(0,0,0,m0)
+
+        #integration boundary
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+        cthmin,cthmax = -1. , 1.
+        mass = m3
+
+        #numerical integration
+        integral=0
+        for i in range(nsample):
+
+            #Get kinematic Variables
+            q2 = random.uniform(q2min,q2max)
+            cth = random.uniform(cthmin,cthmax)
+            th = np.arccos(cth)
+            q  = math.sqrt(q2)
+
+            #decay meson and V
+            cosQ =cth
+            phiQ =random.uniform(-math.pi,math.pi)
+            cosM =random.uniform(-1.,1.)
+            phiM =random.uniform(-math.pi,math.pi)
+            p_1,p_q=self.twobody_decay(p_mother,m0 ,m1,q  ,phiM,cosM)
+            p_2,p_3=self.twobody_decay(p_q     ,q  ,m2,m3 ,phiQ,cosQ)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (q2max-q2min)*(cthmax-cthmin)/float(nsample)
+
+            #save
+            particles.append(p_3)
+            weights.append(brval)
+
+        return particles,weights
+
+
+##############################################
+##############################################
+#  FORESEE Class
+##############################################
+##############################################
+
+class Foresee(Utility, Decay):
 
     def __init__(self, path="../../"):
     
@@ -463,101 +660,6 @@ class Foresee(Utility):
             if (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
         return probability
-
-    def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
-        """
-        function that decays p0 > p1 p2 and returns p1,p2
-        """
-
-        #get axis of p0
-        zaxis=Vector3D(0,0,1)
-        rotaxis=zaxis.cross(p0.vector).unit()
-        rotangle=zaxis.angle(p0.vector)
-
-        #energy and momentum of p2 in the rest frame of p0
-        energy1   = (m0*m0+m1*m1-m2*m2)/(2.*m0)
-        energy2   = (m0*m0-m1*m1+m2*m2)/(2.*m0)
-        momentum1 = math.sqrt(energy1*energy1-m1*m1)
-        momentum2 = math.sqrt(energy2*energy2-m2*m2)
-
-        #4-momentum of p1 and p2 in the rest frame of p0
-        en1 = energy1
-        pz1 = momentum1 * costheta
-        py1 = momentum1 * math.sqrt(1.-costheta*costheta) * np.sin(phi)
-        px1 = momentum1 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
-        p1=LorentzVector(-px1,-py1,-pz1,en1)
-        if rotangle!=0: p1=p1.rotate(rotangle,rotaxis)
-
-        en2 = energy2
-        pz2 = momentum2 * costheta
-        py2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.sin(phi)
-        px2 = momentum2 * math.sqrt(1.-costheta*costheta) * np.cos(phi)
-        p2=LorentzVector(px2,py2,pz2,en2)
-        if rotangle!=0: p2=p2.rotate(rotangle,rotaxis)
-
-        #boost p2 in p0 restframe
-        p1_=p1.boost(-1.*p0.boostvector)
-        p2_=p2.boost(-1.*p0.boostvector)
-        return p1_,p2_
-
-    def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
-
-        # prepare output
-        particles, weights = [], []
-
-        #create parent 4-vector
-        p_mother=LorentzVector(0,0,0,m0)
-
-        #MC sampling of angles
-        for i in range(nsample):
-            cos =random.uniform(-1.,1.)
-            phi =random.uniform(-math.pi,math.pi)
-            p_1,p_2=self.twobody_decay(p_mother,m0,m1,m2,phi,cos)
-            particles.append(p_2)
-            weights.append(br/nsample)
-
-        return particles,weights
-
-    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
-
-        # prepare output
-        particles, weights = [], []
-
-        #create parent 4-vector
-        p_mother=LorentzVector(0,0,0,m0)
-
-        #integration boundary
-        q2min,q2max = (m2+m3)**2,(m0-m1)**2
-        cthmin,cthmax = -1. , 1.
-        mass = m3
-
-        #numerical integration
-        integral=0
-        for i in range(nsample):
-
-            #Get kinematic Variables
-            q2 = random.uniform(q2min,q2max)
-            cth = random.uniform(cthmin,cthmax)
-            th = np.arccos(cth)
-            q  = math.sqrt(q2)
-
-            #decay meson and V
-            cosQ =cth
-            phiQ =random.uniform(-math.pi,math.pi)
-            cosM =random.uniform(-1.,1.)
-            phiM =random.uniform(-math.pi,math.pi)
-            p_1,p_q=self.twobody_decay(p_mother,m0 ,m1,q  ,phiM,cosM)
-            p_2,p_3=self.twobody_decay(p_q     ,q  ,m2,m3 ,phiQ,cosQ)
-
-            #branching fraction
-            brval  = eval(br)
-            brval *= (q2max-q2min)*(cthmax-cthmin)/float(nsample)
-
-            #save
-            particles.append(p_3)
-            weights.append(brval)
-
-        return particles,weights
         
     @staticmethod
     @jit
@@ -733,6 +835,7 @@ class Foresee(Utility):
             if do_plot:
                 momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
                 weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
+                
         #return
         if do_plot:
             return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
@@ -921,70 +1024,6 @@ class Foresee(Utility):
     ###############################
     #  Export Results as HEPMC File
     ###############################
-    
-    def threebody_decay_pureps(self, p0, m0, m1, m2, m3):
-        """
-        function that decays p0 > p1 p2 p2 and returns p1,p2,p3
-        following pure phase space
-        """
-    
-        p1, p2, p3 = None, None, None
-        while p1 == None:
-            #randomly draw mij^2
-            m122 = random.uniform((m1+m2)**2, (m0-m3)**2)
-            m232 = random.uniform((m2+m3)**2, (m0-m1)**2)
-            m132 = m0**2+m1**2+m2**2+m3**2-m122-m232
-
-            #calculate energy and momenta
-            e1 = (m0**2+m1**2-m232)/(2*m0)
-            e2 = (m0**2+m2**2-m132)/(2*m0)
-            e3 = (m0**2+m3**2-m122)/(2*m0)
-            
-            if (e1<m1) or (e2<m2) or (e3<m3): continue
-            mom1 = np.sqrt(e1**2-m1**2)
-            mom2 = np.sqrt(e2**2-m2**2)
-            mom3 = np.sqrt(e3**2-m3**2)
-            
-            #calculate angles
-            costh12 = (-m122 + m1**2 + m2**2 + 2*e1*e2)/(2*mom1*mom2)
-            costh13 = (-m132 + m1**2 + m3**2 + 2*e1*e3)/(2*mom1*mom3)
-            costh23 = (-m232 + m2**2 + m3**2 + 2*e2*e3)/(2*mom2*mom3)
-            if (abs(costh12)>1) or (abs(costh13)>1) or (abs(costh23)>1): continue
-                
-            sinth12 =  np.sqrt(1-costh12**2)
-            sinth13 =  np.sqrt(1-costh13**2)
-            sinth23 =  np.sqrt(1-costh23**2)
-            
-            #construct momenta
-            p1 = LorentzVector(mom1,0,0,e1)
-            p2 = LorentzVector(mom2*costh12, mom2*sinth12,0,e2)
-            p3 = LorentzVector(mom3*costh13,-mom3*sinth13,0,e3)
-            break
-    
-        #randomly rotation of p2, p3 around p1
-        xaxis=Vector3D(1,0,0)
-        phi = random.uniform(-math.pi,math.pi)
-        p1=p1.rotate(phi,xaxis)
-        p2=p2.rotate(phi,xaxis)
-        p3=p3.rotate(phi,xaxis)
-        
-        #randomly rotation of p1 in ref frame
-        phi = random.uniform(-math.pi,math.pi)
-        costh = random.uniform(-1,1)
-        theta = np.arccos(costh)
-        axis=Vector3D(np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta))
-        rotaxis=axis.cross(p1.vector).unit()
-        rotangle=axis.angle(p1.vector)
-        p1=p1.rotate(rotangle,rotaxis)
-        p2=p2.rotate(rotangle,rotaxis)
-        p3=p3.rotate(rotangle,rotaxis)
-
-        #boost in p0 restframe
-        p1_=p1.boost(-1.*p0.boostvector)
-        p2_=p2.boost(-1.*p0.boostvector)
-        p3_=p3.boost(-1.*p0.boostvector)
-        
-        return p1_, p2_, p3_
 
     def decay_llp(self, momentum, pids):
         
@@ -1006,13 +1045,12 @@ class Foresee(Utility):
         elif len(pids)==3:
             m0 = momentum.m
             m1, m2, m3 = self.masses(str(pids[0])), self.masses(str(pids[1])), self.masses(str(pids[2]))
-            p1, p2, p3 = self.threebody_decay_pureps(momentum,m0,m1,m2,m3)
+            p1, p2, p3 = self.threebody_decay_pure_phase_space(momentum,m0,m1,m2,m3)
             return pids, [p1,p2,p3]
         # not 2/3 body decays - not yet implemented
         else:
             return None, []
-            
-    
+
     def write_hepmc_file(self, data, filename, weightnames):
         
         # open file
@@ -1167,6 +1205,7 @@ class Foresee(Utility):
         
         #return
         if return_data: return weighted_raw_data[0], weights[0], unweighted_data
+        
         
     ###############################
     #  Plotting and other final processing
