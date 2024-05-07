@@ -74,6 +74,183 @@ class Utility():
                 array.append(words)
         return np.array(array)
         
+    ###############################
+    #  Reading/Plotting Particle Tables
+    ###############################
+
+    # convert a table into input for contour plot
+    def table2contourinput(self,data,idz=2):
+        ntotal=len(data)
+        ny=sum( 1 if d[0]==data[0][0] else 0 for d in data)
+        nx=sum( 1 if d[1]==data[0][1] else 0 for d in data)
+        xval = [data[ix*ny,0] for ix in range(nx)]
+        yval = [data[iy,1] for iy in range(ny)]
+        zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
+        return np.array(xval),np.array(yval),np.array(zval)
+        
+    # function to extend spectrum to low pT
+    def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
+
+        # round lists and ptmatch(so that we can easily search them)
+        list_t = [round(t,3) for t in list_t]
+        list_p = [round(p,3) for p in list_p]
+        l10ptmatch = round(round(np.log10(ptmatch)/0.05)*0.05,3)
+
+        # for each energy, get 1/theta^2 * dsigma/dlog10theta, which should be constant
+        logps = np.linspace(1+0.025,5-0.025,80)
+        values = {}
+        for logp in logps:
+            rlogp = round(logp,3)
+            rlogts = [round(l10ptmatch - rlogp + i*0.05,3) for i in range(-navg,navg+1)]
+            vals = [list_w[(list_p==rlogp)*(list_t==rlogt)][0]/(10**rlogt)**2 for rlogt in rlogts]
+            values[rlogp] = np.mean(vals)
+
+        # using that, let's extrapolate to lower pT
+        list_wx = []
+        for logt, logp, w in zip(list_t, list_p, list_w):
+            rlogp, rlogt = round(logp,3), round(logt,3)
+            if  logt>l10ptmatch-logp-2.5*0.05 or logp<1:list_wx.append(w)
+            else:list_wx.append(values[rlogp]*(10**rlogt)**2)
+
+        #return results
+        return list_wx
+
+    # function to read file and return momenta, weights
+    def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
+        
+        if type(filenames) == str: filenames=[filenames]
+        list_xs = []
+        for filename in filenames:
+            if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
+            elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
+            else: print ("ERROR: cannot read file type")
+            if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
+            list_xs.append(weights)
+        return list_logth, list_logp, np.array(list_xs).T
+
+    # function that converts input file into meson spectrum
+    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
+        
+        #read file
+        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
+        
+        particles, weights = [], []
+        for logth,logp,xs in zip(list_logth,list_logp, list_xs):
+
+            if nocuts==False and max(xs) < 10.**-6: continue
+            p  = 10.**logp
+            th = 10.**logth
+            pt = p * np.sin(th)
+
+            if nocuts==False and preselectioncut is not None:
+                if not eval(preselectioncut): continue
+
+            for n in range(nsample):
+                phi= random.uniform(-math.pi,math.pi)
+                fth = 10**np.random.uniform(-0.025, 0.025, 1)[0]
+                fp  = 10**np.random.uniform(-0.025, 0.025, 1)[0]
+
+                th_sm=th*fth
+                p_sm=p*fp
+
+                en = math.sqrt(p_sm**2+mass**2)
+                pz = p_sm*np.cos(th_sm)
+                pt = p_sm*np.sin(th_sm)
+                px = pt*np.cos(phi)
+                py = pt*np.sin(phi)
+                part=LorentzVector(px,py,pz,en)
+
+                particles.append(part)
+                weights.append([w/float(nsample) for w in xs])
+
+        return particles, np.array(weights)
+    
+    # get_hist_list
+    def get_hist_list(self, tx, px, weights, prange):
+    
+        # define histogram
+        tmin, tmax, tnum = prange[0]
+        pmin, pmax, pnum = prange[1]
+        t_edges = np.logspace(tmin, tmax, num=tnum+1)
+        p_edges = np.logspace(pmin, pmax, num=pnum+1)
+        t_centers = np.logspace(tmin+0.5*(tmax-tmin)/float(tnum), tmax-0.5*(tmax-tmin)/float(tnum), num=tnum)
+        p_centers = np.logspace(pmin+0.5*(pmax-pmin)/float(pnum), pmax-0.5*(pmax-pmin)/float(pnum), num=pnum)
+        
+        # fill histogram
+        w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
+
+        # convert back to list
+        list_t, list_p, list_w = [], [], []
+        for it,t in enumerate(t_centers):
+            for ip,p in enumerate(p_centers):
+                list_t.append(np.log10 ( t_centers[it] ) )
+                list_p.append(np.log10 ( p_centers[ip] ) )
+                list_w.append(w[it][ip])
+        
+        # return
+        return list_t,list_p,list_w
+        
+        
+    def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+    
+        matplotlib.rcParams.update({'font.size': 15})
+        fig = plt.figure(figsize=(7,5.5))
+        
+        #get plot
+        tmin, tmax, tnum = prange[0]
+        pmin, pmax, pnum = prange[1]
+        ticks = np.array([[np.linspace(10**(j),10**(j+1),9)] for j in range(-7,6)]).flatten()
+        ticks = [np.log10(x) for x in ticks]
+        ticklabels = np.array([[r"$10^{"+str(j)+"}$","","","","","","","",""] for j in range(-7,6)]).flatten()
+
+        ax = plt.subplot(1,1,1)
+        h=ax.hist2d(x=list_t,y=list_p,weights=list_w,
+                    bins=[tnum,pnum],range=[[tmin,tmax],[pmin,pmax]],
+                    norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax), cmap="rainbow",
+        )
+        fig.colorbar(h[3], ax=ax)
+        ax.set_xlabel(r"angle wrt. beam axis $\theta$ [rad]")
+        ax.set_ylabel(r"momentum $p$ [GeV]")
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(ticklabels)
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(ticklabels)
+        ax.set_xlim(tmin, tmax)
+        ax.set_ylim(pmin, pmax)
+        return plt
+    
+    # convert list of momenta to 2D histogram, and plot
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+
+        #preprocess data
+        if type(momenta[0])==LorentzVector:
+            tx = np.array([np.arctan(mom.pt/mom.pz) for mom in momenta])
+            px = np.array([mom.p for mom in momenta])
+        elif type(momenta) == np.ndarray and len(momenta[0]) == 4:
+            tx = np.array([math.pi/2 if zp==0 else np.arctan(np.sqrt(xp**2+yp**2)/zp) for xp,yp,zp,_ in momenta])
+            px =  np.array([np.sqrt(xp**2+yp**2+zp) for xp,yp,zp,_ in momenta])
+        elif type(momenta) == np.ndarray and len(momenta[0]) == 2:
+            tx, px = momenta.T
+        else:
+            print ("Error: momenta provided in unknown format!")
+
+        # get_hist_list in
+        list_t, list_p, list_w = self.get_hist_list(tx, px, weights, prange=prange )
+
+        # save file ?
+        if filename is not None:
+            print ("save data to file:", filename)
+            np.save(filename,[list_t,list_p,list_w])
+            
+        # plot ?
+        if do_plot:
+            plt=self.make_spectrumplot(list_t, list_p, list_w, prange, vmin=vmin, vmax=vmax)
+            return plt, list_t,list_p,list_w
+        else:
+            return list_t,list_p,list_w
+
+
+        
         
 ##############################################
 ##############################################
@@ -444,189 +621,6 @@ class Foresee(Utility, Decay):
         _ = self.boostlist(np.array([[0,0,0,1]]),np.array([[0,0,0]]))
 
     ###############################
-    #  Reading/Plotting Particle Tables
-    ###############################
-
-    # convert a table into input for contour plot
-    def table2contourinput(self,data,idz=2):
-        ntotal=len(data)
-        ny=sum( 1 if d[0]==data[0][0] else 0 for d in data)
-        nx=sum( 1 if d[1]==data[0][1] else 0 for d in data)
-        xval = [data[ix*ny,0] for ix in range(nx)]
-        yval = [data[iy,1] for iy in range(ny)]
-        zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
-        return np.array(xval),np.array(yval),np.array(zval)
-        
-    # function to extend spectrum to low pT
-    def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
-
-        # round lists and ptmatch(so that we can easily search them)
-        list_t = [round(t,3) for t in list_t]
-        list_p = [round(p,3) for p in list_p]
-        l10ptmatch = round(round(np.log10(ptmatch)/0.05)*0.05,3)
-
-        # for each energy, get 1/theta^2 * dsigma/dlog10theta, which should be constant
-        logps = np.linspace(1+0.025,5-0.025,80)
-        values = {}
-        for logp in logps:
-            rlogp = round(logp,3)
-            rlogts = [round(l10ptmatch - rlogp + i*0.05,3) for i in range(-navg,navg+1)]
-            vals = [list_w[(list_p==rlogp)*(list_t==rlogt)][0]/(10**rlogt)**2 for rlogt in rlogts]
-            values[rlogp] = np.mean(vals)
-
-        # using that, let's extrapolate to lower pT
-        list_wx = []
-        for logt, logp, w in zip(list_t, list_p, list_w):
-            rlogp, rlogt = round(logp,3), round(logt,3)
-            if  logt>l10ptmatch-logp-2.5*0.05 or logp<1:list_wx.append(w)
-            else:list_wx.append(values[rlogp]*(10**rlogt)**2)
-
-        #return results
-        return list_wx
-
-    # function to read file and return momenta, weights
-    def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
-        
-        if type(filenames) == str: filenames=[filenames]
-        list_xs = []
-        for filename in filenames:
-            if filetype=="txt": list_logth, list_logp, weights = self.readfile(filename).T
-            elif filetype=="npy": list_logth, list_logp, weights = np.load(filename)
-            else: print ("ERROR: cannot read file type")
-            if extend_to_low_pt_scale is not None: weights = self.extend_to_low_pt(list_logth, list_logp, weights, ptmatch=extend_to_low_pt_scale)
-            list_xs.append(weights)
-        return list_logth, list_logp, np.array(list_xs).T
-
-    # function that converts input file into meson spectrum
-    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
-        
-        #read file
-        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
-        
-        particles, weights = [], []
-        for logth,logp,xs in zip(list_logth,list_logp, list_xs):
-
-            if nocuts==False and max(xs) < 10.**-6: continue
-            p  = 10.**logp
-            th = 10.**logth
-            pt = p * np.sin(th)
-
-            if nocuts==False and preselectioncut is not None:
-                if not eval(preselectioncut): continue
-
-            for n in range(nsample):
-                phi= random.uniform(-math.pi,math.pi)
-                fth = 10**np.random.uniform(-0.025, 0.025, 1)[0]
-                fp  = 10**np.random.uniform(-0.025, 0.025, 1)[0]
-
-                th_sm=th*fth
-                p_sm=p*fp
-
-                en = math.sqrt(p_sm**2+mass**2)
-                pz = p_sm*np.cos(th_sm)
-                pt = p_sm*np.sin(th_sm)
-                px = pt*np.cos(phi)
-                py = pt*np.sin(phi)
-                part=LorentzVector(px,py,pz,en)
-
-                particles.append(part)
-                weights.append([w/float(nsample) for w in xs])
-
-        return particles, np.array(weights)
-    
-    # get_hist_list
-    def get_hist_list(self, tx, px, weights, prange):
-    
-        # define histogram
-        tmin, tmax, tnum = prange[0]
-        pmin, pmax, pnum = prange[1]
-        t_edges = np.logspace(tmin, tmax, num=tnum+1)
-        p_edges = np.logspace(pmin, pmax, num=pnum+1)
-        t_centers = np.logspace(tmin+0.5*(tmax-tmin)/float(tnum), tmax-0.5*(tmax-tmin)/float(tnum), num=tnum)
-        p_centers = np.logspace(pmin+0.5*(pmax-pmin)/float(pnum), pmax-0.5*(pmax-pmin)/float(pnum), num=pnum)
-        
-        # fill histogram
-        w, t_edges, p_edges = np.histogram2d(tx, px, weights=weights,  bins=(t_edges, p_edges))
-
-        # convert back to list
-        list_t, list_p, list_w = [], [], []
-        for it,t in enumerate(t_centers):
-            for ip,p in enumerate(p_centers):
-                list_t.append(np.log10 ( t_centers[it] ) )
-                list_p.append(np.log10 ( p_centers[ip] ) )
-                list_w.append(w[it][ip])
-        
-        # return
-        return list_t,list_p,list_w
-        
-        
-    def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
-    
-        matplotlib.rcParams.update({'font.size': 15})
-        fig = plt.figure(figsize=(7,5.5))
-        
-        #get plot
-        tmin, tmax, tnum = prange[0]
-        pmin, pmax, pnum = prange[1]
-        ticks = np.array([[np.linspace(10**(j),10**(j+1),9)] for j in range(-7,6)]).flatten()
-        ticks = [np.log10(x) for x in ticks]
-        ticklabels = np.array([[r"$10^{"+str(j)+"}$","","","","","","","",""] for j in range(-7,6)]).flatten()
-
-        ax = plt.subplot(1,1,1)
-        h=ax.hist2d(x=list_t,y=list_p,weights=list_w,
-                    bins=[tnum,pnum],range=[[tmin,tmax],[pmin,pmax]],
-                    norm=matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax), cmap="rainbow",
-        )
-        fig.colorbar(h[3], ax=ax)
-        ax.set_xlabel(r"angle wrt. beam axis $\theta$ [rad]")
-        ax.set_ylabel(r"momentum $p$ [GeV]")
-        ax.set_xticks(ticks)
-        ax.set_xticklabels(ticklabels)
-        ax.set_yticks(ticks)
-        ax.set_yticklabels(ticklabels)
-        ax.set_xlim(tmin, tmax)
-        ax.set_ylim(pmin, pmax)
-        return plt
-    
-    # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
-
-        #preprocess data
-        if type(momenta[0])==LorentzVector:
-            tx = np.array([np.arctan(mom.pt/mom.pz) for mom in momenta])
-            px = np.array([mom.p for mom in momenta])
-        elif type(momenta) == np.ndarray and len(momenta[0]) == 4:
-            tx = np.array([math.pi/2 if zp==0 else np.arctan(np.sqrt(xp**2+yp**2)/zp) for xp,yp,zp,_ in momenta])
-            px =  np.array([np.sqrt(xp**2+yp**2+zp) for xp,yp,zp,_ in momenta])
-        elif type(momenta) == np.ndarray and len(momenta[0]) == 2:
-            tx, px = momenta.T
-        else:
-            print ("Error: momenta provided in unknown format!")
-
-        # get_hist_list in
-        list_t, list_p, list_w = self.get_hist_list(tx, px, weights, prange=prange )
-
-        # save file ?
-        if filename is not None:
-            print ("save data to file:", filename)
-            np.save(filename,[list_t,list_p,list_w])
-            
-        # plot ?
-        if do_plot:
-            plt=self.make_spectrumplot(list_t, list_p, list_w, prange, vmin=vmin, vmax=vmax)
-            return plt, list_t,list_p,list_w
-        else:
-            return list_t,list_p,list_w
-
-    # show 2d hadronspectrum
-    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
-        dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
-        filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
-        p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
-        plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
-        return plt
-
-    ###############################
     #  Model
     ###############################
 
@@ -841,7 +835,7 @@ class Foresee(Utility, Decay):
             return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
 
     ###############################
-    #  Counting Events
+    #  Detector Specifics
     ###############################
 
     def set_detector(
@@ -886,6 +880,10 @@ class Foresee(Utility, Decay):
         if self.efficiency_tpye==int: return self.efficiency
         if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
         return 1
+        
+    ###############################
+    #  Get Events in Detector
+    ###############################
 
     def get_events(self, mass, energy,
             modes = None,
@@ -1418,4 +1416,12 @@ class Foresee(Utility, Decay):
         if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0, fontsize=fs_label, ncol=ncol)
 
         # return
+        return plt
+        
+    # show 2d hadronspectrum
+    def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
+        dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
+        filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
+        p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
+        plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
         return plt
