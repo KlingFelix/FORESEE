@@ -542,8 +542,8 @@ class Decay():
         p1, p2, p3 = None, None, None
         while p1 == None:
             #randomly draw mij^2
-            m122 = random.uniform((m1+m2)**2, (m0-m3)**2)
-            m232 = random.uniform((m2+m3)**2, (m0-m1)**2)
+            m122 = self.rng.uniform((m1+m2)**2, (m0-m3)**2)
+            m232 = self.rng.uniform((m2+m3)**2, (m0-m1)**2)
             m132 = m0**2+m1**2+m2**2+m3**2-m122-m232
 
             #calculate energy and momenta
@@ -574,14 +574,14 @@ class Decay():
 
         #randomly rotation of p2, p3 around p1
         xaxis=Vector3D(1,0,0)
-        phi = random.uniform(-math.pi,math.pi)
+        phi = self.rng.uniform(-math.pi,math.pi)
         p1=p1.rotate(phi,xaxis)
         p2=p2.rotate(phi,xaxis)
         p3=p3.rotate(phi,xaxis)
 
         #randomly rotation of p1 in ref frame
-        phi = random.uniform(-math.pi,math.pi)
-        costh = random.uniform(-1,1)
+        phi = self.rng.uniform(-math.pi,math.pi)
+        costh = self.rng.uniform(-1,1)
         theta = np.arccos(costh)
         axis=Vector3D(np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta))
         rotaxis=axis.cross(p1.vector).unit()
@@ -680,6 +680,7 @@ class Foresee(Utility, Decay):
         self.distance = 480
         self.channels = None
         self.dirpath = path
+        self.rng = random.Random()
 
         #initiate jit functions by running with dummy input
         _ = self.boostlist(np.array([[0,0,0,1]]),np.array([[0,0,0]]))
