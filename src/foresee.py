@@ -628,7 +628,7 @@ class Foresee(Utility, Decay):
         self.model = model
 
     ###############################
-    #  LLP production
+    #  Decay in Flight Probability
     ###############################
 
     def get_decay_prob(self, pid, momentum):
@@ -655,6 +655,10 @@ class Foresee(Utility, Decay):
             else: probability = 1.- np.exp(- rpipe /dbart)
         return probability
         
+    ###############################
+    #  Efficient Boost Function
+    ###############################
+    
     @staticmethod
     @jit
     def boostlist(arr_particle, arr_boost):
@@ -687,16 +691,130 @@ class Foresee(Utility, Decay):
                 out[i,1]= pm
                 i+=1
         return out
-        
-    def coord(self,mom):
-        return np.array( [np.arctan(mom.pt/mom.pz), mom.p] )
 
+    ###############################
+    #  LLP production
+    ###############################
+    
+    def get_spectrum_decays(self, mass, coupling, key):
+
+        # load details of production channel
+        pid0 = self.model.production[key]["pid0"]
+        pid1 = self.model.production[key]["pid1"]
+        pid2 = self.model.production[key]["pid2"]
+        br = self.model.production[key]["br"]
+        generator = self.model.production[key]["production"]
+        energy = self.model.production[key]["energy"]
+        nsample_had = self.model.production[key]["nsample_had"]
+        nsample = self.model.production[key]["nsample"]
+        massrange = self.model.production[key]["massrange"]
+        preselectioncut = self.model.production[key]["preselectioncut"]
+                     
+        # check if in mass range
+        if massrange is not None:
+            if mass<massrange[0] or mass>massrange[1]: return [], []
+        if (self.model.production[key]["type"]=="2body") and (self.masses(pid0)<=self.masses(pid1,mass)+mass): return [], []
+        elif (self.model.production[key]["type"]=="3body") and (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): return [], []
+
+        # load mother particle spectrum
+        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
+                
+        # get sample of LLP momenta in the mother's rest frame
+        if self.model.production[key]["type"] == "2body":
+            m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
+            momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
+        if self.model.production[key]["type"] == "3body":
+            m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+            momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
+                 
+        # boost
+        arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
+        arr_momenta_llp = np.array(momenta_llp)
+        momenta_lab = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
+                
+        # weights
+        w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
+        weights_llp = np.array(weights_llp)
+        weights_lab = (weights_llp * w_decays[:, :, np.newaxis])
+        weights_lab = np.concatenate([w.T for w in weights_lab])
+        
+        #return
+        return momenta_lab, weights_lab
+        
+    def get_spectrum_mixing(self, mass, coupling, key):
+        
+        # load details of production channel
+        pid0 = self.model.production[key]["pid0"]
+        mixing = self.model.production[key]["mixing"]
+        generator = self.model.production[key]["production"]
+        energy = self.model.production[key]["energy"]
+        massrange = self.model.production[key]["massrange"]
+                
+        # check if in mass range
+        if massrange is not None:
+            if mass<massrange[0] or mass>massrange[1]: return [], []
+                    
+        # load mother particle spectrum
+        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
+                
+        # momenta
+        momenta_lab = np.array([ [np.arctan(p.pt/p.pz), p.p] for p in momenta_mother])
+                
+        # weights
+        if type(mixing)==str:
+            mixing_angle = eval(mixing)
+            weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
+        else:
+            weights_lab = np.array([w_mother*mixing(mass, coupling, p_mother)**2 for p_mother,w_mother in zip(momenta_mother,weights_mother)])
+            
+        #return
+        return momenta_lab, weights_lab
+        
+    def get_spectrum_direct(self, mass, coupling, key):
+        
+        # load details of production channel
+        label = key
+        energy = self.model.production[key]["energy"]
+        coupling_ref =  self.model.production[key]["coupling_ref"]
+        condition =  self.model.production[key]["production"]
+        masses =  self.model.production[key]["masses"]
+                
+        #determined mass benchmark below / above mass
+        if mass<masses[0] or mass>masses[-1]: return [], []
+        mass0, mass1 = 0, 1e10
+        for xmass in masses:
+            if xmass<=mass and xmass>mass0: mass0=xmass
+            if xmass> mass and xmass<mass1: mass1=xmass
+
+        #load benchmark data
+        filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+        filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+        try:
+            momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
+            momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+        except:
+            print ("did not find file:", filename0, "or", filename1)
+            return [], []
+                
+        #momenta
+        momenta_lab = np.array([[np.arctan(p.pt/p.pz), p.p] for p in momenta_llp0])
+                
+        # weights
+        factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
+        weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
+        weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
+
+        #return
+        return momenta_lab, weights_lab
+        
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
 
         # prepare output
         model = self.model
         if channels is None: channels = [key for key in model.production.keys()]
-        momenta_lab_all, weights_lab_all = np.array([[0.1,0.1]]), [0 ]
+        momenta_all, weights_all = np.array([[0.1,0.1]]), [0 ]
         dirname = self.model.modelpath+"model/LLP_spectra/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
@@ -705,135 +823,28 @@ class Foresee(Utility, Decay):
 
             # selected channels only
             if key not in channels: continue
-            
-            # decays
-            if model.production[key]["type"] in ["2body", "3body"]:
-            
-                # load details of production channel
-                pid0 = model.production[key]["pid0"]
-                pid1 = model.production[key]["pid1"]
-                pid2 = model.production[key]["pid2"]
-                br = model.production[key]["br"]
-                generator = model.production[key]["production"]
-                energy = model.production[key]["energy"]
-                nsample_had = model.production[key]["nsample_had"]
-                nsample = model.production[key]["nsample"]
-                massrange = model.production[key]["massrange"]
-                preselectioncut = model.production[key]["preselectioncut"]
-                     
-                # check if in mass range
-                if massrange is not None:
-                    if mass<massrange[0] or mass>massrange[1]: continue
-                if (model.production[key]["type"]=="2body") and (self.masses(pid0)<=self.masses(pid1,mass)+mass): continue
-                elif (model.production[key]["type"]=="3body") and (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): continue
-
-                # load mother particle spectrum
-                filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-                momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
-                
-                # get sample of LLP momenta in the mother's rest frame
-                if model.production[key]["type"] == "2body":
-                    m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
-                    momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
-                if model.production[key]["type"] == "3body":
-                    m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                    momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
-                 
-                # boost
-                arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
-                arr_momenta_llp = np.array(momenta_llp)
-                momenta_lab = self.boostlist(arr_momenta_llp, arr_minus_boostvectors)
-                
-                # weights
-                w_decays = np.array([self.get_decay_prob(pid0, p_mother)*w_mother for w_mother, p_mother in zip(weights_mother,momenta_mother)])
-                weights_llp = np.array(weights_llp)
-                weights_lab = (weights_llp * w_decays[:, :, np.newaxis])
-                weights_lab = np.concatenate([w.T for w in weights_lab])
-                
-                # previous code does the same as below, but is 100 times faster
-                #weights_lab=[]
-                #for w_decay in w_decays:
-                #    for weight_llp in weights_llp:
-                #        weights_lab.append(weight_llp*w_decay)
-                #weights_lab=np.array(weights_lab)
-                 
-            # mixing with SM particles
-            if model.production[key]["type"]=="mixing":
-            
-                # load details of production channel
-                pid0 = model.production[key]["pid0"]
-                mixing = model.production[key]["mixing"]
-                generator = model.production[key]["production"]
-                energy = model.production[key]["energy"]
-                massrange = model.production[key]["massrange"]
-                
-                # check if in mass range
-                if massrange is not None:
-                    if mass<massrange[0] or mass>massrange[1]: continue
-                    
-                # load mother particle spectrum
-                filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-                momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
-                
-                # momenta
-                momenta_lab = np.array([self.coord(p) for p in momenta_mother])
-                
-                # weights
-                if type(mixing)==str:
-                    mixing_angle = eval(mixing)
-                    weights_lab = np.array([w_mother*mixing_angle**2 for w_mother in weights_mother])
-                else:
-                    weights_lab = np.array([w_mother*mixing(mass, coupling, p_mother)**2 for p_mother,w_mother in zip(momenta_mother,weights_mother)])
-                
-            # direct production
-            if model.production[key]["type"]=="direct":
-
-                # load details of production channel
-                label = key
-                energy = model.production[key]["energy"]
-                coupling_ref =  model.production[key]["coupling_ref"]
-                condition =  model.production[key]["production"]
-                masses =  model.production[key]["masses"]
-                
-                #determined mass benchmark below / above mass
-                if mass<masses[0] or mass>masses[-1]: continue
-                mass0, mass1 = 0, 1e10
-                for xmass in masses:
-                    if xmass<=mass and xmass>mass0: mass0=xmass
-                    if xmass> mass and xmass<mass1: mass1=xmass
-
-                #load benchmark data
-                filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-                filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
-                try:
-                    momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-                    momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
-                except:
-                    print ("did not find file:", filename0, "or", filename1)
-                    continue
-                
-                #momenta
-                momenta_lab = np.array([self.coord(p) for p in momenta_llp0])
-                
-                # weights
-                factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
-                weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
-                weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
-
+            if self.model.production[key]["type"] in ["2body", "3body"]:
+                momenta, weights = self.get_spectrum_decays(mass,coupling,key)
+            if self.model.production[key]["type"]=="mixing":
+                momenta, weights = self.get_spectrum_mixing(mass,coupling,key)
+            if self.model.production[key]["type"]=="direct":
+            momenta, weights = self.get_spectrum_direct(mass,coupling,key)
+ 
             #return statistcs
             if save_file==True:
                 for iproduction, production in enumerate(model.production[key]["production"]):
                     filenamesave = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta_lab, weights_lab[:,iproduction], do_plot=False, filename=filenamesave)
 
+            #store mome
             if do_plot:
-                momenta_lab_all = np.concatenate((momenta_lab_all, momenta_lab), axis=0)
-                weights_lab_all = np.concatenate((weights_lab_all, weights_lab[:,0]), axis=0)
+                momenta_all = np.concatenate((momenta_all, momenta), axis=0)
+                weights_all = np.concatenate((weights_all, weights[:,0]), axis=0)
                 
         #return
         if do_plot:
-            return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
-
+            return self.convert_to_hist_list(momenta_all, weights_all, do_plot=do_plot)[0]
+            
     ###############################
     #  Detector Specifics
     ###############################
