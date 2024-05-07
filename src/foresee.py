@@ -31,7 +31,6 @@ class Utility():
         if   pidabs==0: return mass
         elif pidabs==4: return 1.5   #GeV, scikit-particle returns 1.27 for c quark
         elif pidabs==5: return 4.5   #GeV, scikit-particle returns 4.18 for b quark
-        elif pidabs==543: return 6.400 #GeV, not implemented yet in scikit-particle
         #General case: fetch values from scikit-particle
         else:
             mret = Particle.from_pdgid(pidabs).mass   #MeV
