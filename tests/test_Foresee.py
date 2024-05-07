@@ -9,12 +9,12 @@ import sys, os
 src_path = "../"
 sys.path.append(src_path)
 
-from src.foresee import Utility, Model,Foresee
+from src.foresee import Utility,Model,Foresee
 import pytest
 import numpy as np
 import import_ipynb
 
-foresee = Foresee(path="../")
+foresee = Foresee(path=src_path)
 
 #@pytest.mark.skip  #Uncomment decorator to disable this test
 def test_read_list_momenta_weights():
