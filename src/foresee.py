@@ -1044,10 +1044,13 @@ class Foresee(Utility, Decay):
             ermax=1,
             efficiency=1,
         ):
+                
         self.distance=distance
         self.distance_prod=distance_prod
         self.selection=selection
         self.length=length
+        self.lfront=distance-distance_prod
+        self.lback=distance-distance_prod+length
         self.luminosity=luminosity
         self.channels=channels
         self.numberdensity=numberdensity
@@ -1055,6 +1058,13 @@ class Foresee(Utility, Decay):
         self.ermax=ermax
         self.efficiency=efficiency
         self.efficiency_tpye = type(efficiency)
+        
+        #make evaluation of selection faster
+        selection = selection.replace("x.x", "x").replace("x.y", "y").replace("x.z", "z")
+        selection = selection.replace("p.x", "px").replace("p.y", "py").replace("p.z", "pz")
+        lambdastr_selection = f'lambda x,y,z,px,py,pz: {selection}'
+        lambdafunc_selection = eval(lambdastr_selection)
+        self.numbafunc_selection = jit(nopython=True)(lambdafunc_selection)
 
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -1095,20 +1105,15 @@ class Foresee(Utility, Decay):
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
 
-        #setup ctau and other arrays
-        ctaus, brs, nsignals, stat_p, stat_w = [], [], [], [], []
-        for coupling in couplings:
-            ctau = model.get_ctau(mass, coupling)
-            if self.channels is None: br = 1.
-            else:
-                br = 0.
-                for channel in self.channels: br+=model.get_br(channel, mass, coupling)
-            ctaus.append(ctau)
-            brs.append(br)
-            nsignals.append([0. for _ in range(nprods)])
-            stat_p.append([])
-            stat_w.append([])
-
+        #setup ctau, coupling-factors, branchinf fractions
+        ctaus = np.array([model.get_ctau(mass, coupling) for coupling in couplings])
+        cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
+        if self.channels is None: brs = np.array([1 for coupling in couplings])
+        else: brs = np.array([sum([model.get_br(channel, mass, coupling) for channel in self.channels]) for coupling in couplings])
+        
+        # setup output arrays
+        output_p, output_w = [], []
+        
         # loop over production modes
         for key in modes.keys():
 
@@ -1118,37 +1123,36 @@ class Foresee(Utility, Decay):
 
             # try Load Flux file
             try:
-                # print "load", filename
-                particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
+                momenta, weights =self.convert_list_to_momenta(filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
-                # print ("Warning: file "+filename+" not found")
                 continue
-
+                
+            # filter events that pass selection
+            momenta =np.array(momenta)
+            position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
+            momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
+   
+            # weight of this event incl. lumi and efficiency
+            weights = [w * self.get_efficiency(p[3]) * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
+            
             # loop over particles, and record probablity to decay in volume
-            for p,w in zip(particles_llp,weights_llp):
-                # check if event passes
-                if not self.event_passes(p): continue
-                # weight of this event
-                weight_event = w*self.luminosity*1000.*self.get_efficiency(p.p)
+            for p,w in zip(momenta, weights):
+                dbars = ctaus * p[2] / mass
+                prob_decays = np.exp(-self.lfront / dbars) - np.exp(-self.lback / dbars)
+                wgts = np.outer(cfacs * prob_decays * brs,w)
+                output_w.append(wgts)
 
-                #loop over couplings
-                for icoup,coup in enumerate(couplings):
-                    #add event weight
-                    ctau, br =ctaus[icoup], brs[icoup]
-                    dbar = ctau*p.p/mass
-                    prob_decay = math.exp(-(self.distance-self.distance_prod)/dbar)-math.exp(-(self.distance+self.length-self.distance_prod)/dbar)
-                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    nsignals[icoup] += weight_event * couplingfac * prob_decay * br
-                    stat_p[icoup].append(p)
-                    stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
-
+            output_p += [LorentzVector(p[0],p[1],p[2],p[3]) for p in momenta]
+                
         # prepare results directory
+        # TODO: THIS SHOULD NOT BE HERE
         dirname = self.model.modelpath+"model/results/"
         if not os.path.exists(dirname): os.mkdir(dirname)
 
-        return couplings, ctaus, np.array(nsignals), stat_p, np.array(stat_w)
+        #reshape
+        return couplings, ctaus, sum(output_w), output_p, np.transpose(np.array(output_w), (1, 0, 2))
 
     def get_events_interaction(self, mass, energy,
             modes = None,
@@ -1348,7 +1352,7 @@ class Foresee(Utility, Decay):
         baseweights = weights[0].T[0]
 
         # unweight sample
-        weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data[0], weights[0])]
+        weighted_combined_data = [[p,0 if w[0]==0 else w/w[0]] for p,w in zip(weighted_raw_data, weights[0])]
         unweighted_raw_data = self.rng.choices(weighted_combined_data, weights=baseweights, k=numberevent)
         eventweight = sum(baseweights)/float(numberevent)
 
@@ -1392,7 +1396,7 @@ class Foresee(Utility, Decay):
         if filetype=="csv": self.write_csv_file(filename=filename, data=unweighted_data)
 
         #return
-        if return_data: return weighted_raw_data[0], weights[0], unweighted_data
+        if return_data: return weighted_raw_data, weights[0], unweighted_data
 
     ###############################
     #  Plotting and other final processing
