@@ -890,7 +890,7 @@ class Foresee(Utility, Decay):
         nsample = self.model.production[key]["nsample"]
         massrange = self.model.production[key]["massrange"]
         preselectioncut = self.model.production[key]["preselectioncut"]
-        integration = model.production[key]["integration"]
+        integration = self.model.production[key]["integration"]
 
         # check if in mass range
         if massrange is not None:
@@ -1012,14 +1012,14 @@ class Foresee(Utility, Decay):
                 momenta, weights = self.get_spectrum_direct(mass,coupling,key)
 
             #return statistcs
-            if save_file==True:
+            if save_file==True and len(momenta)>0:
                 energy = self.model.production[key]["energy"]
                 for iproduction, production in enumerate(self.model.production[key]["production"]):
                     filename = dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy"
                     self.convert_to_hist_list(momenta, weights[:,iproduction], do_plot=False, filename=filename)
 
             #store mome
-            if do_plot:
+            if do_plot and len(momenta)>0:
                 momenta_all = np.concatenate((momenta_all, momenta), axis=0)
                 weights_all = np.concatenate((weights_all, weights[:,0]), axis=0)
 
