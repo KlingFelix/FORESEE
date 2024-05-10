@@ -452,13 +452,14 @@ class Model(Utility):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'")
-        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
+        self.production[label]= {"type": "2body", "pid0": pid0, "pid1": pid1, "pid2": None, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": None}
 
-    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
+
+    def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None, integration="dq2dcosth"):
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'").replace("'pid2'","'"+str(pid2)+"'")
-        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut}
+        self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": integration}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         if label is None: label=pid
@@ -619,7 +620,20 @@ class Decay():
 
         return particles,weights
 
-    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample):
+    def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample, integration):
+
+        if integration == "dq2dcosth":
+            return self.decay_in_restframe_3body_dq2dcosth(br, coupling, m0, m1, m2, m3, nsample)
+        if integration == "dq2dE":
+            return self.decay_in_restframe_3body_dq2dE(br, coupling, m0, m1, m2, m3, nsample)
+        if integration == "dE":
+            return self.decay_in_restframe_3body_dE(br, coupling, m0, m1, m2, m3, nsample)
+        if integration == "chain_decay":
+            mI = eval(br[1])
+            if (m0 <= m1+mI) or (mI<m2+m3): return [LorentzVector(0,0,0,m0)], [0]
+            return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
+
+    def decay_in_restframe_3body_dq2dcosth(self,br, coupling, m0, m1, m2, m3, nsample):
 
         # prepare output
         particles, weights = [], []
@@ -655,6 +669,108 @@ class Decay():
             brval *= (q2max-q2min)*(cthmax-cthmin)/float(nsample)
 
             #save
+            particles.append(p_3)
+            weights.append(brval)
+
+        return particles,weights
+
+    def decay_in_restframe_3body_dq2dE(self, br, coupling, m0, m1, m2, m3, nsample):
+
+        # prepare output
+        particles, weights = [], []
+
+        #integration boundary
+        q2min,q2max = (m2+m3)**2,(m0-m1)**2
+        mass = m3
+
+        integral=0
+        for i in range(nsample):
+
+            # sample q2
+            q2 = random.uniform(q2min,q2max)
+            q  = math.sqrt(q2)
+
+            # sample energy
+            E2st = (q**2 - m2**2 + m3**2)/(2*q)
+            E3st = (m0**2 - q**2 - m1**2)/(2*q)
+            m232min = (E2st + E3st)**2 - (np.sqrt(E2st**2 - m3**2) + np.sqrt(E3st**2 - m1**2))**2
+            m232max = (E2st + E3st)**2 - (np.sqrt(E2st**2 - m3**2) - np.sqrt(E3st**2 - m1**2))**2
+            cthmax = (m232max + q**2 - m2**2 - m1**2)/(2*m0)
+            cthmin = (m232min + q**2 - m2**2 - m1**2)/(2*m0)
+            ENmax = (m232max + q**2 - m2**2 - m1**2)/(2*m0)
+            ENmin = (m232min + q**2 - m2**2 - m1**2)/(2*m0)
+            energy = random.uniform(ENmin,ENmax)
+
+            # get LLP momentum
+            costh = random.uniform(-1,1)
+            sinth = np.sqrt(1-costh**2)
+            phi = random.uniform(-math.pi,math.pi)
+            p = np.sqrt(energy**2-mass**2)
+            p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (q2max-q2min)*(ENmax-ENmin)/float(nsample)
+
+            #save
+            particles.append(p_3)
+            weights.append(brval)
+
+        return particles,weights
+
+    def decay_in_restframe_3body_dE(self, br, coupling, m0, m1, m2, m3, nsample):
+
+        # prepare output
+        particles, weights = [], []
+        mass = m3
+
+        #integration boundary
+        emin, emax = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0)
+
+        #numerical integration
+        integral=0
+        for i in range(nsample):
+
+            #sample energy
+            energy = random.uniform(emin,emax)
+
+            # get LLP momentum
+            costh = random.uniform(-1,1)
+            sinth = np.sqrt(1-costh**2)
+            phi = random.uniform(-math.pi,math.pi)
+            p = np.sqrt(energy**2-mass**2)
+            p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
+
+            #branching fraction
+            brval  = eval(br)
+            brval *= (emax-emin)/float(nsample)
+
+            #save
+            particles.append(p_3)
+            weights.append(brval)
+
+        return(particles, weights)
+
+    def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
+
+        # prepare output
+        particles, weights = [], []
+
+        # create parent 4-vector
+        p_mother=LorentzVector(0,0,0,m0)
+
+        # numerical integration
+        for i in range(nsample):
+            # set kinematic Variables
+            cosI =random.uniform(-1.,1.)
+            phiI =random.uniform(-math.pi,math.pi)
+            cosM =random.uniform(-1.,1.)
+            phiM =random.uniform(-math.pi,math.pi)
+            p_1,p_I=self.twobody_decay(p_mother,m0 ,m1,mI ,phiM,cosM)
+            p_2,p_3=self.twobody_decay(p_I     ,mI ,m2,m3 ,phiI,cosI)
+
+            #save branching fraction and
+            brval = br/float(nsample)
             particles.append(p_3)
             weights.append(brval)
 
@@ -785,6 +901,7 @@ class Foresee(Utility, Decay):
                 nsample = model.production[key]["nsample"]
                 massrange = model.production[key]["massrange"]
                 preselectioncut = model.production[key]["preselectioncut"]
+                integration = model.production[key]["integration"]
 
                 # check if in mass range
                 if massrange is not None:
@@ -801,8 +918,8 @@ class Foresee(Utility, Decay):
                     m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
                     momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
                 if model.production[key]["type"] == "3body":
-                    m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
-                    momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample)
+                    m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+                    momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample, integration)
 
                 # boost
                 arr_minus_boostvectors = np.array([ -1*p_mother.boostvector for p_mother in momenta_mother ])
@@ -1266,7 +1383,6 @@ class Foresee(Utility, Decay):
         #return
         if return_data: return weighted_raw_data[0], weights[0], unweighted_data
 
-
     ###############################
     #  Plotting and other final processing
     ###############################
@@ -1486,4 +1602,60 @@ class Foresee(Utility, Decay):
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
+        return plt
+
+    def plot_production_branchings(self,
+        masses, productions,
+        xlims=[0.01,1],ylims=[10**-1,1],
+        xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, xlog=True, ylog=True,
+        nsample=100):
+
+        # initiate figure
+        matplotlib.rcParams.update({'font.size': 15})
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # loop over production channels
+        model = self.model
+        coupling = 1
+        for key, color, label in productions:
+
+            # load details of production channel
+            pid0 = model.production[key]["pid0"]
+            pid1 = model.production[key]["pid1"]
+            pid2 = model.production[key]["pid2"]
+            br = model.production[key]["br"]
+            nsample = model.production[key]["nsample"]
+            massrange = model.production[key]["massrange"]
+            integration = model.production[key]["integration"]
+
+            # loop over masses
+            xvals, yvals = [], []
+            for mass in masses:
+                xvals.append(mass)
+                if model.production[key]["type"]=="2body":
+                    if (self.masses(pid0)<=self.masses(pid1,mass)+mass): yvals.append(0)
+                    else: yvals.append(eval(br))
+                elif model.production[key]["type"]=="3body":
+                    if (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): yvals.append(0)
+                    else:
+                        m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+                        _, weights = self.decay_in_restframe_3body(br, 1, m0, m1, m2, m3, nsample=nsample, integration=integration)
+                        yvals.append(sum(weights))
+
+            # add to plot
+            ax.plot(xvals, yvals, color=color, label=label)
+
+        # finalize
+        ax.set_title(title)
+        if xlog: ax.set_xscale("log")
+        if ylog: ax.set_yscale("log")
+        ax.set_xlim(xlims[0],xlims[1])
+        ax.set_ylim(ylims[0],ylims[1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False,
+            labelspacing=0, fontsize=fs_label, ncol=ncol)
+
+        # return
         return plt
