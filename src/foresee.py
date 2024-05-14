@@ -1057,7 +1057,6 @@ class Foresee(Utility, Decay):
         self.ermin=ermin
         self.ermax=ermax
         self.efficiency=efficiency
-        self.efficiency_tpye = type(efficiency)
         
         #make evaluation of selection faster
         selection = selection.replace("x.x", "x").replace("x.y", "y").replace("x.z", "z")
@@ -1065,6 +1064,12 @@ class Foresee(Utility, Decay):
         lambdastr_selection = f'lambda x,y,z,px,py,pz: {selection}'
         lambdafunc_selection = eval(lambdastr_selection)
         self.numbafunc_selection = jit(nopython=True)(lambdafunc_selection)
+        
+        #make evaluation of efficiency faster
+        lambdastr_efficiency = f'lambda energy: {efficiency}'
+        lambdafunc_efficiency = eval(lambdastr_efficiency)
+        self.numbafunc_efficiency = jit(nopython=True)(lambdafunc_efficiency)
+
 
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -1075,14 +1080,6 @@ class Foresee(Utility, Decay):
         # check if it passes
         if eval(self.selection): return True
         else:return False
-
-    def get_efficiency(self,energy):
-        # calculate efficiency
-        if self.efficiency_tpye==str: return eval(self.efficiency)
-        if self.efficiency_tpye==float: return self.efficiency
-        if self.efficiency_tpye==int: return self.efficiency
-        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
-        return 1
 
     ###############################
     #  Get Events in Detector
@@ -1112,7 +1109,7 @@ class Foresee(Utility, Decay):
         else: brs = np.array([sum([model.get_br(channel, mass, coupling) for channel in self.channels]) for coupling in couplings])
         
         # setup output arrays
-        output_p, output_w = [], []
+        output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
         
         # loop over production modes
         for key in modes.keys():
@@ -1135,7 +1132,7 @@ class Foresee(Utility, Decay):
             momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
    
             # weight of this event incl. lumi and efficiency
-            weights = [w * self.get_efficiency(p[3]) * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
+            weights = [w * self.numbafunc_efficiency(p[3]) * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
             
             # loop over particles, and record probablity to decay in volume
             for p,w in zip(momenta, weights):
