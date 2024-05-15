@@ -142,8 +142,20 @@ class Utility():
     #  Reading/Plotting Particle Tables
     ###############################
 
-    # convert a table into input for contour plot
     def table2contourinput(self,data,idz=2):
+        """
+        Convert a table into input for contour plot
+        
+        Parameters
+        ----------
+        data: TODO
+            TODO
+        idz: int
+            TODO
+        Returns
+        -------
+        TODO
+        """
         ntotal=len(data)
         ny=sum( 1 if d[0]==data[0][0] else 0 for d in data)
         nx=sum( 1 if d[1]==data[0][1] else 0 for d in data)
@@ -152,9 +164,26 @@ class Utility():
         zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
         return np.array(xval),np.array(yval),np.array(zval)
 
-    # function to extend spectrum to low pT
     def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
-
+        """
+        Function to extend spectrum to low pT
+        
+        Parameters
+        ----------
+        list_t: TODO
+            TODO
+        list_p: TODO
+            TODO
+        list_w: TODO
+            TODO
+        ptmatch: TODO
+            TODO
+        navg: TODO
+            TODO
+        Returns
+        -------
+        TODO
+        """
         # round lists and ptmatch(so that we can easily search them)
         list_t = [round(t,3) for t in list_t]
         list_p = [round(p,3) for p in list_p]
@@ -179,9 +208,23 @@ class Utility():
         #return results
         return list_wx
 
-    # function to read file and return momenta, weights
     def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
-
+        """
+        Function to read file and return momenta, weights
+        
+        Parameters
+        ----------
+        filenames: TODO
+            TODO
+        filetype: str
+            TODO
+        extend_to_low_pt_scale:
+            TODO
+        Returns
+        -------
+        TODO
+        """
+        
         if type(filenames) == str: filenames=[filenames]
         list_xs = []
         for filename in filenames:
@@ -192,9 +235,25 @@ class Utility():
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
 
-    # function that converts input file into meson spectrum
     def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
-
+        """
+        Function that converts input file into meson spectrum
+        filename: TODO
+            TODO
+        mass: TODO
+            TODO
+        filetype: str
+        nsample: int
+            TODO
+        preselectioncut: TODO
+            TODO
+        nocuts: bool
+            TODO
+        extend_to_low_pt_scale:  TODO
+            TODO
+        Returns
+        -------
+        """
         #read file
         list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
 
@@ -229,9 +288,26 @@ class Utility():
 
         return particles, np.array(weights)
 
-    # get_hist_list
     def get_hist_list(self, tx, px, weights, prange):
-
+        """
+        TODO get_hist_list
+        
+        Parameters
+        ----------
+        tx: TODO
+            TODO
+        px: TODO
+            TODO
+        weights: TODO
+            TODO
+        prange: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
+        
         # define histogram
         tmin, tmax, tnum = prange[0]
         pmin, pmax, pnum = prange[1]
@@ -256,7 +332,28 @@ class Utility():
 
 
     def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
-
+        """
+        TODO
+        
+        Parameters
+        ----------
+        list_t: TODO
+            TODO
+        list_p: TODO
+            TODO
+        list_w: TODO
+            TODO
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+        vmin: TODO
+            TODO
+        vmax: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
         matplotlib.rcParams.update({'font.size': 15})
         fig = plt.figure(figsize=(7,5.5))
 
@@ -283,9 +380,33 @@ class Utility():
         ax.set_ylim(pmin, pmax)
         return plt
 
-    # convert list of momenta to 2D histogram, and plot
     def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
-
+        """
+        Convert list of momenta to 2D histogram, and plot
+        Parameters
+        ----------
+        momenta: TODO
+            TODO
+        weights: TODO
+            TODO
+        do_plot: bool
+            Flag whether to produce a spectrum plot based on the resulting lists or not
+        filename: TODO
+            TODO
+        do_return: bool
+            TODO
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+        vmin: TODO
+            TODO
+        vmax: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
+        
         #preprocess data
         if type(momenta[0])==LorentzVector:
             tx = np.array([np.arctan(mom.pt/mom.pz) for mom in momenta])
@@ -342,16 +463,66 @@ class Model(Utility):
     ###############################
 
     def set_dsigma_drecoil_1d(self, dsigma_der, recoil_max="1e10", coupling_ref=1):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        dsigma_der: TODO
+            TODO
+        recoil_max: float
+            TODO
+        coupling_ref: float
+            Reference coupling values
+
+        Returns
+        -------
+            None
+        """
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=coupling_ref
         self.recoil_max = recoil_max
 
     def set_dsigma_drecoil_2d(self, dsigma_der, recoil_max="1e10" ):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        dsigma_der: TODO
+            TODO
+        recoil_max: float
+            TODO
+
+        Returns
+        -------
+            None
+        """
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=None
         self.recoil_max = recoil_max
 
     def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        energy: TODO
+            TODO
+        ermin: TODO
+            TODO
+        ermax: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         minrecoil, maxrecoil = ermin, min(eval(self.recoil_max), ermax)
         nrecoil, sigma = 20, 0
         l10ermin, l10ermax = np.log10(minrecoil), np.log10(maxrecoil)
@@ -363,6 +534,26 @@ class Model(Utility):
         return sigma
 
     def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        couplings: TODO
+            TODO
+        energy: TODO
+            TODO
+        ermin: TODO
+            TODO
+        ermax: TODO
+            TODO
+
+        Returns
+        -------
+            TODO
+        """
         if self.dsigma_der==None:
             print ("No interaction rate specified. You need to specify interaction rate first!")
             return 10**10
@@ -379,11 +570,37 @@ class Model(Utility):
     ###############################
 
     def set_ctau_1d(self,filename, coupling_ref=1):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        filename: str
+            The name of the file under modelpath to read ctau values from
+        coupling_ref: float
+            Reference coupling values
+        
+        Returns
+        -------
+            None
+        """
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=coupling_ref
         self.ctau_function=interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
 
     def set_ctau_2d(self,filename):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        filename: str
+            The name of the file under modelpath to read ctau values from
+
+        Returns
+        -------
+            None
+        """
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
         try:
@@ -407,6 +624,22 @@ class Model(Utility):
     ###############################
 
     def set_br_1d(self,modes, filenames, finalstates=None):
+        """
+        TODO
+
+        Parameters
+        ----------
+        modes: TODO
+            TODO
+        filenames: TODO
+            TODO
+        finalstates: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         self.br_mode="1D"
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
@@ -417,6 +650,22 @@ class Model(Utility):
             self.br_finalstate[channel] = finalstate
 
     def set_br_2d(self,modes,filenames, finalstates=None):
+        """
+        TODO
+
+        Parameters
+        ----------
+        modes: TODO
+            TODO
+        filenames: TODO
+            TODO
+        finalstates: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         self.br_mode="2D"
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
@@ -432,6 +681,22 @@ class Model(Utility):
             self.br_finalstate[channel] = finalstate
 
     def get_br(self,mode,mass,coupling=1):
+        """
+        TODO
+
+        Parameters
+        ----------
+        mode: TODO
+            TODO
+        mass: TODO
+            TODO
+        coupling: float
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
         if self.br_mode==None:
             print ("No branching fractions specified. You need to specify branching fractions first!")
             return 0
@@ -449,6 +714,38 @@ class Model(Utility):
     ###############################
 
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
+        """
+        Introduce a 2-body decay production mode
+        
+        Parameters
+        ----------
+        pid0: TODO
+            The PDG ID of TODO
+        pid1: TODO
+            The PDG ID of TODO
+        br: str, TODO
+            The expression to be computed as a string, or TODO
+        generator: TODO
+            TODO
+        energy: TODO
+            TODO
+        nsample_had: int
+            TODO
+        nsample: int
+            TODO
+        label: TODO
+            TODO
+        massrange: TODO
+            TODO
+        scaling:TODO
+            TODO
+        preselectioncut: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'")
@@ -456,22 +753,118 @@ class Model(Utility):
 
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None, integration="dq2dcosth"):
+        """
+        Introduce a 3-body decay production mode
+        
+        Parameters
+        ----------
+        pid0: TODO
+            The PDG ID of TODO
+        pid1: TODO
+            The PDG ID of TODO
+        pid2: TODO
+            The PDG ID of TODO
+        br: str, TODO
+            The expression to be computed as a string, or TODO
+        generator: TODO
+            TODO
+        energy: TODO
+            TODO
+        nsample_had: int
+            TODO
+        nsample: int
+            TODO
+        label: TODO
+            TODO
+        massrange: TODO
+            TODO
+        scaling:TODO
+            TODO
+        preselectioncut: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'").replace("'pid2'","'"+str(pid2)+"'")
         self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": integration}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
+        """
+        Introduce mixing as a production mode
+        Parameters
+        ----------
+        pid: TODO
+            The PDG ID of TODO
+        mixing: str, TODO
+            The expression to be computed as a string, or TODO
+        generator: TODO
+            TODO
+        energy: TODO
+            TODO
+        label: TODO
+            TODO
+        massrange: TODO
+            TODO
+        scaling: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid
         if type(generator)==str: generator=[generator]
         if type(mixing   )==str: mixing=mixing.replace("'pid'","'"+str(pid)+"'")
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
+        """
+        Introduce a mode of direct production
+        
+        Parameters
+        ----------
+        label: TODO
+            TODO
+        energy: TODO
+            TODO
+        coupling_ref: float
+            Reference coupling value
+        condition: str, TODO
+            TODO
+        masses: TODO
+            TODO
+        scaling: TODO
+            TODO
+        
+        Returns
+        -------
+            None
+        """
         if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        key: TODO
+            TODO
+        mass: TODO
+            TODO
+        coupling:
+            TODO
+        coupling_ref: TODO
+            Reference coupling value
+        Returns
+        -------
+            None
+        """
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
             if scaling == "manual":
@@ -500,7 +893,26 @@ class Decay():
 
     def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
         """
-        function that decays p0 > p1 p2 and returns p1,p2
+        Function that decays p0 > p1 p2 and returns p1,p2
+        
+        Parameters
+        ----------
+        p0: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        phi: TODO
+            TODO
+        costheta: TODO
+            TODO
+        
+        Returns
+        -------
+            p1,p2 as TODO
         """
 
         #get axis of p0
@@ -536,8 +948,24 @@ class Decay():
 
     def threebody_decay_pure_phase_space(self, p0, m0, m1, m2, m3):
         """
-        function that decays p0 > p1 p2 p2 and returns p1,p2,p3
+        Function that decays p0 > p1 p2 p2 and returns p1,p2,p3
         following pure phase space
+        
+        Parameters
+        ----------
+        p0: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        Returns
+        -------
+            p1,p2,p3 as TODO
         """
 
         p1, p2, p3 = None, None, None
@@ -603,7 +1031,25 @@ class Decay():
     ###############################
 
     def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
+        """
+        TODO
 
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+        nsample: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
         # prepare output
         particles, weights = [], []
 
@@ -621,6 +1067,32 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample, integration):
+        """
+        TODO
+
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        coupling: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        nsample: TODO
+            TODO
+        integration: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
 
         if integration == "dq2dcosth":
             return self.decay_in_restframe_3body_dq2dcosth(br, coupling, m0, m1, m2, m3, nsample)
@@ -634,7 +1106,30 @@ class Decay():
             return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
 
     def decay_in_restframe_3body_dq2dcosth(self,br, coupling, m0, m1, m2, m3, nsample):
+        """
+        TODO
 
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        coupling: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        nsample: TODO
+            TODO
+
+        Returns
+        -------
+            TODO
+        """
         # prepare output
         particles, weights = [], []
 
@@ -675,6 +1170,30 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body_dq2dE(self, br, coupling, m0, m1, m2, m3, nsample):
+        """
+        TODO
+
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        coupling: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        nsample: TODO
+            TODO
+
+        Returns
+        -------
+            TODO
+        """
 
         # prepare output
         particles, weights = [], []
@@ -719,6 +1238,30 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body_dE(self, br, coupling, m0, m1, m2, m3, nsample):
+        """
+        TODO
+
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        coupling: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        nsample: TODO
+            TODO
+
+        Returns
+        -------
+            TODO
+        """
 
         # prepare output
         particles, weights = [], []
@@ -752,6 +1295,32 @@ class Decay():
         return(particles, weights)
 
     def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
+        """
+        TODO
+
+        Parameters
+        ----------
+        br: TODO
+            TODO
+        coupling: TODO
+            TODO
+        m0: TODO
+            TODO
+        m1: TODO
+            TODO
+        m2: TODO
+            TODO
+        m3: TODO
+            TODO
+        mI: TODO
+            TODO
+        nsample: TODO
+            TODO
+
+        Returns
+        -------
+            TODO
+        """
 
         # prepare output
         particles, weights = [], []
@@ -813,6 +1382,19 @@ class Foresee(Utility, Decay):
     ###############################
 
     def get_decay_prob(self, pid, momentum):
+        """
+        Get decay probability for a particle
+        
+        Parameters
+        ----------
+        pid: TODO
+            Particle PDG ID
+        momentum: TODO
+            Particle momentum vector
+        Returns
+        -------
+            The probability of the particle decaying in-flight as a float
+        """
 
         # return 1 when decaying promptly or 0 if negative pz.
         if pid not in ["211","-211","321","-321","310","130"]: return 1
@@ -843,6 +1425,20 @@ class Foresee(Utility, Decay):
     @staticmethod
     @jit
     def boostlist(arr_particle, arr_boost):
+        """
+        Boost all 4-momenta in a list
+        
+        Parameters
+        ----------
+        arr_particle: [ [float,float,float,float] , ... ]
+            Array of particle 4 momenta to be boosted
+        arr_boost: [float,float,float]
+            The amounts to boost in x,y,z directions
+        
+        Returns
+        -------
+            The boosted particles in a numpy array
+        """
 
         # intialize output
         out, i = np.zeros((len(arr_particle)*len(arr_boost),2)), 0
@@ -878,6 +1474,22 @@ class Foresee(Utility, Decay):
     ###############################
 
     def get_spectrum_decays(self, mass, coupling, key):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        key: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
 
         # load details of production channel
         pid0 = self.model.production[key]["pid0"]
@@ -925,6 +1537,22 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_spectrum_mixing(self, mass, coupling, key):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        key: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
 
         # load details of production channel
         pid0 = self.model.production[key]["pid0"]
@@ -955,7 +1583,22 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_spectrum_direct(self, mass, coupling, key):
-
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        key: TODO
+            TODO
+            
+        Returns
+        -------
+            TODO
+        """
         # load details of production channel
         label = key
         energy = self.model.production[key]["energy"]
@@ -992,7 +1635,26 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
-
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        channels: TODO
+            TODO
+        do_plot: bool
+            TODO
+        save_file: bool
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
         # prepare output
         if channels is None: channels = [key for key in self.model.production.keys()]
         momenta_all, weights_all = np.array([[0.1,0.1]]), [0 ]
@@ -1044,6 +1706,36 @@ class Foresee(Utility, Decay):
             ermax=1,
             efficiency=1,
         ):
+        """
+        Specify the detector configuration
+        
+        Parameters
+        ----------
+        distance: float
+            Detector distance from collider central experiment interaction point
+        distance_prod: TODO
+            TODO
+        selection: str
+            TODO
+        length: float
+            Detector length in z-direction i.e. along line of sight
+        luminosity: float
+            Expected luminosity in TODO
+        channels: TODO
+            TODO
+        numberdensity: float
+            TODO
+        ermin: float
+            TODO
+        ermax: float
+            TODO
+        efficiency: float
+            TODO
+        
+        Returns
+        -------
+            None
+        """
                 
         self.distance=distance
         self.distance_prod=distance_prod
@@ -1067,6 +1759,16 @@ class Foresee(Utility, Decay):
         self.numbafunc_selection = jit(nopython=True)(lambdafunc_selection)
 
     def event_passes(self,momentum):
+        """
+        Check if an event passes momentum criteria
+        Parameters
+        ----------
+        momentum: TODO
+            The momentum vector to compare against the selection criteria specified for Foresee
+        Returns
+        -------
+            The result as a bool
+        """
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
         # get position of
@@ -1077,6 +1779,17 @@ class Foresee(Utility, Decay):
         else:return False
 
     def get_efficiency(self,energy):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        energy: TODO
+            TODO
+        Returns
+        -------
+            TODO as a float
+        """
         # calculate efficiency
         if self.efficiency_tpye==str: return eval(self.efficiency)
         if self.efficiency_tpye==float: return self.efficiency
@@ -1096,6 +1809,32 @@ class Foresee(Utility, Decay):
             coup_ref = 1,
             extend_to_low_pt_scales = {},
         ):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        energy: TODO
+            TODO
+        modes: TODO
+            TODO
+        couplings: numpy array
+            TODO
+        nsample: int
+            TODO
+        preselectioncuts: str
+            TODO
+        coup_ref: float
+            Reference coupling value
+        extend_to_low_pt_scales: TODO
+            TODO
+        Returns
+            
+        -------
+            TODO
+        """
 
         # setup different couplings to scan over
         model = self.model
@@ -1162,6 +1901,32 @@ class Foresee(Utility, Decay):
             coup_ref = 1,
             extend_to_low_pt_scales = {},
         ):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        energy: TODO
+            TODO
+        modes: TODO
+            TODO
+        couplings: numpy array
+            TODO
+        nsample: int
+            TODO
+        preselectioncuts: str
+            TODO
+        coup_ref: float
+            Reference coupling value
+        extend_to_low_pt_scales: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
 
         # setup different couplings to scan over
         model = self.model
@@ -1221,6 +1986,20 @@ class Foresee(Utility, Decay):
     ###############################
 
     def decay_llp(self, momentum, pids):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        momentum: TODO
+            TODO
+        pids: TODO
+            TODO
+        
+        Returns
+        -------
+            TODO
+        """
 
         # unspecified decays - can't do anything
         if pids==None:
@@ -1247,6 +2026,22 @@ class Foresee(Utility, Decay):
             return None, []
 
     def write_hepmc_file(self, data, filename, weightnames):
+        """
+        Store the resulting evevnts into a hepmc file
+        
+        Parameters
+        ----------
+        data: TODO
+            A table of events, with each event entry specified in terms of weights, position, momentum, pids and finalstate
+        filename: str
+            The name of the output file
+        weightnames: [str]
+            Labels for the weights, to be included in header line
+        
+        Returns
+        -------
+            None
+        """
 
         # open file
         f= open(filename,"w")
@@ -1255,6 +2050,9 @@ class Foresee(Utility, Decay):
 
         # loop over events
         for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
+            
+            #TODO assert equal numbers of weights and weightnames
+            
             # Event Info
             # int: event number / int: number of multi particle interactions [-1] / double: event scale [-1.] / double: alpha QCD [-1.] / double: alpha QED [-1.] / int: signal process id [0] / int: barcode for signal process vertex [-1] / int: number of vertices in this event [1] /  int: barcode for beam particle 1 [1] / int: barcode for beam particle 2 [0] /  int: number of entries in random state list (may be zero) [0] / long: optional list of random state integers [-] /  int: number of entries in weight list (may be zero) [0] / double: optional list of weights [-]
             f.write("E "+str(ievent)+" -1 -1. -1. -1. 0 -1 1 1 0 0 " +str(len(weightnames))+ " "+" ".join([str(w) for w in weights])+"\n")
@@ -1302,6 +2100,20 @@ class Foresee(Utility, Decay):
         f.close()
 
     def write_csv_file(self, data, filename):
+        """
+        Write results into a comma-separated-values format file
+        
+        Parameters
+        ----------
+        data: TODO
+            A table of events, with each event entry specified in terms of weights, position, momentum, pids and finalstate
+        filename: str
+            The name of the output file
+        
+        Returns
+        -------
+            None
+        """
 
         # open file
         f= open(filename,"w")
@@ -1339,7 +2151,44 @@ class Foresee(Utility, Decay):
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
-
+        """
+        A handle to the file writing functions
+        
+        Parameters
+        ----------
+        mass: TODO
+            TODO
+        coupling: TODO
+            TODO
+        energy: TODO
+            TODO
+        filename: str, None
+            The name of the output file to produce. If None, defaults to mass_coupling.suffix
+        numberevent: int
+            TODO
+        zfront=0
+            TODO
+        nsample: int
+            TODO
+        notime: bool
+            If false, time information included in position vectors
+        t0=0, modes=None
+        return_data: bool
+            Flag whether to return data and weight information
+        extend_to_low_pt_scales: TODO
+            TODO
+        filetype: str
+            Specify "hepmc" or "csv"
+        preselectioncuts: str
+            TODO
+        weightnames:
+            Labels for the weights, written into hepmc file header
+            
+        Returns
+        -------
+            If return_data: weighted raw data, baseweights, unweighted data
+            Else None
+        """
         #initialize weightnames if not defined
         model = self.model
         if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
@@ -1406,7 +2255,26 @@ class Foresee(Utility, Decay):
             inputfile, outputfile,
             nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
         ):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        inputfile: str
+            Load data from this file
+        outputfile: str
+            Filename for result output
+        nevents: int
+            TODO
+        xlims: [float,float]  TODO these seem redundant in this function, rm?
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]  TODO these seem redundant in this function, rm?
+            Lower and higher limits on the vertical axis
 
+        Returns
+        -------
+            None
+        """
         # load data
         masses,couplings,nsignals=np.load(inputfile, allow_pickle=True, encoding='latin1')
         m, c = np.meshgrid(masses, couplings)
@@ -1431,6 +2299,38 @@ class Foresee(Utility, Decay):
             branchings=None, branchingsother=None,
             fs_label=14, confidence_interval=False,
         ):
+        """
+        TODO
+        
+        Parameters
+        ----------
+        setups: TODO
+            TODO
+        bounds: TODO
+            TODO
+        projections: TODO
+            TODO
+        bounds2: TODO
+            TODO
+        grids: TODO
+            TODO
+        title: str
+            Main title above the plot
+        linewidths: TODO
+            TODO
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+
+        Returns
+        -------
+            Pyplot object
+        """
 
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
@@ -1545,7 +2445,43 @@ class Foresee(Utility, Decay):
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
-
+        """
+        TODO
+        
+        Parameters
+        ----------
+        masses: TODO
+            TODO
+        productions: [ dict, ... ]
+            List of dictionaries specifying each production mode
+        condition: str
+            Add event weight to total if this condition is satisfied
+        energy: str
+            The collider sqrt(S) in TeV
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        figsize: (float,float)
+            The (horizontal,vertical) dimensions of the figure to produce
+        fs_label: float
+            Label font size
+        title: str, None
+            TODO
+        legendloc: TODO
+            Bbox to anchor legend to
+        dolegend: bool
+            Flag whether to include legend in plot
+        ncol: int
+            Number of columns for legend formatting
+        Returns
+        -------
+            Pyplot object
+        """
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
@@ -1613,6 +2549,24 @@ class Foresee(Utility, Decay):
 
     # show 2d hadronspectrum
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
+        """
+        Plot the spectrum of a given particle type as predicted by a given generator
+        
+        Parameters
+        ----------
+        pid: str
+            Plot the spectrum of particles with this PDG ID
+        generator: str
+            Plot the spectrum corresponding to this prediction
+        energy: str
+            The collider sqrt(s) in TeV
+        prange: [[float, float, float], [float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+        
+        Returns
+        -------
+            Pyplot object
+        """
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
         filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
         p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
@@ -1625,7 +2579,45 @@ class Foresee(Utility, Decay):
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, xlog=True, ylog=True,
         nsample=100):
-
+        """
+        TODO
+        
+        Parameters
+        ----------
+        masses: TODO
+            TODO
+        productions: TODO
+            TODO
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        figsize: (float,float)
+            The (horizontal,vertical) dimensions of the figure to produce
+        fs_label: float
+            Label font size
+        title=None
+        legendloc: TODO
+            Bbox to anchor legend to
+        dolegend: bool
+            Flag whether to include legend in plot
+        ncol: int
+            Number of columns for legend formatting
+        xlog: bool
+            Flag whether to use logarithmic horizontal axis
+        ylog: bool
+            Flag whether to use logarithmic vertical axis
+        nsample: int
+            TODO
+        
+        Returns
+        -------
+            Pyplot object
+        """
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
