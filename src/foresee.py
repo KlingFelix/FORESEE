@@ -560,7 +560,7 @@ class Model(Utility):
             sigmaints = [sigmaint_ref for _ in couplings]
             return sigmaints
         else:
-            sigmaint_ref = self.get_sigmaint_ref(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
+            sigmaint_ref = self.get_sigmaint_ref(mass, energy, ermin, ermax)
             sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
             return sigmaints
 
@@ -570,7 +570,7 @@ class Model(Utility):
 
     def set_ctau_1d(self,filename, coupling_ref=1):
         """
-        TODO
+        Set up ctau values read from model-specific input tables
         
         Parameters
         ----------
@@ -589,7 +589,7 @@ class Model(Utility):
 
     def set_ctau_2d(self,filename):
         """
-        Set ctau, depending on mass and coupling (hence 2d)
+        Set up ctau values read from model-specific input tables, depending on mass and coupling (hence 2d)
         
         Parameters
         ----------
@@ -683,20 +683,20 @@ class Model(Utility):
 
     def get_br(self,mode,mass,coupling=1):
         """
-        TODO
+        Fetch the branching fraction functions stored into a class instance
 
         Parameters
         ----------
-        mode: TODO, None
-            TODO
-        mass: TODO
-            TODO
+        mode: string, None
+            Channel for which to fetch the branching fraction function
+        mass: float
+            The particle mass
         coupling: float
-            TODO
+            Optional coupling strength value for 2D br_mode
         
         Returns
         -------
-            TODO
+            Dictionary of branching fraction functions, with channel/mode strings as keys
         """
         if self.br_mode==None:
             print ("No branching fractions specified. You need to specify branching fractions first!")
@@ -716,14 +716,14 @@ class Model(Utility):
 
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
         """
-        Introduce a 2-body decay production mode
+        Introduce a 2-body decay production mode, from a SM initial state to a SM+exotic final state 
         
         Parameters
         ----------
-        pid0: TODO
-            The PDG ID of TODO
-        pid1: TODO
-            The PDG ID of TODO
+        pid0: string
+            The PDG ID of the initial state particle
+        pid1: string
+            The PDG ID of the SM decay product
         br: str, TODO
             The expression to be computed as a string, or TODO
         generator: TODO
@@ -755,16 +755,16 @@ class Model(Utility):
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None, integration="dq2dcosth"):
         """
-        Introduce a 3-body decay production mode
+        Introduce a 3-body decay production mode, where a SM initial state decays into a SM particle + 2 exotic particles of the same kind
         
         Parameters
         ----------
-        pid0: TODO
-            The PDG ID of TODO
-        pid1: TODO
-            The PDG ID of TODO
-        pid2: TODO
-            The PDG ID of TODO
+        pid0: string
+            The PDG ID of the initial state particle
+        pid1: string
+            The PDG ID of the SM decay product
+        pid2: string
+            The PDG ID of the other decay product, "0" for exotic
         br: str, TODO
             The expression to be computed as a string, or TODO
         generator: TODO
@@ -798,7 +798,7 @@ class Model(Utility):
         Introduce mixing as a production mode
         Parameters
         ----------
-        pid: TODO
+        pid: string
             The PDG ID of TODO
         mixing: str, TODO
             The expression to be computed as a string, or TODO
