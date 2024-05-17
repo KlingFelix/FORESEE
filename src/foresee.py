@@ -502,15 +502,13 @@ class Model(Utility):
         self.dsigma_der_coupling_ref=None
         self.recoil_max = recoil_max
 
-    def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
+    def get_sigmaint_ref(self, mass, energy, ermin, ermax):
         """
         TODO
         
         Parameters
         ----------
         mass: TODO
-            TODO
-        coupling: TODO
             TODO
         energy: float
             Particle energy
@@ -558,7 +556,8 @@ class Model(Utility):
             print ("No interaction rate specified. You need to specify interaction rate first!")
             return 10**10
         elif self.dsigma_der_coupling_ref is None:
-            sigmaints = [self.get_sigmaint_ref(mass, coupling, energy, ermin, ermax) for coupling in couplings]
+            sigmaint_ref = self.get_sigmaint_ref(mass, energy, ermin, ermax)
+            sigmaints = [sigmaint_ref for _ in couplings]
             return sigmaints
         else:
             sigmaint_ref = self.get_sigmaint_ref(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
