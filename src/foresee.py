@@ -235,11 +235,11 @@ class Utility():
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
 
-    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
+    def convert_list_to_momenta(self,filenames,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
         """
         Function that converts input file into meson spectrum
-        filename: TODO
-            TODO
+        filenames: [str]
+            List of strings containing the input filename(s)
         mass: TODO
             TODO
         filetype: str
@@ -255,7 +255,7 @@ class Utility():
         -------
         """
         #read file
-        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
+        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filenames, filetype=filetype, extend_to_low_pt_scale=None)
 
         particles, weights = [], []
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
@@ -1511,8 +1511,8 @@ class Foresee(Utility, Decay):
         elif (self.model.production[key]["type"]=="3body") and (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): return [], []
 
         # load mother particle spectrum
-        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
+        filenames = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filenames,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
 
         # get sample of LLP momenta in the mother's rest frame
         if self.model.production[key]["type"] == "2body":
@@ -1566,8 +1566,8 @@ class Foresee(Utility, Decay):
             if mass<massrange[0] or mass>massrange[1]: return [], []
 
         # load mother particle spectrum
-        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
+        filenames = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filenames,mass=self.masses(pid0))
 
         # momenta
         momenta_lab = np.array([ [np.arctan(p.pt/p.pz), p.p] for p in momenta_mother])
@@ -1614,13 +1614,13 @@ class Foresee(Utility, Decay):
             if xmass> mass and xmass<mass1: mass1=xmass
 
         #load benchmark data
-        filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-        filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+        filenames0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+        filenames1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
         try:
-            momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-            momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+            momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filenames0,mass=mass0,nocuts=True)
+            momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filenames1,mass=mass1,nocuts=True)
         except:
-            print ("did not find file:", filename0, "or", filename1)
+            print ("did not find file:", filenames0, "or", filenames1)
             return [], []
 
         #momenta
@@ -1858,11 +1858,11 @@ class Foresee(Utility, Decay):
 
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
 
             # try Load Flux file
             try:
-                momenta, weights =self.convert_list_to_momenta(filename=filename, mass=mass,
+                momenta, weights =self.convert_list_to_momenta(filenames=filenames, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
@@ -1949,12 +1949,12 @@ class Foresee(Utility, Decay):
 
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
 
             # try Load Flux file
             try:
                 particles_llp,weights_llp=self.convert_list_to_momenta(
-                    filename=filename, mass=mass,
+                    filenames=filenames, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except: continue
@@ -2568,8 +2568,8 @@ class Foresee(Utility, Decay):
             Pyplot object
         """
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
-        filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
-        p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
+        filenames = [dirname+generator+"_"+energy+"TeV_"+pid+".txt"]
+        p,w = self.convert_list_to_momenta(filenames,mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
         return plt
 
