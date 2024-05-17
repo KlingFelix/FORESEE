@@ -214,10 +214,10 @@ class Utility():
         
         Parameters
         ----------
-        filenames: TODO
-            TODO
+        filenames: [str]
+            List of strings containing the input filename(s) w/o/ datatype suffix
         filetype: str
-            TODO
+            The suffix of the input filename(s) datatype w/o/ ".", e.g. "txt"
         extend_to_low_pt_scale:
             TODO
         Returns
@@ -239,7 +239,7 @@ class Utility():
         """
         Function that converts input file into meson spectrum
         filenames: [str]
-            List of strings containing the input filename(s)
+            List of strings containing the input filename(s) w/o/ datatype suffix
         mass: TODO
             TODO
         filetype: str
@@ -512,12 +512,12 @@ class Model(Utility):
             TODO
         coupling: TODO
             TODO
-        energy: TODO
-            TODO
-        ermin: TODO
-            TODO
-        ermax: TODO
-            TODO
+        energy: float
+            Particle energy
+        ermin: float
+            Minimum particle energy
+        ermax: float
+            Maximum particle energy
         
         Returns
         -------
@@ -541,18 +541,18 @@ class Model(Utility):
         ----------
         mass: TODO
             TODO
-        couplings: TODO
-            TODO
-        energy: TODO
-            TODO
-        ermin: TODO
-            TODO
-        ermax: TODO
-            TODO
+        couplings: numpy array
+            The couplings to scan over
+        energy: float
+            Particle energy
+        ermin: float
+            Minimum particle energy
+        ermax: float
+            Maximum particle energy
 
         Returns
         -------
-            TODO
+            TODO as a [float] list.
         """
         if self.dsigma_der==None:
             print ("No interaction rate specified. You need to specify interaction rate first!")
@@ -590,7 +590,7 @@ class Model(Utility):
 
     def set_ctau_2d(self,filename):
         """
-        TODO
+        Set ctau, depending on mass and coupling (hence 2d)
         
         Parameters
         ----------
@@ -625,16 +625,17 @@ class Model(Utility):
 
     def set_br_1d(self,modes, filenames, finalstates=None):
         """
-        TODO
+        Set up a decay modes via branching fractions. 
+        The 1D decay modes's br functions take mass as input argument.
 
         Parameters
         ----------
-        modes: TODO
-            TODO
-        filenames: TODO
-            TODO
-        finalstates: TODO
-            TODO
+        modes: [str]
+            List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
+        filenames: [str]
+            List of strings indicating br table input filenames, w/ datatype suffix
+        finalstates: [[int,int]], [None]
+            Table of PDG IDs corresponding to the final state particles of each decay mode
         
         Returns
         -------
@@ -651,16 +652,17 @@ class Model(Utility):
 
     def set_br_2d(self,modes,filenames, finalstates=None):
         """
-        TODO
+        Set up a decay modes via branching fractions. 
+        The 2D decay modes's br functions take mass and coupling as input arguments.
 
         Parameters
         ----------
-        modes: TODO
-            TODO
-        filenames: TODO
-            TODO
-        finalstates: TODO
-            TODO
+        modes: [str]
+            List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
+        filenames: [str]
+            List of strings indicating br table input filenames, w/ datatype suffix
+        finalstates: [[int,int]], [None]
+            Table of PDG IDs corresponding to the final state particles of each decay mode
         
         Returns
         -------
@@ -686,7 +688,7 @@ class Model(Utility):
 
         Parameters
         ----------
-        mode: TODO
+        mode: TODO, None
             TODO
         mass: TODO
             TODO
@@ -1821,7 +1823,7 @@ class Foresee(Utility, Decay):
         modes: TODO
             TODO
         couplings: numpy array
-            TODO
+            The couplings to scan over
         nsample: int
             TODO
         preselectioncuts: str
@@ -1913,7 +1915,7 @@ class Foresee(Utility, Decay):
         modes: TODO
             TODO
         couplings: numpy array
-            TODO
+            The couplings to scan over
         nsample: int
             TODO
         preselectioncuts: str
