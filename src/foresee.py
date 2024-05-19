@@ -30,7 +30,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int, str
             The PDG ID for which to request charge
 
         Returns
@@ -49,7 +49,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int, str
             The PDG ID for which to request mass
         mass: float
             Default value returned if pid==0
@@ -75,7 +75,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int, str
             The PDG ID for which to request c*tau
 
         Returns
@@ -148,13 +148,13 @@ class Utility():
         
         Parameters
         ----------
-        data: TODO
-            TODO
+        data: [[float]]
+            The table to be converted
         idz: int
-            TODO
+            Read z values in data from the column with index idz
         Returns
         -------
-        TODO
+            Three numpy arrays corresponding to read x, y and z values
         """
         ntotal=len(data)
         ny=sum( 1 if d[0]==data[0][0] else 0 for d in data)
@@ -215,7 +215,8 @@ class Utility():
         Parameters
         ----------
         filenames: [str]
-            List of strings containing the input filename(s) w/o/ datatype suffix
+            List of strings containing the input filepaths w/o/ datatype suffix.
+            Files typically stored under files/hadrons/
         filetype: str
             The suffix of the input filename(s) datatype w/o/ ".", e.g. "txt"
         extend_to_low_pt_scale:
@@ -237,14 +238,16 @@ class Utility():
 
     def convert_list_to_momenta(self,filenames,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
         """
-        Function that converts input file into meson spectrum
+        Function that converts input files under files/hadrons/ into meson spectra
         filenames: [str]
-            List of strings containing the input filename(s) w/o/ datatype suffix
-        mass: TODO
-            TODO
+            List of strings containing the input filepaths w/o/ datatype suffix.
+            Files typically stored under files/hadrons/
+        mass: float
+            The mass of the considered particle
         filetype: str
+            Datatype suffix for filenames, w/o/ dot, e.g. "txt"
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         preselectioncut: TODO
             TODO
         nocuts: bool
@@ -733,7 +736,7 @@ class Model(Utility):
         nsample_had: int
             TODO
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         label: TODO
             TODO
         massrange: TODO
@@ -767,14 +770,14 @@ class Model(Utility):
             The PDG ID of the other decay product, "0" for exotic
         br: str, TODO
             The expression to be computed as a string, or TODO
-        generator: TODO
-            TODO
-        energy: TODO
-            TODO
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
         nsample_had: int
             TODO
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         label: TODO
             TODO
         massrange: TODO
@@ -802,10 +805,10 @@ class Model(Utility):
             The PDG ID of TODO
         mixing: str, TODO
             The expression to be computed as a string, or TODO
-        generator: TODO
-            TODO
-        energy: TODO
-            TODO
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
         label: TODO
             TODO
         massrange: TODO
@@ -830,8 +833,8 @@ class Model(Utility):
         ----------
         label: TODO
             TODO
-        energy: TODO
-            TODO
+        energy: str
+            Collider sqrt(S) in TeV
         coupling_ref: float
             Reference coupling value
         condition: str, TODO
@@ -894,26 +897,28 @@ class Decay():
 
     def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
         """
-        Function that decays p0 > p1 p2 and returns p1,p2
+        Function that decays p0 -> p1 p2 and returns p1,p2
         
         Parameters
         ----------
-        p0: TODO
-            TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        phi: TODO
-            TODO
-        costheta: TODO
-            TODO
+        p0: LorentzVector
+            Initial state particle 4-momentum
+        m0: float
+            Mass of the incoming particle
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        phi: float
+            Azimuthal angle
+            Must be within (-pi, pi)
+        costheta: float
+            Cosine of the polar angle
+            Must be within (-1., 1.)
         
         Returns
         -------
-            p1,p2 as TODO
+            Boosted p1,p2 as LorentzVectors
         """
 
         #get axis of p0
@@ -954,19 +959,19 @@ class Decay():
         
         Parameters
         ----------
-        p0: TODO
-            TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
+        p0: LorentzVector
+            Initial state particle 4-momentum
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
         Returns
         -------
-            p1,p2,p3 as TODO
+            Boosted p1,p2,p3 as LorentzVectors
         """
 
         p1, p2, p3 = None, None, None
@@ -1038,18 +1043,19 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-        nsample: TODO
-            TODO
+            Branching fraction function for the considered mode
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         
         Returns
         -------
-            TODO
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
         """
         # prepare output
         particles, weights = [], []
@@ -1074,7 +1080,7 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
+            Branching fraction function for the considered mode
         coupling: TODO
             TODO
         m0: TODO
@@ -1085,8 +1091,8 @@ class Decay():
             TODO
         m3: TODO
             TODO
-        nsample: TODO
-            TODO
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         integration: TODO
             TODO
         
@@ -1113,23 +1119,23 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
+            Branching fraction function for the considered mode
         coupling: TODO
             TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
-        nsample: TODO
-            TODO
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
 
         Returns
         -------
-            TODO
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
         """
         # prepare output
         particles, weights = [], []
@@ -1177,23 +1183,23 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
+            Branching fraction function for the considered mode
         coupling: TODO
             TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
-        nsample: TODO
-            TODO
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
 
         Returns
         -------
-            TODO
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
         """
 
         # prepare output
@@ -1245,23 +1251,23 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
+            Branching fraction function for the considered mode
         coupling: TODO
-            TODO
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
-        nsample: TODO
-            TODO
+            TODO redundant, remove?
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
 
         Returns
         -------
-            TODO
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
         """
 
         # prepare output
@@ -1302,9 +1308,9 @@ class Decay():
         Parameters
         ----------
         br: TODO
-            TODO
+            Branching fraction function for the considered mode
         coupling: TODO
-            TODO
+            TODO redundant, remove?
         m0: TODO
             TODO
         m1: TODO
@@ -1315,12 +1321,12 @@ class Decay():
             TODO
         mI: TODO
             TODO
-        nsample: TODO
-            TODO
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
 
         Returns
         -------
-            TODO
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
         """
 
         # prepare output
@@ -1388,32 +1394,32 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        pid: TODO
+        pid: str, int
             Particle PDG ID
-        momentum: TODO
-            Particle momentum vector
+        momentum: LorentzVector
+            Particle 4-momentum
         Returns
         -------
             The probability of the particle decaying in-flight as a float
         """
 
         # return 1 when decaying promptly or 0 if negative pz.
-        if pid not in ["211","-211","321","-321","310","130"]: return 1
+        if str(pid) not in ["211","-211","321","-321","310","130"]: return 1
         if momentum.pz<0: return 0
 
         # lifetime and kinematics
-        ctau = self.ctau(pid)
+        ctau = self.ctau(str(pid))
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
 
         # probability to decay in beampipe
-        if pid in ["130", "310"]:
+        if str(pid) in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
             if (theta < 0.017/ltas): probability = 1.- np.exp(- ltan/dbarz)
             elif (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
-        if pid in ["321","-321","211","-211"]:
+        if str(pid) in ["321","-321","211","-211"]:
             ltas, rpipe = 20., 0.05
             if (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
@@ -1480,8 +1486,8 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
+        mass: float
+            The mass of the considered particle
         coupling: TODO
             TODO
         key: TODO
@@ -1543,8 +1549,8 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
+        mass: float
+            The mass of the considered particle
         coupling: TODO
             TODO
         key: TODO
@@ -1589,8 +1595,8 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
+        mass: float
+            The mass of the considered particle
         coupling: TODO
             TODO
         key: TODO
@@ -1641,16 +1647,16 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
+        mass: float
+            The mass of the considered particle
         coupling: TODO
             TODO
         channels: TODO
             TODO
         do_plot: bool
-            TODO
+            Flag whether to produce a plot based on the resulting histogram or not
         save_file: bool
-            TODO
+            Flag whether to call convert_to_hist_list saving the results into a numpy file
         
         Returns
         -------
@@ -1730,8 +1736,8 @@ class Foresee(Utility, Decay):
             TODO
         ermax: float
             TODO
-        efficiency: float
-            TODO
+        efficiency: float, TODO
+            Detector efficiency function
         
         Returns
         -------
@@ -1762,9 +1768,10 @@ class Foresee(Utility, Decay):
     def event_passes(self,momentum):
         """
         Check if an event passes momentum criteria
+        
         Parameters
         ----------
-        momentum: TODO
+        momentum: LorentzVector
             The momentum vector to compare against the selection criteria specified for Foresee
         Returns
         -------
@@ -1781,15 +1788,15 @@ class Foresee(Utility, Decay):
 
     def get_efficiency(self,energy):
         """
-        TODO
+        Get efficiency as a function of particle energy
         
         Parameters
         ----------
-        energy: TODO
-            TODO
+        energy: float
+            The energy of the considered particle
         Returns
         -------
-            TODO as a float
+            The efficiency as a float
         """
         # calculate efficiency
         if self.efficiency_tpye==str: return eval(self.efficiency)
@@ -1824,7 +1831,7 @@ class Foresee(Utility, Decay):
         couplings: numpy array
             The couplings to scan over
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         preselectioncuts: str
             TODO
         coup_ref: float
@@ -1834,7 +1841,7 @@ class Foresee(Utility, Decay):
         Returns
             
         -------
-            TODO
+            Lists of couplings, ctaus, sum of output weights, output momenta, output weight array
         """
 
         # setup different couplings to scan over
@@ -1916,7 +1923,7 @@ class Foresee(Utility, Decay):
         couplings: numpy array
             The couplings to scan over
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         preselectioncuts: str
             TODO
         coup_ref: float
@@ -1988,18 +1995,18 @@ class Foresee(Utility, Decay):
 
     def decay_llp(self, momentum, pids):
         """
-        TODO
+        Handle to call the appropriate decay functions (2-body, 3-body, ...) based on the length of input pids
         
         Parameters
         ----------
-        momentum: TODO
-            TODO
-        pids: TODO
-            TODO
+        momentum: LorentzVector
+            Initial state particle 4-momentum
+        pids: [str], [int]
+            Final state particle PDG IDs
         
         Returns
         -------
-            TODO
+            Lists of final state particle PDG IDs and momenta as LorentzVectors
         """
 
         # unspecified decays - can't do anything
@@ -2007,7 +2014,7 @@ class Foresee(Utility, Decay):
             return None, []
         # 1-body decays
         elif len(pids)==1:
-            p1 = LorentzVector(momentum.x,momentum.y,momentum.z,np.sqrt(momentum.p**2 + self.masses(pids[0])**2 ) )
+            p1 = LorentzVector(momentum.x,momentum.y,momentum.z,np.sqrt(momentum.p**2 + self.masses(str(pids[0]))**2 ) )
             return pids, [p1]
         # 2-body decays
         elif len(pids)==2:
@@ -2170,7 +2177,7 @@ class Foresee(Utility, Decay):
         zfront=0
             TODO
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         notime: bool
             If false, time information included in position vectors
         t0=0, modes=None
@@ -2301,7 +2308,7 @@ class Foresee(Utility, Decay):
             fs_label=14, confidence_interval=False,
         ):
         """
-        TODO
+        Produce reach plot
         
         Parameters
         ----------
@@ -2447,7 +2454,7 @@ class Foresee(Utility, Decay):
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
         """
-        TODO
+        Plot the production modes
         
         Parameters
         ----------
@@ -2613,7 +2620,7 @@ class Foresee(Utility, Decay):
         ylog: bool
             Flag whether to use logarithmic vertical axis
         nsample: int
-            TODO
+            Number of Monte Carlo samples to add into particles, and to divide weights by
         
         Returns
         -------
