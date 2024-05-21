@@ -176,9 +176,9 @@ class Utility():
             TODO
         list_w: TODO
             TODO
-        ptmatch: TODO
-            TODO
-        navg: TODO
+        ptmatch: float
+            Match pt at this scale
+        navg: int
             TODO
         Returns
         -------
@@ -219,8 +219,8 @@ class Utility():
             Files typically stored under files/hadrons/
         filetype: str
             The suffix of the input filename(s) datatype w/o/ ".", e.g. "txt"
-        extend_to_low_pt_scale:
-            TODO
+        extend_to_low_pt_scale: float, None
+            Scale ptmatch for computing weights using extend_to_low_pt
         Returns
         -------
         TODO
@@ -252,8 +252,8 @@ class Utility():
             TODO
         nocuts: bool
             TODO
-        extend_to_low_pt_scale:  TODO
-            TODO
+        extend_to_low_pt_scale: float, None
+            Scale ptmatch for computing weights using extend_to_low_pt
         Returns
         -------
         """
@@ -1833,11 +1833,11 @@ class Foresee(Utility, Decay):
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
         preselectioncuts: str
-            TODO
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
         coup_ref: float
             Reference coupling value
-        extend_to_low_pt_scales: TODO
-            TODO
+        extend_to_low_pt_scales: float, None
+            Scale ptmatch for computing weights using extend_to_low_pt
         Returns
             
         -------
@@ -1925,7 +1925,7 @@ class Foresee(Utility, Decay):
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
         preselectioncuts: str
-            TODO
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
         coup_ref: float
             Reference coupling value
         extend_to_low_pt_scales: TODO
@@ -2188,7 +2188,7 @@ class Foresee(Utility, Decay):
         filetype: str
             Specify "hepmc" or "csv"
         preselectioncuts: str
-            TODO
+            Expression defining cuts to be used e.g. "th<0.01"
         weightnames:
             Labels for the weights, written into hepmc file header
             
