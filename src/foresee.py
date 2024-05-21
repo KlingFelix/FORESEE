@@ -301,22 +301,22 @@ class Utility():
 
     def get_hist_list(self, tx, px, weights, prange):
         """
-        TODO get_hist_list
+        Fetch the contents of a 2D histo given in terms of angles and momenta in list format
         
         Parameters
         ----------
-        tx: TODO
-            TODO
-        px: TODO
-            TODO
-        weights: TODO
-            TODO
-        prange: TODO
-            TODO
+        tx: numpy array of floats
+            Values for the angle w.r.t. z-axis, for producing the 2D grid
+        px: numpy array of floats
+            Momentum values for producing the 2D grid
+        weights: numpy array of floats
+            Weights for each entry in the histo
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
         
         Returns
         -------
-            TODO
+            Lists of angles w.r.t z-axis, momenta and weights 
         """
         
         # define histogram
@@ -344,7 +344,7 @@ class Utility():
 
     def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
         """
-        TODO
+        A colormap spectrum in terms of z-axis angles and momenta
         
         Parameters
         ----------
@@ -356,10 +356,10 @@ class Utility():
             List of weights
         prange: [[float,float,float],[float,float,float]]
             Lists of min, max and num for t (prange[0]) and p (prange[1])
-        vmin: TODO
-            TODO
-        vmax: TODO
-            TODO
+        vmin: float
+            Value mapped to 0 for the color map. See matplotlib.colors.LogNorm
+        vmax: float
+            Value mapped to 1 for the color map. See matplotlib.colors.LogNorm
         
         Returns
         -------
@@ -394,24 +394,24 @@ class Utility():
     def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
         """
         Convert list of momenta to 2D histogram, and plot
+        
         Parameters
         ----------
         momenta: [LorentzVector] / ndarray of length 4 or 2
-            TODO
-        weights: TODO
-            TODO
+            List of 4-momenta
+        weights: numpy array of floats
+            Weights for each entry in the histo
         do_plot: bool
             Flag whether to produce a spectrum plot based on the resulting lists or not
-        filename: TODO
-            TODO
-        do_return: bool
-            TODO
+        filename: str / None
+            Output filename for saving results
+        do_return: FIXME redundant?
         prange: [[float,float,float],[float,float,float]]
             Lists of min, max and num for t (prange[0]) and p (prange[1])
-        vmin: TODO
-            TODO
-        vmax: TODO
-            TODO
+        vmin: float
+            Value mapped to 0 for the color map. See matplotlib.colors.LogNorm
+        vmax: float
+            Value mapped to 1 for the color map. See matplotlib.colors.LogNorm
         
         Returns
         -------
@@ -517,12 +517,12 @@ class Model(Utility):
 
     def get_sigmaint_ref(self, mass, energy, ermin, ermax):
         """
-        TODO
+        Find reference value for interaction cross section
         
         Parameters
         ----------
-        mass: TODO redundant?
-        energy: TODO redundant?
+        mass: FIXME redundant?
+        energy: FIXME redundant?
         ermin: float
             Minimum particle energy
         ermax: float
@@ -544,14 +544,14 @@ class Model(Utility):
 
     def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
         """
-        TODO
+        Get interaction cross section values
         
         Parameters
         ----------
-        mass: TODO redundant? Only passed to get_sigmaint_ref, where likely redundant
+        mass: FIXME redundant? Only passed to get_sigmaint_ref, where likely redundant
         couplings: numpy array
             The couplings to scan over
-        energy: TODO redundant? Only passed to get_sigmaint_ref, where likely redundant
+        energy: FIXME redundant? Only passed to get_sigmaint_ref, where likely redundant
         ermin: float
             Minimum particle energy
         ermax: float
@@ -559,7 +559,7 @@ class Model(Utility):
 
         Returns
         -------
-            TODO as a [float] list.
+            Interaction cross sections for each coupling as a list of floats
         """
         if self.dsigma_der==None:
             print ("No interaction rate specified. You need to specify interaction rate first!")
@@ -733,7 +733,7 @@ class Model(Utility):
             The PDG ID of the initial state particle
         pid1: string
             The PDG ID of the SM decay product
-        br: str / TODO
+        br: str / types.FunctionType
             The expression to be computed
         generator: [str]
             List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
@@ -747,8 +747,8 @@ class Model(Utility):
         label: str / None
             Label for the production mode, serves as key for production dict. 
             Default to initial state PDG ID if None
-        massrange: TODO
-            TODO
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
         scaling: float / str
             If float, the scaling power if cross section at a given coupling estimated according 
             to its ratio to a reference coupling, with the ratio raised to the scaling power.
@@ -778,7 +778,7 @@ class Model(Utility):
             The PDG ID of the SM decay product
         pid2: string
             The PDG ID of the other decay product, "0" for exotic
-        br: str / TODO
+        br: str / types.FunctionType
             The expression to be computed
         generator: [str]
             List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
@@ -792,8 +792,8 @@ class Model(Utility):
         label: str / None
             Label for the production mode, serves as key for production dict. 
             Default to initial state PDG ID if None
-        massrange: TODO
-            TODO
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
         scaling: float / str
             If float, the scaling power if cross section at a given coupling estimated according 
             to its ratio to a reference coupling, with the ratio raised to the scaling power.
@@ -818,7 +818,7 @@ class Model(Utility):
         ----------
         pid: string
             The PDG ID of the particle with which the mixing occurs
-        mixing: str / TODO
+        mixing: str / types.FunctionType
             The expression to be computed
         generator: [str]
             List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
@@ -827,8 +827,8 @@ class Model(Utility):
         label: str / None
             Label for the production mode, serves as key for production dict. 
             Default to PDG ID if None
-        massrange: TODO
-            TODO
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
         scaling: float / str
             If float, the scaling power if cross section at a given coupling estimated according 
             to its ratio to a reference coupling, with the ratio raised to the scaling power.
@@ -858,8 +858,8 @@ class Model(Utility):
             Reference coupling value
         condition: str / [str]
             The condition specifying the production
-        masses: TODO
-            TODO
+        masses: [float]
+            Particle masses to consider
         scaling: float / str
             If float, the scaling power if cross section at a given coupling estimated according 
             to its ratio to a reference coupling, with the ratio raised to the scaling power.
@@ -881,7 +881,7 @@ class Model(Utility):
         ----------
         key: str
             The production dictionary key corresponding to this mode
-        mass: TODO redundant?
+        mass: FIXME redundant?
         coupling: float
             The coupling value at which to estimate the result
         coupling_ref: float
@@ -1060,11 +1060,11 @@ class Decay():
 
     def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
         """
-        TODO
+        Handle to call the twobody_decay function repeatedly to form a MC sample
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
         m0: float
             Initial state particle mass
@@ -1097,30 +1097,30 @@ class Decay():
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample, integration):
         """
-        TODO
+        Handle to the various integration options of 3-body decays
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
         coupling: float
             Coupling strength
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
-        integration: TODO
-            TODO
+        integration: str
+            Specifies which 3body decay function to call
         
         Returns
         -------
-            TODO
+            List of LLP momenta as LorentzVectors and a list of weights
         """
 
         if integration == "dq2dcosth":
@@ -1136,13 +1136,13 @@ class Decay():
 
     def decay_in_restframe_3body_dq2dcosth(self,br, coupling, m0, m1, m2, m3, nsample):
         """
-        TODO
+        3-body decay function with integration over q^2 and cos(theta), with theta the angle to z-axis
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: TODO redundant?
+        coupling: FIXME redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1199,13 +1199,13 @@ class Decay():
 
     def decay_in_restframe_3body_dq2dE(self, br, coupling, m0, m1, m2, m3, nsample):
         """
-        TODO
+        3-body decay function with integration over q^2 and energy
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: TODO redundant?
+        coupling: FIXME redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1266,13 +1266,13 @@ class Decay():
 
     def decay_in_restframe_3body_dE(self, br, coupling, m0, m1, m2, m3, nsample):
         """
-        TODO
+        3-body decay function with integration over energy
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: TODO redundant?
+        coupling: FIXME redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1322,23 +1322,23 @@ class Decay():
 
     def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
         """
-        TODO
+        3-body decay as a chain of 2-body decays: m0 -> m1 mI, mI -> m2 m3
 
         Parameters
         ----------
-        br: TODO
+        br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: TODO redundant?
-        m0: TODO
-            TODO
-        m1: TODO
-            TODO
-        m2: TODO
-            TODO
-        m3: TODO
-            TODO
-        mI: TODO
-            TODO
+        coupling: FIXME redundant?
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        mI: float
+            The intermediate particle mass, from which m2 and m3 are produced
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
 
@@ -2298,9 +2298,9 @@ class Foresee(Utility, Decay):
             Filename for result output
         nevents: int
             Number of events
-        xlims: [float,float]  TODO redundant?
+        xlims: [float,float]  FIXME redundant?
             Lower and higher limits on the horizontal axis
-        ylims: [float,float]  TODO redundant?
+        ylims: [float,float]  FIXME redundant?
             Lower and higher limits on the vertical axis
 
         Returns
