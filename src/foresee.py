@@ -30,7 +30,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int, str
+        pid:  int / str
             The PDG ID for which to request charge
 
         Returns
@@ -49,7 +49,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int, str
+        pid:  int / str
             The PDG ID for which to request mass
         mass: float
             Default value returned if pid==0
@@ -75,7 +75,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int, str
+        pid:  int / str
             The PDG ID for which to request c*tau
 
         Returns
@@ -99,7 +99,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int / str
             The PDG ID for which to request width
 
         Returns
@@ -170,19 +170,20 @@ class Utility():
         
         Parameters
         ----------
-        list_t: TODO
-            TODO
-        list_p: TODO
-            TODO
-        list_w: TODO
-            TODO
+        list_t: [float]
+            List of angles w.r.t z-axis
+        list_p: [float]
+            List of momenta
+        list_w: [float]
+            List of weights
         ptmatch: float
             Match pt at this scale
         navg: int
-            TODO
+            Number of logt to average over
+        
         Returns
         -------
-        TODO
+            List of resulting weights
         """
         # round lists and ptmatch(so that we can easily search them)
         list_t = [round(t,3) for t in list_t]
@@ -219,11 +220,13 @@ class Utility():
             Files typically stored under files/hadrons/
         filetype: str
             The suffix of the input filename(s) datatype w/o/ ".", e.g. "txt"
-        extend_to_low_pt_scale: float, None
+        extend_to_low_pt_scale: float / None
             Scale ptmatch for computing weights using extend_to_low_pt
         Returns
         -------
-        TODO
+            List of log10 of angle w.r.t z-axis, 
+            list of log10 of momentum, 
+            numpy array of xs values
         """
         
         if type(filenames) == str: filenames=[filenames]
@@ -239,6 +242,9 @@ class Utility():
     def convert_list_to_momenta(self,filenames,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
         """
         Function that converts input files under files/hadrons/ into meson spectra
+
+        Parameters
+        ----------
         filenames: [str]
             List of strings containing the input filepaths w/o/ datatype suffix.
             Files typically stored under files/hadrons/
@@ -248,14 +254,16 @@ class Utility():
             Datatype suffix for filenames, w/o/ dot, e.g. "txt"
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
-        preselectioncut: TODO
-            TODO
+        preselectioncuts: str / None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
         nocuts: bool
-            TODO
+            Flag whether to skip applying cuts
         extend_to_low_pt_scale: float, None
             Scale ptmatch for computing weights using extend_to_low_pt
+
         Returns
         -------
+            Particles as LorentzVectors and an array of weights
         """
         #read file
         list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filenames, filetype=filetype, extend_to_low_pt_scale=None)
@@ -340,12 +348,12 @@ class Utility():
         
         Parameters
         ----------
-        list_t: TODO
-            TODO
-        list_p: TODO
-            TODO
-        list_w: TODO
-            TODO
+        list_t: [float]
+            List of angles w.r.t z-axis
+        list_p: [float]
+            List of momenta
+        list_w: [float]
+            List of weights
         prange: [[float,float,float],[float,float,float]]
             Lists of min, max and num for t (prange[0]) and p (prange[1])
         vmin: TODO
@@ -355,7 +363,7 @@ class Utility():
         
         Returns
         -------
-            TODO
+            Pyplot object
         """
         matplotlib.rcParams.update({'font.size': 15})
         fig = plt.figure(figsize=(7,5.5))
@@ -388,7 +396,7 @@ class Utility():
         Convert list of momenta to 2D histogram, and plot
         Parameters
         ----------
-        momenta: TODO
+        momenta: [LorentzVector] / ndarray of length 4 or 2
             TODO
         weights: TODO
             TODO
@@ -407,7 +415,8 @@ class Utility():
         
         Returns
         -------
-            TODO
+            If do_plot, return pyplot object first, then lists of angles w.r.t z-axis, momenta 
+            and weights. If do_plot false, only return the lists.
         """
         
         #preprocess data
@@ -467,16 +476,17 @@ class Model(Utility):
 
     def set_dsigma_drecoil_1d(self, dsigma_der, recoil_max="1e10", coupling_ref=1):
         """
-        TODO
+        Set the cross section differential in recoil energy
         
         Parameters
         ----------
-        dsigma_der: TODO
-            TODO
-        recoil_max: float
-            TODO
+        dsigma_der: string
+            Expression for the differential cross section d sigma / d E_r, with E_r the recoil energy
+        recoil_max: string
+            Expression for the maximum recoil value
         coupling_ref: float
-            Reference coupling values
+            Reference coupling values. In most cases the xsec as a function of coupling g 
+            can be written as xsec(g) = xsec(g*) g*^2 / g^2 for some reference coupling g*
 
         Returns
         -------
@@ -488,14 +498,14 @@ class Model(Utility):
 
     def set_dsigma_drecoil_2d(self, dsigma_der, recoil_max="1e10" ):
         """
-        TODO
+        Set the cross section differential in recoil energy, w/o/ using/assuming a reference coupling
         
         Parameters
         ----------
-        dsigma_der: TODO
-            TODO
-        recoil_max: float
-            TODO
+        dsigma_der: string
+            Expression for the differential cross section d sigma / d E_r, with E_r the recoil energy
+        recoil_max: string
+            Expression for the maximum recoil value
 
         Returns
         -------
@@ -511,10 +521,8 @@ class Model(Utility):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
-        energy: float
-            Particle energy
+        mass: TODO redundant?
+        energy: TODO redundant?
         ermin: float
             Minimum particle energy
         ermax: float
@@ -540,12 +548,10 @@ class Model(Utility):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
+        mass: TODO redundant? Only passed to get_sigmaint_ref, where likely redundant
         couplings: numpy array
             The couplings to scan over
-        energy: float
-            Particle energy
+        energy: TODO redundant? Only passed to get_sigmaint_ref, where likely redundant
         ermin: float
             Minimum particle energy
         ermax: float
@@ -636,7 +642,7 @@ class Model(Utility):
             List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
         filenames: [str]
             List of strings indicating br table input filenames, w/ datatype suffix
-        finalstates: [[int,int]], [None]
+        finalstates: [[int,int]] / [None]
             Table of PDG IDs corresponding to the final state particles of each decay mode
         
         Returns
@@ -663,7 +669,7 @@ class Model(Utility):
             List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
         filenames: [str]
             List of strings indicating br table input filenames, w/ datatype suffix
-        finalstates: [[int,int]], [None]
+        finalstates: [[int,int]] / [None]
             Table of PDG IDs corresponding to the final state particles of each decay mode
         
         Returns
@@ -690,7 +696,7 @@ class Model(Utility):
 
         Parameters
         ----------
-        mode: string, None
+        mode: string / None
             Channel for which to fetch the branching fraction function
         mass: float
             The particle mass
@@ -727,24 +733,28 @@ class Model(Utility):
             The PDG ID of the initial state particle
         pid1: string
             The PDG ID of the SM decay product
-        br: str, TODO
-            The expression to be computed as a string, or TODO
-        generator: TODO
-            TODO
-        energy: TODO
-            TODO
+        br: str / TODO
+            The expression to be computed
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
         nsample_had: int
-            TODO
+            Number of Monte Carlo samples to consider for mother hadrons, 
+            see nsample in convert_list_to_momenta
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
-        label: TODO
-            TODO
+        label: str / None
+            Label for the production mode, serves as key for production dict. 
+            Default to initial state PDG ID if None
         massrange: TODO
             TODO
-        scaling:TODO
-            TODO
-        preselectioncut: TODO
-            TODO
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according 
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+        preselectioncuts: str / None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
         
         Returns
         -------
@@ -768,24 +778,28 @@ class Model(Utility):
             The PDG ID of the SM decay product
         pid2: string
             The PDG ID of the other decay product, "0" for exotic
-        br: str, TODO
-            The expression to be computed as a string, or TODO
+        br: str / TODO
+            The expression to be computed
         generator: [str]
             List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
         energy: str
             Collider sqrt(S) in TeV
         nsample_had: int
-            TODO
+            Number of Monte Carlo samples to consider for mother hadrons, 
+            see nsample in convert_list_to_momenta
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
-        label: TODO
-            TODO
+        label: str / None
+            Label for the production mode, serves as key for production dict. 
+            Default to initial state PDG ID if None
         massrange: TODO
             TODO
-        scaling:TODO
-            TODO
-        preselectioncut: TODO
-            TODO
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according 
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+        preselectioncuts: str, None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
         
         Returns
         -------
@@ -799,22 +813,26 @@ class Model(Utility):
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
         """
         Introduce mixing as a production mode
+        
         Parameters
         ----------
         pid: string
-            The PDG ID of TODO
-        mixing: str, TODO
-            The expression to be computed as a string, or TODO
+            The PDG ID of the particle with which the mixing occurs
+        mixing: str / TODO
+            The expression to be computed
         generator: [str]
             List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
         energy: str
             Collider sqrt(S) in TeV
-        label: TODO
-            TODO
+        label: str / None
+            Label for the production mode, serves as key for production dict. 
+            Default to PDG ID if None
         massrange: TODO
             TODO
-        scaling: TODO
-            TODO
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according 
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
         
         Returns
         -------
@@ -831,18 +849,21 @@ class Model(Utility):
         
         Parameters
         ----------
-        label: TODO
-            TODO
+        label: str
+            Label for the production mode, e.g. "Brem". Serves as key for production dict. 
+            Expect to find model-specific tables under model/direct/*/label_*.txt
         energy: str
             Collider sqrt(S) in TeV
         coupling_ref: float
             Reference coupling value
-        condition: str, TODO
-            TODO
+        condition: str / [str]
+            The condition specifying the production
         masses: TODO
             TODO
-        scaling: TODO
-            TODO
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according 
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
         
         Returns
         -------
@@ -853,21 +874,22 @@ class Model(Utility):
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         """
-        TODO
+        Scaling factor for estimating a coupling-dependent quantity based on its ratio to a 
+        reference coupling, raised to some scaling power
         
         Parameters
         ----------
-        key: TODO
-            TODO
-        mass: TODO
-            TODO
-        coupling:
-            TODO
-        coupling_ref: TODO
+        key: str
+            The production dictionary key corresponding to this mode
+        mass: TODO redundant?
+        coupling: float
+            The coupling value at which to estimate the result
+        coupling_ref: float
             Reference coupling value
+        
         Returns
         -------
-            None
+            The resulting factor as a float
         """
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
@@ -1081,8 +1103,8 @@ class Decay():
         ----------
         br: TODO
             Branching fraction function for the considered mode
-        coupling: TODO
-            TODO
+        coupling: float
+            Coupling strength
         m0: TODO
             TODO
         m1: TODO
@@ -1120,8 +1142,7 @@ class Decay():
         ----------
         br: TODO
             Branching fraction function for the considered mode
-        coupling: TODO
-            TODO
+        coupling: TODO redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1184,8 +1205,7 @@ class Decay():
         ----------
         br: TODO
             Branching fraction function for the considered mode
-        coupling: TODO
-            TODO
+        coupling: TODO redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1252,8 +1272,7 @@ class Decay():
         ----------
         br: TODO
             Branching fraction function for the considered mode
-        coupling: TODO
-            TODO redundant, remove?
+        coupling: TODO redundant?
         m0: float
             Initial state particle mass
         m1: float
@@ -1309,8 +1328,7 @@ class Decay():
         ----------
         br: TODO
             Branching fraction function for the considered mode
-        coupling: TODO
-            TODO redundant, remove?
+        coupling: TODO redundant?
         m0: TODO
             TODO
         m1: TODO
@@ -1482,20 +1500,20 @@ class Foresee(Utility, Decay):
 
     def get_spectrum_decays(self, mass, coupling, key):
         """
-        TODO
+        Get the spectrum corresponding to enabled 2- and 3-body decay modes
         
         Parameters
         ----------
         mass: float
             The mass of the considered particle
-        coupling: TODO
-            TODO
-        key: TODO
-            TODO
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
         
         Returns
         -------
-            TODO
+            Momenta and weights in the lab frame as numpy arrays
         """
 
         # load details of production channel
@@ -1545,20 +1563,20 @@ class Foresee(Utility, Decay):
 
     def get_spectrum_mixing(self, mass, coupling, key):
         """
-        TODO
+        Get the spectrum corresponding to mixing
         
         Parameters
         ----------
         mass: float
             The mass of the considered particle
-        coupling: TODO
-            TODO
-        key: TODO
-            TODO
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
         
         Returns
         -------
-            TODO
+            Momenta and weights in the lab frame as numpy arrays
         """
 
         # load details of production channel
@@ -1591,20 +1609,20 @@ class Foresee(Utility, Decay):
 
     def get_spectrum_direct(self, mass, coupling, key):
         """
-        TODO
+        Get the spectrum corresponding to direct production
         
         Parameters
         ----------
         mass: float
             The mass of the considered particle
-        coupling: TODO
-            TODO
-        key: TODO
-            TODO
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
             
         Returns
         -------
-            TODO
+            Momenta and weights in the lab frame as numpy arrays
         """
         # load details of production channel
         label = key
@@ -1643,16 +1661,16 @@ class Foresee(Utility, Decay):
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
         """
-        TODO
+        Get the spectrum of LLPs
         
         Parameters
         ----------
         mass: float
             The mass of the considered particle
-        coupling: TODO
-            TODO
-        channels: TODO
-            TODO
+        coupling: float
+            Coupling strength
+        channels: [str]
+            List of modes to consider, used as production dictionary keys
         do_plot: bool
             Flag whether to produce a plot based on the resulting histogram or not
         save_file: bool
@@ -1660,7 +1678,7 @@ class Foresee(Utility, Decay):
         
         Returns
         -------
-            TODO
+            If do_plot, the output of convert_to_hist_list. Else None.
         """
         # prepare output
         if channels is None: channels = [key for key in self.model.production.keys()]
@@ -1720,23 +1738,23 @@ class Foresee(Utility, Decay):
         ----------
         distance: float
             Detector distance from collider central experiment interaction point
-        distance_prod: TODO
-            TODO
+        distance_prod: float
+            Distance where LLPs are produced if not at the collider interaction point
         selection: str
-            TODO
+            Expression quantifying the selection rule
         length: float
-            Detector length in z-direction i.e. along line of sight
+            Detector length in meters, along z-direction i.e. line of sight
         luminosity: float
-            Expected luminosity in TODO
-        channels: TODO
-            TODO
+            Expected luminosity in fb^-1
+        channels: [str]
+            Decay channels to consider. Default None implies all.
         numberdensity: float
-            TODO
+            The number density of target particles in the detector in m^-3
         ermin: float
-            TODO
+            Minimum particle energy
         ermax: float
-            TODO
-        efficiency: float, TODO
+            Maximum particle energy
+        efficiency: str, float, int, types.FunctionType
             Detector efficiency function
         
         Returns
@@ -1756,7 +1774,7 @@ class Foresee(Utility, Decay):
         self.ermin=ermin
         self.ermax=ermax
         self.efficiency=efficiency
-        self.efficiency_tpye = type(efficiency)
+        self.efficiency_type = type(efficiency)
         
         #make evaluation of selection faster
         selection = selection.replace("x.x", "x").replace("x.y", "y").replace("x.z", "z")
@@ -1799,10 +1817,10 @@ class Foresee(Utility, Decay):
             The efficiency as a float
         """
         # calculate efficiency
-        if self.efficiency_tpye==str: return eval(self.efficiency)
-        if self.efficiency_tpye==float: return self.efficiency
-        if self.efficiency_tpye==int: return self.efficiency
-        if self.efficiency_tpye==types.FunctionType: return self.efficiency(energy)
+        if self.efficiency_type==str: return eval(self.efficiency)
+        if self.efficiency_type==float: return self.efficiency
+        if self.efficiency_type==int: return self.efficiency
+        if self.efficiency_type==types.FunctionType: return self.efficiency(energy)
         return 1
 
     ###############################
@@ -1818,16 +1836,18 @@ class Foresee(Utility, Decay):
             extend_to_low_pt_scales = {},
         ):
         """
-        TODO
+        The numbers of expected events in the specified detector, 
+        assuming given production modes, couplings and cuts.
         
         Parameters
         ----------
-        mass: TODO
-            TODO
-        energy: TODO
-            TODO
-        modes: TODO
-            TODO
+        mass: float
+            Particle mass
+        energy: str
+            Collider sqrt(S) in TeV
+        modes: dict
+            Production modes to consider as keys, 
+            list of prediction labels (e.g. generator names) as values
         couplings: numpy array
             The couplings to scan over
         nsample: int
@@ -1836,8 +1856,8 @@ class Foresee(Utility, Decay):
             Expression defining cuts to be used e.g. "th<0.01 and p>100"
         coup_ref: float
             Reference coupling value
-        extend_to_low_pt_scales: float, None
-            Scale ptmatch for computing weights using extend_to_low_pt
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
         Returns
             
         -------
@@ -1910,30 +1930,32 @@ class Foresee(Utility, Decay):
             extend_to_low_pt_scales = {},
         ):
         """
-        TODO
+        Get the expected number of signal events in the specified detector
         
         Parameters
         ----------
-        mass: TODO
-            TODO
-        energy: TODO
-            TODO
-        modes: TODO
-            TODO
+        mass: float
+            Particle mass
+        energy: str
+            Collider sqrt(S) in TeV
+        modes: None, dict
+            If specified, a dictionary with production modes to consider as keys, 
+            and lists of prediction labels (e.g. generator names) as values
         couplings: numpy array
             The couplings to scan over
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
+            Relevant for non-cylindrical or off-axis detectors
         preselectioncuts: str
             Expression defining cuts to be used e.g. "th<0.01 and p>100"
         coup_ref: float
             Reference coupling value
-        extend_to_low_pt_scales: TODO
-            TODO
-        
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
+
         Returns
         -------
-            TODO
+            List of couplings, umber of nsignals as numpy array, stat momenta, stat weights as numpy array
         """
 
         # setup different couplings to scan over
@@ -2039,8 +2061,9 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        data: TODO
-            A table of events, with each event entry specified in terms of weights, position, momentum, pids and finalstate
+        data: [[float, LorentzVector, LorentzVector, [str] or [int], [LorentzVector]]
+            A table of events, with each event entry specified in terms of 
+            weights, position, momentum, pids and finalstate particle momenta
         filename: str
             The name of the output file
         weightnames: [str]
@@ -2113,8 +2136,9 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        data: TODO
-            A table of events, with each event entry specified in terms of weights, position, momentum, pids and finalstate
+        data: [[float, LorentzVector, LorentzVector, [str] or [int], [LorentzVector]]
+            A table of events, with each event entry specified in terms of 
+            weights, position, momentum, pids and finalstate particle momenta
         filename: str
             The name of the output file
         
@@ -2164,18 +2188,18 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        mass: TODO
-            TODO
-        coupling: TODO
-            TODO
-        energy: TODO
-            TODO
+        mass: float
+            The particle mass
+        coupling: float
+            Coupling strength
+        energy: str
+            Collider sqrt(S) in TeV
         filename: str, None
             The name of the output file to produce. If None, defaults to mass_coupling.suffix
         numberevent: int
-            TODO
-        zfront=0
-            TODO
+            Number of events
+        zfront: float
+            Advance z-axis position by a constant, default 0
         nsample: int
             Number of Monte Carlo samples to add into particles, and to divide weights by
         notime: bool
@@ -2183,8 +2207,8 @@ class Foresee(Utility, Decay):
         t0=0, modes=None
         return_data: bool
             Flag whether to return data and weight information
-        extend_to_low_pt_scales: TODO
-            TODO
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
         filetype: str
             Specify "hepmc" or "csv"
         preselectioncuts: str
@@ -2264,7 +2288,7 @@ class Foresee(Utility, Decay):
             nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
         ):
         """
-        TODO
+        Export information of contour lines into text files
         
         Parameters
         ----------
@@ -2273,10 +2297,10 @@ class Foresee(Utility, Decay):
         outputfile: str
             Filename for result output
         nevents: int
-            TODO
-        xlims: [float,float]  TODO these seem redundant in this function, rm?
+            Number of events
+        xlims: [float,float]  TODO redundant?
             Lower and higher limits on the horizontal axis
-        ylims: [float,float]  TODO these seem redundant in this function, rm?
+        ylims: [float,float]  TODO redundant?
             Lower and higher limits on the vertical axis
 
         Returns
@@ -2312,20 +2336,29 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        setups: TODO
-            TODO
-        bounds: TODO
-            TODO
-        projections: TODO
-            TODO
-        bounds2: TODO
-            TODO
-        grids: TODO
-            TODO
+        setups: [[str,str,str,str,float,int]]
+            List of arrays, with each array containing the filename in model/results directory, 
+            label, color, linestyle, opacity alpha for filled contours and required number of events
+        bounds: [[str,str,float,float,float]]
+            List of arrays specifying the existing bounds to plot. Drawn in dark gray. 
+            Each array contains:
+            filename in model/bounds directory, label, label x and y positions, label rotation
+        projections: [[str,str,str,float,float,float]]
+            List of arrays specifying other projections to include in the plot. Each array contains:
+            filename in model/bounds directory, color, label, label x and y positiond, label rotation
+        bounds2: [[str,str,float,float,float]]
+            List of arrays specifying further existing bounds to plot. Drawn in light gray. 
+            Each array contains:
+            filename in model/bounds directory, label, label x and y positions, label rotation
+        grids: [[str, 2D ndarray, ndarray, str,str]]
+            List of arrays specifying any irregular grids. See scipy.interpolate.griddata
+            Each array contains:
+            label, 2D grid points, values, color, linestyle
         title: str
             Main title above the plot
-        linewidths: TODO
-            TODO
+        linewidths: float, [float]
+            The linewidths for the contours, optionally specified case-by-case in an array.
+            See matplotlib.axes.Axes.contour
         xlabel: str
             Horizontal axis label in plot
         ylabel: str
@@ -2458,10 +2491,14 @@ class Foresee(Utility, Decay):
         
         Parameters
         ----------
-        masses: TODO
-            TODO
+        masses: [float]
+            List of mass values to loop over
         productions: [ dict, ... ]
-            List of dictionaries specifying each production mode
+            List of dictionaries specifying each production mode, e.g.
+            {"channels": "111",
+             "color": "red", 
+             "label": r"$\pi^0 \to \gamma A'$", 
+             "generators": ["EPOSLHC"]},
         condition: str
             Add event weight to total if this condition is satisfied
         energy: str
@@ -2479,8 +2516,8 @@ class Foresee(Utility, Decay):
         fs_label: float
             Label font size
         title: str, None
-            TODO
-        legendloc: TODO
+            Main plot title
+        legendloc: BboxBase, 2-tuple, 4-tuple of floats
             Bbox to anchor legend to
         dolegend: bool
             Flag whether to include legend in plot
@@ -2588,14 +2625,15 @@ class Foresee(Utility, Decay):
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, xlog=True, ylog=True,
         nsample=100):
         """
-        TODO
+        Plot branching fractions for given production modes
         
         Parameters
         ----------
-        masses: TODO
-            TODO
-        productions: TODO
-            TODO
+        masses: [float]
+            List of mass values to loop over
+        productions: [[str,str,str]]
+            List of lists specifying the production modes. Each entry contains:
+            key in productions dict, color, description/label
         xlims: [float,float]
             Lower and higher limits on the horizontal axis
         ylims: [float,float]
@@ -2609,7 +2647,7 @@ class Foresee(Utility, Decay):
         fs_label: float
             Label font size
         title=None
-        legendloc: TODO
+        legendloc: BboxBase, 2-tuple, or 4-tuple of floats
             Bbox to anchor legend to
         dolegend: bool
             Flag whether to include legend in plot
