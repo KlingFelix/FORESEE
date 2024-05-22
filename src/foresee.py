@@ -515,14 +515,18 @@ class Model(Utility):
         self.dsigma_der_coupling_ref=None
         self.recoil_max = recoil_max
 
-    def get_sigmaint_ref(self, mass, energy, ermin, ermax):
+    def get_sigmaint(self, mass, coupling, energy, ermin, ermax):
         """
-        Find reference value for interaction cross section
+        Find interaction cross section
         
         Parameters
         ----------
-        mass: FIXME redundant?
-        energy: FIXME redundant?
+        mass: float
+            Particle mass, included implicitly in the expression self.dsigma_der
+        coupling: float
+            Coupling strength, included implicitly in the expression self.dsigma_der
+        energy: float
+            Incoming particle energy, included implicitly in the expression self.dsigma_der
         ermin: float
             Minimum particle energy
         ermax: float
@@ -544,14 +548,16 @@ class Model(Utility):
 
     def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
         """
-        Get interaction cross section values
+        Handle to different get_sigmaint use cases depending on dsigma_der and dsigma_der_coupling_ref values
         
         Parameters
         ----------
-        mass: FIXME redundant? Only passed to get_sigmaint_ref, where likely redundant
+        mass: float
+            Particle mass
         couplings: numpy array
             The couplings to scan over
-        energy: FIXME redundant? Only passed to get_sigmaint_ref, where likely redundant
+        energy: float
+            Incoming particle energy
         ermin: float
             Minimum particle energy
         ermax: float
@@ -565,14 +571,13 @@ class Model(Utility):
             print ("No interaction rate specified. You need to specify interaction rate first!")
             return 10**10
         elif self.dsigma_der_coupling_ref is None:
-            sigmaint_ref = self.get_sigmaint_ref(mass, energy, ermin, ermax)
-            sigmaints = [sigmaint_ref for _ in couplings]
+            sigmaints = [self.get_sigmaint(mass, coupling, energy, ermin, ermax) for coupling in couplings]
             return sigmaints
         else:
-            sigmaint_ref = self.get_sigmaint_ref(mass, energy, ermin, ermax)
+            sigmaint_ref = self.get_sigmaint(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
             sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
             return sigmaints
-
+    
     ###############################
     #  Lifetime
     ###############################
