@@ -30,7 +30,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int / str
             The PDG ID for which to request charge
 
         Returns
@@ -49,7 +49,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int / str
             The PDG ID for which to request mass
         mass: float
             Default value returned if pid==0
@@ -75,7 +75,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int / str
             The PDG ID for which to request c*tau
 
         Returns
@@ -99,7 +99,7 @@ class Utility():
 
         Parameters
         ----------
-        pid:  int
+        pid:  int / str
             The PDG ID for which to request width
 
         Returns
@@ -142,8 +142,20 @@ class Utility():
     #  Reading/Plotting Particle Tables
     ###############################
 
-    # convert a table into input for contour plot
     def table2contourinput(self,data,idz=2):
+        """
+        Convert a table into input for contour plot
+
+        Parameters
+        ----------
+        data: [[float]]
+            The table to be converted
+        idz: int
+            Read z values in data from the column with index idz
+        Returns
+        -------
+            Three numpy arrays corresponding to read x, y and z values
+        """
         ntotal=len(data)
         ny=sum( 1 if d[0]==data[0][0] else 0 for d in data)
         nx=sum( 1 if d[1]==data[0][1] else 0 for d in data)
@@ -152,9 +164,27 @@ class Utility():
         zval = [ [ data[ix*ny+iy,idz] for iy in range(ny) ] for ix in range(nx)]
         return np.array(xval),np.array(yval),np.array(zval)
 
-    # function to extend spectrum to low pT
     def extend_to_low_pt(self, list_t, list_p, list_w, ptmatch=0.5, navg=2):
+        """
+        Function to extend spectrum to low pT
 
+        Parameters
+        ----------
+        list_t: [float]
+            List of angles w.r.t z-axis
+        list_p: [float]
+            List of momenta
+        list_w: [float]
+            List of weights
+        ptmatch: float
+            Match pt at this scale
+        navg: int
+            Number of logt to average over
+
+        Returns
+        -------
+            List of resulting weights
+        """
         # round lists and ptmatch(so that we can easily search them)
         list_t = [round(t,3) for t in list_t]
         list_p = [round(p,3) for p in list_p]
@@ -179,8 +209,25 @@ class Utility():
         #return results
         return list_wx
 
-    # function to read file and return momenta, weights
     def read_list_momenta_weights(self, filenames, filetype="txt", extend_to_low_pt_scale=None):
+        """
+        Function to read file and return momenta, weights
+
+        Parameters
+        ----------
+        filenames: [str]
+            List of strings containing the input filepaths w/o/ datatype suffix.
+            Files typically stored under files/hadrons/
+        filetype: str
+            The suffix of the input filename(s) datatype w/o/ ".", e.g. "txt"
+        extend_to_low_pt_scale: float / None
+            Scale ptmatch for computing weights using extend_to_low_pt
+        Returns
+        -------
+            List of log10 of angle w.r.t z-axis,
+            list of log10 of momentum,
+            numpy array of xs values
+        """
 
         if type(filenames) == str: filenames=[filenames]
         list_xs = []
@@ -192,11 +239,34 @@ class Utility():
             list_xs.append(weights)
         return list_logth, list_logp, np.array(list_xs).T
 
-    # function that converts input file into meson spectrum
-    def convert_list_to_momenta(self,filename,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
+    def convert_list_to_momenta(self,filenames,mass,filetype="txt",nsample=1,preselectioncut=None, nocuts=False, extend_to_low_pt_scale=None):
+        """
+        Function that converts input files under files/hadrons/ into meson spectra
 
+        Parameters
+        ----------
+        filenames: [str]
+            List of strings containing the input filepaths w/o/ datatype suffix.
+            Files typically stored under files/hadrons/
+        mass: float
+            The mass of the considered particle
+        filetype: str
+            Datatype suffix for filenames, w/o/ dot, e.g. "txt"
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        preselectioncuts: str / None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+        nocuts: bool
+            Flag whether to skip applying cuts
+        extend_to_low_pt_scale: float, None
+            Scale ptmatch for computing weights using extend_to_low_pt
+
+        Returns
+        -------
+            Particles as LorentzVectors and an array of weights
+        """
         #read file
-        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filename, filetype=filetype, extend_to_low_pt_scale=None)
+        list_logth, list_logp, list_xs = self.read_list_momenta_weights(filenames=filenames, filetype=filetype, extend_to_low_pt_scale=None)
 
         particles, weights = [], []
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
@@ -229,8 +299,25 @@ class Utility():
 
         return particles, np.array(weights)
 
-    # get_hist_list
     def get_hist_list(self, tx, px, weights, prange):
+        """
+        Fetch the contents of a 2D histo given in terms of angles and momenta in list format
+
+        Parameters
+        ----------
+        tx: numpy array of floats
+            Values for the angle w.r.t. z-axis, for producing the 2D grid
+        px: numpy array of floats
+            Momentum values for producing the 2D grid
+        weights: numpy array of floats
+            Weights for each entry in the histo
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+
+        Returns
+        -------
+            Lists of angles w.r.t z-axis, momenta and weights
+        """
 
         # define histogram
         tmin, tmax, tnum = prange[0]
@@ -256,7 +343,28 @@ class Utility():
 
 
     def make_spectrumplot(self, list_t, list_p, list_w, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+        """
+        A colormap spectrum in terms of z-axis angles and momenta
 
+        Parameters
+        ----------
+        list_t: [float]
+            List of angles w.r.t z-axis
+        list_p: [float]
+            List of momenta
+        list_w: [float]
+            List of weights
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+        vmin: float
+            Value mapped to 0 for the color map. See matplotlib.colors.LogNorm
+        vmax: float
+            Value mapped to 1 for the color map. See matplotlib.colors.LogNorm
+
+        Returns
+        -------
+            Pyplot object
+        """
         matplotlib.rcParams.update({'font.size': 15})
         fig = plt.figure(figsize=(7,5.5))
 
@@ -283,8 +391,32 @@ class Utility():
         ax.set_ylim(pmin, pmax)
         return plt
 
-    # convert list of momenta to 2D histogram, and plot
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+        """
+        Convert list of momenta to 2D histogram, and plot
+
+        Parameters
+        ----------
+        momenta: [LorentzVector] / ndarray of length 4 or 2
+            List of 4-momenta
+        weights: numpy array of floats
+            Weights for each entry in the histo
+        do_plot: bool
+            Flag whether to produce a spectrum plot based on the resulting lists or not
+        filename: str / None
+            Output filename for saving results
+        prange: [[float,float,float],[float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+        vmin: float
+            Value mapped to 0 for the color map. See matplotlib.colors.LogNorm
+        vmax: float
+            Value mapped to 1 for the color map. See matplotlib.colors.LogNorm
+
+        Returns
+        -------
+            If do_plot, return pyplot object first, then lists of angles w.r.t z-axis, momenta
+            and weights. If do_plot false, only return the lists.
+        """
 
         #preprocess data
         if type(momenta[0])==LorentzVector:
@@ -342,16 +474,67 @@ class Model(Utility):
     ###############################
 
     def set_dsigma_drecoil_1d(self, dsigma_der, recoil_max="1e10", coupling_ref=1):
+        """
+        Set the cross section differential in recoil energy
+
+        Parameters
+        ----------
+        dsigma_der: string
+            Expression for the differential cross section d sigma / d E_r, with E_r the recoil energy
+        recoil_max: string
+            Expression for the maximum recoil value
+        coupling_ref: float
+            Reference coupling values. In most cases the xsec as a function of coupling g
+            can be written as xsec(g) = xsec(g*) g*^2 / g^2 for some reference coupling g*
+
+        Returns
+        -------
+            None
+        """
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=coupling_ref
         self.recoil_max = recoil_max
 
     def set_dsigma_drecoil_2d(self, dsigma_der, recoil_max="1e10" ):
+        """
+        Set the cross section differential in recoil energy, w/o/ using/assuming a reference coupling
+
+        Parameters
+        ----------
+        dsigma_der: string
+            Expression for the differential cross section d sigma / d E_r, with E_r the recoil energy
+        recoil_max: string
+            Expression for the maximum recoil value
+
+        Returns
+        -------
+            None
+        """
         self.dsigma_der = dsigma_der
         self.dsigma_der_coupling_ref=None
         self.recoil_max = recoil_max
 
-    def get_sigmaint_ref(self, mass, coupling, energy, ermin, ermax):
+    def get_sigmaint(self, mass, coupling, energy, ermin, ermax):
+        """
+        Find interaction cross section
+
+        Parameters
+        ----------
+        mass: float
+            Particle mass, included implicitly in the expression self.dsigma_der
+        coupling: float
+            Coupling strength, included implicitly in the expression self.dsigma_der
+        energy: float
+            Incoming particle energy, included implicitly in the expression self.dsigma_der
+        ermin: float
+            Minimum particle energy
+        ermax: float
+            Maximum particle energy
+
+        Returns
+        -------
+            None
+        """
         minrecoil, maxrecoil = ermin, min(eval(self.recoil_max), ermax)
         nrecoil, sigma = 20, 0
         l10ermin, l10ermax = np.log10(minrecoil), np.log10(maxrecoil)
@@ -363,14 +546,34 @@ class Model(Utility):
         return sigma
 
     def get_sigmaints(self, mass, couplings, energy, ermin, ermax):
+        """
+        Handle to different get_sigmaint use cases depending on dsigma_der and dsigma_der_coupling_ref values
+
+        Parameters
+        ----------
+        mass: float
+            Particle mass
+        couplings: numpy array
+            The couplings to scan over
+        energy: float
+            Incoming particle energy
+        ermin: float
+            Minimum particle energy
+        ermax: float
+            Maximum particle energy
+
+        Returns
+        -------
+            Interaction cross sections for each coupling as a list of floats
+        """
         if self.dsigma_der==None:
             print ("No interaction rate specified. You need to specify interaction rate first!")
             return 10**10
         elif self.dsigma_der_coupling_ref is None:
-            sigmaints = [self.get_sigmaint_ref(mass, coupling, energy, ermin, ermax) for coupling in couplings]
+            sigmaints = [self.get_sigmaint(mass, coupling, energy, ermin, ermax) for coupling in couplings]
             return sigmaints
         else:
-            sigmaint_ref = self.get_sigmaint_ref(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
+            sigmaint_ref = self.get_sigmaint(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
             sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
             return sigmaints
 
@@ -379,11 +582,37 @@ class Model(Utility):
     ###############################
 
     def set_ctau_1d(self,filename, coupling_ref=1):
+        """
+        Set up ctau values read from model-specific input tables
+
+        Parameters
+        ----------
+        filename: str
+            The name of the file under modelpath to read ctau values from
+        coupling_ref: float
+            Reference coupling values
+
+        Returns
+        -------
+            None
+        """
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=coupling_ref
         self.ctau_function=interpolate.interp1d(data[0], data[1],fill_value="extrapolate")
 
     def set_ctau_2d(self,filename):
+        """
+        Set up ctau values read from model-specific input tables, depending on mass and coupling (hence 2d)
+
+        Parameters
+        ----------
+        filename: str
+            The name of the file under modelpath to read ctau values from
+
+        Returns
+        -------
+            None
+        """
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
         try:
@@ -407,6 +636,23 @@ class Model(Utility):
     ###############################
 
     def set_br_1d(self,modes, filenames, finalstates=None):
+        """
+        Set up a decay modes via branching fractions.
+        The 1D decay modes's br functions take mass as input argument.
+
+        Parameters
+        ----------
+        modes: [str]
+            List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
+        filenames: [str]
+            List of strings indicating br table input filenames, w/ datatype suffix
+        finalstates: [[int,int]] / [None]
+            Table of PDG IDs corresponding to the final state particles of each decay mode
+
+        Returns
+        -------
+            None
+        """
         self.br_mode="1D"
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
@@ -417,6 +663,23 @@ class Model(Utility):
             self.br_finalstate[channel] = finalstate
 
     def set_br_2d(self,modes,filenames, finalstates=None):
+        """
+        Set up a decay modes via branching fractions.
+        The 2D decay modes's br functions take mass and coupling as input arguments.
+
+        Parameters
+        ----------
+        modes: [str]
+            List of strings indicating decay modes i.e. final state particles, e.g. ["e_e","mu_mu"]
+        filenames: [str]
+            List of strings indicating br table input filenames, w/ datatype suffix
+        finalstates: [[int,int]] / [None]
+            Table of PDG IDs corresponding to the final state particles of each decay mode
+
+        Returns
+        -------
+            None
+        """
         self.br_mode="2D"
         self.br_functions = {}
         if finalstates==None: finalstates=[None for _ in modes]
@@ -432,6 +695,22 @@ class Model(Utility):
             self.br_finalstate[channel] = finalstate
 
     def get_br(self,mode,mass,coupling=1):
+        """
+        Fetch the branching fraction functions stored into a class instance
+
+        Parameters
+        ----------
+        mode: string / None
+            Channel for which to fetch the branching fraction function
+        mass: float
+            The particle mass
+        coupling: float
+            Optional coupling strength value for 2D br_mode
+
+        Returns
+        -------
+            Dictionary of branching fraction functions, with channel/mode strings as keys
+        """
         if self.br_mode==None:
             print ("No branching fractions specified. You need to specify branching fractions first!")
             return 0
@@ -449,6 +728,42 @@ class Model(Utility):
     ###############################
 
     def add_production_2bodydecay(self, pid0, pid1, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None):
+        """
+        Introduce a 2-body decay production mode, from a SM initial state to a SM+exotic final state
+
+        Parameters
+        ----------
+        pid0: string
+            The PDG ID of the initial state particle
+        pid1: string
+            The PDG ID of the SM decay product
+        br: str / types.FunctionType
+            The expression to be computed
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
+        nsample_had: int
+            Number of Monte Carlo samples to consider for mother hadrons,
+            see nsample in convert_list_to_momenta
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        label: str / None
+            Label for the production mode, serves as key for production dict.
+            Default to initial state PDG ID if None
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+        preselectioncuts: str / None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'")
@@ -456,22 +771,131 @@ class Model(Utility):
 
 
     def add_production_3bodydecay(self, pid0, pid1, pid2, br, generator, energy, nsample_had=1, nsample=1, label=None, massrange=None, scaling=2, preselectioncut=None, integration="dq2dcosth"):
+        """
+        Introduce a 3-body decay production mode, where a SM initial state decays into a SM particle + 2 exotic particles of the same kind
+
+        Parameters
+        ----------
+        pid0: string
+            The PDG ID of the initial state particle
+        pid1: string
+            The PDG ID of the SM decay product
+        pid2: string
+            The PDG ID of the other decay product, "0" for exotic
+        br: str / types.FunctionType
+            The expression to be computed
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
+        nsample_had: int
+            Number of Monte Carlo samples to consider for mother hadrons,
+            see nsample in convert_list_to_momenta
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        label: str / None
+            Label for the production mode, serves as key for production dict.
+            Default to initial state PDG ID if None
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+        preselectioncuts: str, None
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid0
         if type(generator)==str: generator=[generator]
         if type(br       )==str: br=br.replace("'pid0'","'"+str(pid0)+"'").replace("'pid1'","'"+str(pid1)+"'").replace("'pid2'","'"+str(pid2)+"'")
         self.production[label]= {"type": "3body", "pid0": pid0, "pid1": pid1, "pid2": pid2, "br": br, "production": generator, "energy": energy, "nsample_had": nsample_had, "nsample": nsample, "massrange": massrange, "scaling": scaling, "preselectioncut": preselectioncut, "integration": integration}
 
     def add_production_mixing(self, pid, mixing, generator, energy, label=None, massrange=None, scaling=2):
+        """
+        Introduce mixing as a production mode
+
+        Parameters
+        ----------
+        pid: string
+            The PDG ID of the particle with which the mixing occurs
+        mixing: str / types.FunctionType
+            The expression to be computed
+        generator: [str]
+            List of predictions to consider, e.g. ['EPOSLHC', 'SIBYLL', ...]
+        energy: str
+            Collider sqrt(S) in TeV
+        label: str / None
+            Label for the production mode, serves as key for production dict.
+            Default to PDG ID if None
+        massrange: [float,float]
+            Lower and upper limit for masses to consider
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+
+        Returns
+        -------
+            None
+        """
         if label is None: label=pid
         if type(generator)==str: generator=[generator]
         if type(mixing   )==str: mixing=mixing.replace("'pid'","'"+str(pid)+"'")
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
     def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
+        """
+        Introduce a mode of direct production
+
+        Parameters
+        ----------
+        label: str
+            Label for the production mode, e.g. "Brem". Serves as key for production dict.
+            Expect to find model-specific tables under model/direct/*/label_*.txt
+        energy: str
+            Collider sqrt(S) in TeV
+        coupling_ref: float
+            Reference coupling value
+        condition: str / [str]
+            The condition specifying the production
+        masses: [float]
+            Particle masses to consider
+        scaling: float / str
+            If float, the scaling power if cross section at a given coupling estimated according
+            to its ratio to a reference coupling, with the ratio raised to the scaling power.
+            Alternatively e.g. "manual", see get_production_scaling
+
+        Returns
+        -------
+            None
+        """
         if type(condition)==str: condition=[condition]
         self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
+        """
+        Scaling factor for estimating a coupling-dependent quantity based on its ratio to a
+        reference coupling, raised to some scaling power
+
+        Parameters
+        ----------
+        key: str
+            The production dictionary key corresponding to this mode
+        mass: float
+            Particle mass, included implicitly via eval statements
+        coupling: float
+            The coupling value at which to estimate the result
+        coupling_ref: float
+            Reference coupling value
+
+        Returns
+        -------
+            The resulting factor as a float
+        """
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
             if scaling == "manual":
@@ -500,7 +924,28 @@ class Decay():
 
     def twobody_decay(self, p0, m0, m1, m2, phi, costheta):
         """
-        function that decays p0 > p1 p2 and returns p1,p2
+        Function that decays p0 -> p1 p2 and returns p1,p2
+
+        Parameters
+        ----------
+        p0: LorentzVector
+            Initial state particle 4-momentum
+        m0: float
+            Mass of the incoming particle
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        phi: float
+            Azimuthal angle
+            Must be within (-pi, pi)
+        costheta: float
+            Cosine of the polar angle
+            Must be within (-1., 1.)
+
+        Returns
+        -------
+            Boosted p1,p2 as LorentzVectors
         """
 
         #get axis of p0
@@ -536,8 +981,24 @@ class Decay():
 
     def threebody_decay_pure_phase_space(self, p0, m0, m1, m2, m3):
         """
-        function that decays p0 > p1 p2 p2 and returns p1,p2,p3
+        Function that decays p0 > p1 p2 p2 and returns p1,p2,p3
         following pure phase space
+
+        Parameters
+        ----------
+        p0: LorentzVector
+            Initial state particle 4-momentum
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        Returns
+        -------
+            Boosted p1,p2,p3 as LorentzVectors
         """
 
         p1, p2, p3 = None, None, None
@@ -603,7 +1064,26 @@ class Decay():
     ###############################
 
     def decay_in_restframe_2body(self, br, m0, m1, m2, nsample):
+        """
+        Handle to call the twobody_decay function repeatedly to form a MC sample
 
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
+        """
         # prepare output
         particles, weights = [], []
 
@@ -621,6 +1101,32 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body(self, br, coupling, m0, m1, m2, m3, nsample, integration):
+        """
+        Handle to the various integration options of 3-body decays
+
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        coupling: float
+            Coupling strength
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        integration: str
+            Specifies which 3body decay function to call
+
+        Returns
+        -------
+            List of LLP momenta as LorentzVectors and a list of weights
+        """
 
         if integration == "dq2dcosth":
             return self.decay_in_restframe_3body_dq2dcosth(br, coupling, m0, m1, m2, m3, nsample)
@@ -634,7 +1140,30 @@ class Decay():
             return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
 
     def decay_in_restframe_3body_dq2dcosth(self,br, coupling, m0, m1, m2, m3, nsample):
+        """
+        3-body decay function with integration over q^2 and cos(theta), with theta the angle to z-axis
 
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
+        """
         # prepare output
         particles, weights = [], []
 
@@ -675,6 +1204,30 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body_dq2dE(self, br, coupling, m0, m1, m2, m3, nsample):
+        """
+        3-body decay function with integration over q^2 and energy
+
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
+        """
 
         # prepare output
         particles, weights = [], []
@@ -719,6 +1272,30 @@ class Decay():
         return particles,weights
 
     def decay_in_restframe_3body_dE(self, br, coupling, m0, m1, m2, m3, nsample):
+        """
+        3-body decay function with integration over energy
+
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
+        """
 
         # prepare output
         particles, weights = [], []
@@ -752,6 +1329,32 @@ class Decay():
         return(particles, weights)
 
     def decay_in_restframe_3body_chain(self, br, coupling, m0, m1, m2, m3, mI, nsample):
+        """
+        3-body decay as a chain of 2-body decays: m0 -> m1 mI, mI -> m2 m3
+
+        Parameters
+        ----------
+        br: str / types.FunctionType
+            Branching fraction function for the considered mode
+        coupling: float
+            Coupling strength, included implicitly via br
+        m0: float
+            Initial state particle mass
+        m1: float
+            First final state particle mass
+        m2: float
+            Second final state particle mass
+        m3: float
+            Third final state particle mass
+        mI: float
+            The intermediate particle mass, from which m2 and m3 are produced
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            List of particle 4-momenta, list of weights resulting from branching fraction divided by MC sample size
+        """
 
         # prepare output
         particles, weights = [], []
@@ -813,24 +1416,37 @@ class Foresee(Utility, Decay):
     ###############################
 
     def get_decay_prob(self, pid, momentum):
+        """
+        Get decay probability for a particle
+
+        Parameters
+        ----------
+        pid: str, int
+            Particle PDG ID
+        momentum: LorentzVector
+            Particle 4-momentum
+        Returns
+        -------
+            The probability of the particle decaying in-flight as a float
+        """
 
         # return 1 when decaying promptly or 0 if negative pz.
-        if pid not in ["211","-211","321","-321","310","130"]: return 1
+        if str(pid) not in ["211","-211","321","-321","310","130"]: return 1
         if momentum.pz<0: return 0
 
         # lifetime and kinematics
-        ctau = self.ctau(pid)
+        ctau = self.ctau(str(pid))
         theta=math.atan(momentum.pt/momentum.pz)
         dbarz = ctau * momentum.pz / momentum.m
         dbart = ctau * momentum.pt / momentum.m
 
         # probability to decay in beampipe
-        if pid in ["130", "310"]:
+        if str(pid) in ["130", "310"]:
             ltan, ltas, rpipe = 140., 20., 0.05
             if (theta < 0.017/ltas): probability = 1.- np.exp(- ltan/dbarz)
             elif (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
-        if pid in ["321","-321","211","-211"]:
+        if str(pid) in ["321","-321","211","-211"]:
             ltas, rpipe = 20., 0.05
             if (theta < 0.05/ltas): probability = 1.- np.exp(- ltas/dbarz)
             else: probability = 1.- np.exp(- rpipe /dbart)
@@ -843,6 +1459,20 @@ class Foresee(Utility, Decay):
     @staticmethod
     @jit
     def boostlist(arr_particle, arr_boost):
+        """
+        Boost all 4-momenta in a list
+
+        Parameters
+        ----------
+        arr_particle: [ [float,float,float,float] , ... ]
+            Array of particle 4 momenta to be boosted
+        arr_boost: [float,float,float]
+            The amounts to boost in x,y,z directions
+
+        Returns
+        -------
+            The boosted particles in a numpy array
+        """
 
         # intialize output
         out, i = np.zeros((len(arr_particle)*len(arr_boost),2)), 0
@@ -878,6 +1508,22 @@ class Foresee(Utility, Decay):
     ###############################
 
     def get_spectrum_decays(self, mass, coupling, key):
+        """
+        Get the spectrum corresponding to enabled 2- and 3-body decay modes
+
+        Parameters
+        ----------
+        mass: float
+            The mass of the considered particle
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
+
+        Returns
+        -------
+            Momenta and weights in the lab frame as numpy arrays
+        """
 
         # load details of production channel
         pid0 = self.model.production[key]["pid0"]
@@ -899,8 +1545,8 @@ class Foresee(Utility, Decay):
         elif (self.model.production[key]["type"]=="3body") and (self.masses(pid0)<=self.masses(pid1,mass)+self.masses(pid2,mass)+mass): return [], []
 
         # load mother particle spectrum
-        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
+        filenames = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filenames,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
 
         # get sample of LLP momenta in the mother's rest frame
         if self.model.production[key]["type"] == "2body":
@@ -925,6 +1571,22 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_spectrum_mixing(self, mass, coupling, key):
+        """
+        Get the spectrum corresponding to mixing
+
+        Parameters
+        ----------
+        mass: float
+            The mass of the considered particle
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
+
+        Returns
+        -------
+            Momenta and weights in the lab frame as numpy arrays
+        """
 
         # load details of production channel
         pid0 = self.model.production[key]["pid0"]
@@ -938,8 +1600,8 @@ class Foresee(Utility, Decay):
             if mass<massrange[0] or mass>massrange[1]: return [], []
 
         # load mother particle spectrum
-        filename = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
-        momenta_mother, weights_mother = self.convert_list_to_momenta(filename,mass=self.masses(pid0))
+        filenames = [self.dirpath + "files/hadrons/"+energy+"TeV/"+gen+"/"+gen+"_"+energy+"TeV_"+pid0+".txt" for gen in generator]
+        momenta_mother, weights_mother = self.convert_list_to_momenta(filenames,mass=self.masses(pid0))
 
         # momenta
         momenta_lab = np.array([ [np.arctan(p.pt/p.pz), p.p] for p in momenta_mother])
@@ -955,7 +1617,22 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_spectrum_direct(self, mass, coupling, key):
+        """
+        Get the spectrum corresponding to direct production
 
+        Parameters
+        ----------
+        mass: float
+            The mass of the considered particle
+        coupling: float
+            Coupling strength
+        key: str
+            Production mode label
+
+        Returns
+        -------
+            Momenta and weights in the lab frame as numpy arrays
+        """
         # load details of production channel
         label = key
         energy = self.model.production[key]["energy"]
@@ -971,13 +1648,13 @@ class Foresee(Utility, Decay):
             if xmass> mass and xmass<mass1: mass1=xmass
 
         #load benchmark data
-        filename0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-        filename1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+        filenames0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
+        filenames1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
         try:
-            momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filename0,mass=mass0,nocuts=True)
-            momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filename1,mass=mass1,nocuts=True)
+            momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filenames0,mass=mass0,nocuts=True)
+            momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filenames1,mass=mass1,nocuts=True)
         except:
-            print ("did not find file:", filename0, "or", filename1)
+            print ("did not find file:", filenames0, "or", filenames1)
             return [], []
 
         #momenta
@@ -992,7 +1669,26 @@ class Foresee(Utility, Decay):
         return momenta_lab, weights_lab
 
     def get_llp_spectrum(self, mass, coupling, channels=None, do_plot=False, save_file=True):
+        """
+        Get the spectrum of LLPs
 
+        Parameters
+        ----------
+        mass: float
+            The mass of the considered particle
+        coupling: float
+            Coupling strength
+        channels: [str]
+            List of modes to consider, used as production dictionary keys
+        do_plot: bool
+            Flag whether to produce a plot based on the resulting histogram or not
+        save_file: bool
+            Flag whether to call convert_to_hist_list saving the results into a numpy file
+
+        Returns
+        -------
+            If do_plot, the output of convert_to_hist_list. Else None.
+        """
         # prepare output
         if channels is None: channels = [key for key in self.model.production.keys()]
         momenta_all, weights_all = np.array([[0.1,0.1]]), [0 ]
@@ -1044,7 +1740,37 @@ class Foresee(Utility, Decay):
             ermax=1,
             efficiency=1,
         ):
-                
+        """
+        Specify the detector configuration
+
+        Parameters
+        ----------
+        distance: float
+            Detector distance from collider central experiment interaction point
+        distance_prod: float
+            Distance where LLPs are produced if not at the collider interaction point
+        selection: str
+            Expression quantifying the selection rule
+        length: float
+            Detector length in meters, along z-direction i.e. line of sight
+        luminosity: float
+            Expected luminosity in fb^-1
+        channels: [str]
+            Decay channels to consider. Default None implies all.
+        numberdensity: float
+            The number density of target particles in the detector in m^-3
+        ermin: float
+            Minimum particle energy
+        ermax: float
+            Maximum particle energy
+        efficiency: str, float, int, types.FunctionType
+            Detector efficiency function
+
+        Returns
+        -------
+            None
+        """
+
         self.distance=distance
         self.distance_prod=distance_prod
         self.selection=selection
@@ -1057,14 +1783,14 @@ class Foresee(Utility, Decay):
         self.ermin=ermin
         self.ermax=ermax
         self.efficiency=efficiency
-        
+
         #make evaluation of selection faster
         selection = selection.replace("x.x", "x").replace("x.y", "y").replace("x.z", "z")
         selection = selection.replace("p.x", "px").replace("p.y", "py").replace("p.z", "pz")
         lambdastr_selection = f'lambda x,y,z,px,py,pz: {selection}'
         lambdafunc_selection = eval(lambdastr_selection)
         self.numbafunc_selection = jit(nopython=True)(lambdafunc_selection)
-        
+
         #make evaluation of efficiency faster
         lambdastr_efficiency = f'lambda energy: {efficiency}'
         lambdafunc_efficiency = eval(lambdastr_efficiency)
@@ -1072,6 +1798,17 @@ class Foresee(Utility, Decay):
 
 
     def event_passes(self,momentum):
+        """
+        Check if an event passes momentum criteria
+
+        Parameters
+        ----------
+        momentum: LorentzVector
+            The momentum vector to compare against the selection criteria specified for Foresee
+        Returns
+        -------
+            The result as a bool
+        """
         # obtain 3-momentum
         p=Vector3D(momentum.px,momentum.py,momentum.pz)
         # get position of
@@ -1093,6 +1830,34 @@ class Foresee(Utility, Decay):
             coup_ref = 1,
             extend_to_low_pt_scales = {},
         ):
+        """
+        The numbers of expected events in the specified detector,
+        assuming given production modes, couplings and cuts.
+
+        Parameters
+        ----------
+        mass: float
+            Particle mass
+        energy: str
+            Collider sqrt(S) in TeV
+        modes: dict
+            Production modes to consider as keys,
+            list of prediction labels (e.g. generator names) as values
+        couplings: numpy array
+            The couplings to scan over
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        preselectioncuts: str
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+        coup_ref: float
+            Reference coupling value
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
+        Returns
+
+        -------
+            Lists of couplings, ctaus, sum of output weights, output momenta, output weight array
+        """
 
         # setup different couplings to scan over
         model = self.model
@@ -1107,33 +1872,33 @@ class Foresee(Utility, Decay):
         cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
         if self.channels is None: brs = np.array([1 for coupling in couplings])
         else: brs = np.array([sum([model.get_br(channel, mass, coupling) for channel in self.channels]) for coupling in couplings])
-        
+
         # setup output arrays
         output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
-        
+
         # loop over production modes
         for key in modes.keys():
 
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
 
             # try Load Flux file
             try:
-                momenta, weights =self.convert_list_to_momenta(filename=filename, mass=mass,
+                momenta, weights =self.convert_list_to_momenta(filenames=filenames, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
                 continue
-                
+
             # filter events that pass selection
             momenta =np.array(momenta)
             position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
             momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
-   
+
             # weight of this event incl. lumi and efficiency
             weights = [w * self.numbafunc_efficiency(p[3]) * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
-            
+
             # loop over particles, and record probablity to decay in volume
             for p,w in zip(momenta, weights):
                 dbars = ctaus * p[2] / mass
@@ -1142,7 +1907,7 @@ class Foresee(Utility, Decay):
                 output_w.append(wgts)
 
             output_p += [LorentzVector(p[0],p[1],p[2],p[3]) for p in momenta]
-                
+
         # prepare results directory
         # TODO: THIS SHOULD NOT BE HERE
         dirname = self.model.modelpath+"model/results/"
@@ -1159,6 +1924,34 @@ class Foresee(Utility, Decay):
             coup_ref = 1,
             extend_to_low_pt_scales = {},
         ):
+        """
+        Get the expected number of signal events in the specified detector
+
+        Parameters
+        ----------
+        mass: float
+            Particle mass
+        energy: str
+            Collider sqrt(S) in TeV
+        modes: None, dict
+            If specified, a dictionary with production modes to consider as keys,
+            and lists of prediction labels (e.g. generator names) as values
+        couplings: numpy array
+            The couplings to scan over
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+            Relevant for non-cylindrical or off-axis detectors
+        preselectioncuts: str
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+        coup_ref: float
+            Reference coupling value
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
+
+        Returns
+        -------
+            List of couplings, umber of nsignals as numpy array, stat momenta, stat weights as numpy array
+        """
 
         # setup different couplings to scan over
         model = self.model
@@ -1170,10 +1963,10 @@ class Foresee(Utility, Decay):
 
         #setup coupling-factors
         cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
-        
+
         # setup output arrays
         output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
-        
+
         # unit conversion
         GeV2_in_invmeter2 = (5e15)**2
 
@@ -1182,25 +1975,25 @@ class Foresee(Utility, Decay):
 
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filename = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
 
             # try Load Flux file
             try:
-                momenta, weights = self.convert_list_to_momenta(
-                    filename=filename, mass=mass,
+                particles_llp,weights_llp=self.convert_list_to_momenta(
+                    filenames=filenames, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
                 continue
-                
+
             # filter events that pass selection
             momenta =np.array(momenta)
             position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
             momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
-   
+
             # weight of this event incl. lumi
             weights = [w * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
-            
+
             # loop over particles, and record interaction probablity
             for p,w in zip(momenta, weights):
                 sigmaint = np.array(model.get_sigmaints(mass, couplings, p[3], self.ermin, self.ermax))
@@ -1208,24 +2001,38 @@ class Foresee(Utility, Decay):
                 prob_int = self.length / lamdaint
                 wgts = np.outer(cfacs * prob_int, w)
                 output_w.append(wgts)
-            
+
             output_p += [LorentzVector(p[0],p[1],p[2],p[3]) for p in momenta]
 
         return couplings, sum(output_w), output_p, np.transpose(np.array(output_w), (1, 0, 2))
-                
-                
+
+
     ###############################
     #  Export Results as HEPMC File
     ###############################
 
     def decay_llp(self, momentum, pids):
+        """
+        Handle to call the appropriate decay functions (2-body, 3-body, ...) based on the length of input pids
+
+        Parameters
+        ----------
+        momentum: LorentzVector
+            Initial state particle 4-momentum
+        pids: [str] / [int]
+            Final state particle PDG IDs
+
+        Returns
+        -------
+            Lists of final state particle PDG IDs and momenta as LorentzVectors
+        """
 
         # unspecified decays - can't do anything
         if pids==None:
             return None, []
         # 1-body decays
         elif len(pids)==1:
-            p1 = LorentzVector(momentum.x,momentum.y,momentum.z,np.sqrt(momentum.p**2 + self.masses(pids[0])**2 ) )
+            p1 = LorentzVector(momentum.x,momentum.y,momentum.z,np.sqrt(momentum.p**2 + self.masses(str(pids[0]))**2 ) )
             return pids, [p1]
         # 2-body decays
         elif len(pids)==2:
@@ -1245,6 +2052,23 @@ class Foresee(Utility, Decay):
             return None, []
 
     def write_hepmc_file(self, data, filename, weightnames):
+        """
+        Store the resulting evevnts into a hepmc file
+
+        Parameters
+        ----------
+        data: [[float, LorentzVector, LorentzVector, [str] or [int], [LorentzVector]]
+            A table of events, with each event entry specified in terms of
+            weights, position, momentum, pids and finalstate particle momenta
+        filename: str
+            The name of the output file
+        weightnames: [str]
+            Labels for the weights, to be included in header line
+
+        Returns
+        -------
+            None
+        """
 
         # open file
         f= open(filename,"w")
@@ -1253,6 +2077,9 @@ class Foresee(Utility, Decay):
 
         # loop over events
         for ievent, (weights, position, momentum, pids, finalstate) in enumerate(data):
+
+            #TODO assert equal numbers of weights and weightnames
+
             # Event Info
             # int: event number / int: number of multi particle interactions [-1] / double: event scale [-1.] / double: alpha QCD [-1.] / double: alpha QED [-1.] / int: signal process id [0] / int: barcode for signal process vertex [-1] / int: number of vertices in this event [1] /  int: barcode for beam particle 1 [1] / int: barcode for beam particle 2 [0] /  int: number of entries in random state list (may be zero) [0] / long: optional list of random state integers [-] /  int: number of entries in weight list (may be zero) [0] / double: optional list of weights [-]
             f.write("E "+str(ievent)+" -1 -1. -1. -1. 0 -1 1 1 0 0 " +str(len(weightnames))+ " "+" ".join([str(w) for w in weights])+"\n")
@@ -1300,6 +2127,21 @@ class Foresee(Utility, Decay):
         f.close()
 
     def write_csv_file(self, data, filename):
+        """
+        Write results into a comma-separated-values format file
+
+        Parameters
+        ----------
+        data: [[float, LorentzVector, LorentzVector, [str] or [int], [LorentzVector]]
+            A table of events, with each event entry specified in terms of
+            weights, position, momentum, pids and finalstate particle momenta
+        filename: str
+            The name of the output file
+
+        Returns
+        -------
+            None
+        """
 
         # open file
         f= open(filename,"w")
@@ -1337,7 +2179,44 @@ class Foresee(Utility, Decay):
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
         filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
+        """
+        A handle to the file writing functions
 
+        Parameters
+        ----------
+        mass: float
+            The particle mass
+        coupling: float
+            Coupling strength
+        energy: str
+            Collider sqrt(S) in TeV
+        filename: str, None
+            The name of the output file to produce. If None, defaults to mass_coupling.suffix
+        numberevent: int
+            Number of events
+        zfront: float
+            Advance z-axis position by a constant, default 0
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+        notime: bool
+            If false, time information included in position vectors
+        t0=0, modes=None
+        return_data: bool
+            Flag whether to return data and weight information
+        extend_to_low_pt_scales: dict
+            Scales for extending to low pt, with productions as keys
+        filetype: str
+            Specify "hepmc" or "csv"
+        preselectioncuts: str
+            Expression defining cuts to be used e.g. "th<0.01"
+        weightnames:
+            Labels for the weights, written into hepmc file header
+
+        Returns
+        -------
+            If return_data: weighted raw data, baseweights, unweighted data
+            Else None
+        """
         #initialize weightnames if not defined
         model = self.model
         if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
@@ -1402,9 +2281,24 @@ class Foresee(Utility, Decay):
 
     def extract_contours(self,
             inputfile, outputfile,
-            nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
+            nevents=3,
         ):
+        """
+        Export information of contour lines into text files
 
+        Parameters
+        ----------
+        inputfile: str
+            Load data from this file
+        outputfile: str
+            Filename for result output
+        nevents: int
+            Number of events
+
+        Returns
+        -------
+            None
+        """
         # load data
         masses,couplings,nsignals=np.load(inputfile, allow_pickle=True, encoding='latin1')
         m, c = np.meshgrid(masses, couplings)
@@ -1429,6 +2323,47 @@ class Foresee(Utility, Decay):
             branchings=None, branchingsother=None,
             fs_label=14, confidence_interval=False,
         ):
+        """
+        Produce reach plot
+
+        Parameters
+        ----------
+        setups: [[str,str,str,str,float,int]]
+            List of arrays, with each array containing the filename in model/results directory,
+            label, color, linestyle, opacity alpha for filled contours and required number of events
+        bounds: [[str,str,float,float,float]]
+            List of arrays specifying the existing bounds to plot. Drawn in dark gray.
+            Each array contains:
+            filename in model/bounds directory, label, label x and y positions, label rotation
+        projections: [[str,str,str,float,float,float]]
+            List of arrays specifying other projections to include in the plot. Each array contains:
+            filename in model/bounds directory, color, label, label x and y positiond, label rotation
+        bounds2: [[str,str,float,float,float]]
+            List of arrays specifying further existing bounds to plot. Drawn in light gray.
+            Each array contains:
+            filename in model/bounds directory, label, label x and y positions, label rotation
+        grids: [[str, 2D ndarray, ndarray, str,str]]
+            List of arrays specifying any irregular grids. See scipy.interpolate.griddata
+            Each array contains:
+            label, 2D grid points, values, color, linestyle
+        title: str
+            Main title above the plot
+        linewidths: float, [float]
+            The linewidths for the contours, optionally specified case-by-case in an array.
+            See matplotlib.axes.Axes.contour
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+
+        Returns
+        -------
+            Pyplot object
+        """
 
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
@@ -1543,7 +2478,47 @@ class Foresee(Utility, Decay):
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
     ):
+        """
+        Plot the production modes
 
+        Parameters
+        ----------
+        masses: [float]
+            List of mass values to loop over
+        productions: [ dict, ... ]
+            List of dictionaries specifying each production mode, e.g.
+            {"channels": "111",
+             "color": "red",
+             "label": r"$\pi^0 \to \gamma A'$",
+             "generators": ["EPOSLHC"]},
+        condition: str
+            Add event weight to total if this condition is satisfied
+        energy: str
+            The collider sqrt(S) in TeV
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        figsize: (float,float)
+            The (horizontal,vertical) dimensions of the figure to produce
+        fs_label: float
+            Label font size
+        title: str, None
+            Main plot title
+        legendloc: BboxBase, 2-tuple, 4-tuple of floats
+            Bbox to anchor legend to
+        dolegend: bool
+            Flag whether to include legend in plot
+        ncol: int
+            Number of columns for legend formatting
+        Returns
+        -------
+            Pyplot object
+        """
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
@@ -1611,9 +2586,27 @@ class Foresee(Utility, Decay):
 
     # show 2d hadronspectrum
     def get_spectrumplot(self, pid="111", generator="EPOSLHC", energy="14", prange=[[-6, 0, 60],[ 0, 4, 40]]):
+        """
+        Plot the spectrum of a given particle type as predicted by a given generator
+
+        Parameters
+        ----------
+        pid: str
+            Plot the spectrum of particles with this PDG ID
+        generator: str
+            Plot the spectrum corresponding to this prediction
+        energy: str
+            The collider sqrt(s) in TeV
+        prange: [[float, float, float], [float,float,float]]
+            Lists of min, max and num for t (prange[0]) and p (prange[1])
+
+        Returns
+        -------
+            Pyplot object
+        """
         dirname = self.dirpath + "files/hadrons/"+energy+"TeV/"+generator+"/"
-        filename = dirname+generator+"_"+energy+"TeV_"+pid+".txt"
-        p,w = self.convert_list_to_momenta([filename],mass=self.masses(pid))
+        filenames = [dirname+generator+"_"+energy+"TeV_"+pid+".txt"]
+        p,w = self.convert_list_to_momenta(filenames,mass=self.masses(pid))
         plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
         return plt
 
@@ -1623,7 +2616,46 @@ class Foresee(Utility, Decay):
         xlabel=r"Mass [GeV]", ylabel=r"BR/g^2$",
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, xlog=True, ylog=True,
         nsample=100):
+        """
+        Plot branching fractions for given production modes
 
+        Parameters
+        ----------
+        masses: [float]
+            List of mass values to loop over
+        productions: [[str,str,str]]
+            List of lists specifying the production modes. Each entry contains:
+            key in productions dict, color, description/label
+        xlims: [float,float]
+            Lower and higher limits on the horizontal axis
+        ylims: [float,float]
+            Lower and higher limits on the vertical axis
+        xlabel: str
+            Horizontal axis label in plot
+        ylabel: str
+            Vertical axis label in plot
+        figsize: (float,float)
+            The (horizontal,vertical) dimensions of the figure to produce
+        fs_label: float
+            Label font size
+        title=None
+        legendloc: BboxBase, 2-tuple, or 4-tuple of floats
+            Bbox to anchor legend to
+        dolegend: bool
+            Flag whether to include legend in plot
+        ncol: int
+            Number of columns for legend formatting
+        xlog: bool
+            Flag whether to use logarithmic horizontal axis
+        ylog: bool
+            Flag whether to use logarithmic vertical axis
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+
+        Returns
+        -------
+            Pyplot object
+        """
         # initiate figure
         matplotlib.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=figsize)
