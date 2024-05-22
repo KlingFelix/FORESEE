@@ -1168,15 +1168,16 @@ class Foresee(Utility, Decay):
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
 
-        # setup different couplings to scan over
-        nsignals, stat_p, stat_w = [], [], []
-        for coupling in couplings:
-            nsignals.append(0.)
-            stat_p.append([])
-            stat_w.append([])
+        #setup coupling-factors
+        cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
+        
+        # setup output arrays
+        output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
+        
+        # unit conversion
+        GeV2_in_invmeter2 = (5e15)**2
 
         # loop over production modes
-        GeV2_in_invmeter2 = (5e15)**2
         for key in modes.keys():
 
             productions = model.production[key]["production"]
@@ -1185,34 +1186,34 @@ class Foresee(Utility, Decay):
 
             # try Load Flux file
             try:
-                particles_llp,weights_llp=self.convert_list_to_momenta(
+                momenta, weights = self.convert_list_to_momenta(
                     filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
-            except: continue
+            except:
+                continue
+                
+            # filter events that pass selection
+            momenta =np.array(momenta)
+            position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
+            momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
+   
+            # weight of this event incl. lumi
+            weights = [w * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
+            
+            # loop over particles, and record interaction probablity
+            for p,w in zip(momenta, weights):
+                sigmaint = np.array(model.get_sigmaints(mass, couplings, p[3], self.ermin, self.ermax))
+                lamdaint = 1. / self.numberdensity / sigmaint * GeV2_in_invmeter2
+                prob_int = self.length / lamdaint
+                wgts = np.outer(cfacs * prob_int, w)
+                output_w.append(wgts)
+            
+            output_p += [LorentzVector(p[0],p[1],p[2],p[3]) for p in momenta]
 
-            # loop over particles, and record probablity to interact in volume
-            for p,w in zip(particles_llp,weights_llp):
-                # check if event passes
-                if not self.event_passes(p): continue
-                # weight of this event
-                weight_event = w*self.luminosity*1000.
-                # get sigmaints
-                sigmaints = model.get_sigmaints(mass, couplings, p.e, self.ermin, self.ermax)
-
-                #loop over couplings
-                for icoup,coup in enumerate(couplings):
-                    #add event weight
-                    sigmaint = sigmaints[icoup]
-                    lamdaint = 1. / self.numberdensity / sigmaint * GeV2_in_invmeter2
-                    prob_int = self.length / lamdaint
-                    couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
-                    nsignals[icoup] += weight_event * couplingfac * prob_int
-                    stat_p[icoup].append(p)
-                    stat_w[icoup].append(weight_event * couplingfac * prob_int)
-
-        return couplings, np.array(nsignals), stat_p, np.array(stat_w)
-
+        return couplings, sum(output_w), output_p, np.transpose(np.array(output_w), (1, 0, 2))
+                
+                
     ###############################
     #  Export Results as HEPMC File
     ###############################
