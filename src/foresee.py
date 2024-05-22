@@ -1979,7 +1979,7 @@ class Foresee(Utility, Decay):
 
             # try Load Flux file
             try:
-                particles_llp,weights_llp=self.convert_list_to_momenta(
+                momenta, weights=self.convert_list_to_momenta(
                     filenames=filenames, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
