@@ -391,7 +391,7 @@ class Utility():
         ax.set_ylim(pmin, pmax)
         return plt
 
-    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, do_return=False, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
+    def convert_to_hist_list(self,momenta,weights, do_plot=False, filename=None, prange=[[-5, 0, 100],[ 0, 4, 80]], vmin=None, vmax=None):
         """
         Convert list of momenta to 2D histogram, and plot
         
@@ -405,7 +405,6 @@ class Utility():
             Flag whether to produce a spectrum plot based on the resulting lists or not
         filename: str / None
             Output filename for saving results
-        do_return: FIXME redundant?
         prange: [[float,float,float],[float,float,float]]
             Lists of min, max and num for t (prange[0]) and p (prange[1])
         vmin: float
@@ -886,7 +885,8 @@ class Model(Utility):
         ----------
         key: str
             The production dictionary key corresponding to this mode
-        mass: FIXME redundant?
+        mass: float
+            Particle mass, included implicitly via eval statements
         coupling: float
             The coupling value at which to estimate the result
         coupling_ref: float
@@ -1147,7 +1147,8 @@ class Decay():
         ----------
         br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: FIXME redundant?
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
         m0: float
             Initial state particle mass
         m1: float
@@ -1210,7 +1211,8 @@ class Decay():
         ----------
         br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: FIXME redundant?
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
         m0: float
             Initial state particle mass
         m1: float
@@ -1277,7 +1279,8 @@ class Decay():
         ----------
         br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: FIXME redundant?
+        coupling: float
+            Coupling strength, included implicitly via eval(br)
         m0: float
             Initial state particle mass
         m1: float
@@ -1333,7 +1336,8 @@ class Decay():
         ----------
         br: str / types.FunctionType
             Branching fraction function for the considered mode
-        coupling: FIXME redundant?
+        coupling: float
+            Coupling strength, included implicitly via br
         m0: float
             Initial state particle mass
         m1: float
@@ -2028,7 +2032,7 @@ class Foresee(Utility, Decay):
         ----------
         momentum: LorentzVector
             Initial state particle 4-momentum
-        pids: [str], [int]
+        pids: [str] / [int]
             Final state particle PDG IDs
         
         Returns
@@ -2290,7 +2294,7 @@ class Foresee(Utility, Decay):
 
     def extract_contours(self,
             inputfile, outputfile,
-            nevents=3, xlims=[0.01,1],ylims=[10**-6,10**-3],
+            nevents=3,
         ):
         """
         Export information of contour lines into text files
@@ -2303,10 +2307,6 @@ class Foresee(Utility, Decay):
             Filename for result output
         nevents: int
             Number of events
-        xlims: [float,float]  FIXME redundant?
-            Lower and higher limits on the horizontal axis
-        ylims: [float,float]  FIXME redundant?
-            Lower and higher limits on the vertical axis
 
         Returns
         -------
