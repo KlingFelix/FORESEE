@@ -1185,36 +1185,43 @@ class HeavyNeutralLepton(Utility):
         coupling =  (self.vcoupling['11'],self.vcoupling['13'],self.vcoupling['15'])
 
         bounds_100 = [
-     ['bounds_100/bounds_atlas_2022.txt'  , 'Atlas \n (2022)'        , 6.05   , 0.00035  ,  -35 ], 
-     ['bounds_100/bounds_charm.txt'       , 'CHARM'                  , 0.8  , 0.00019    , -35], 
-     ['bounds_100/bounds_bebc_barouki.txt', 'BEBC \n (Barouki et al)', 1.114 , 0.000055 ,  -15 ], 
-    ['bounds_100/bounds_belle.txt'       , 'Belle'                  , 1.0 , 0.005  ,  -20 ], 
-    ['bounds_100/bounds_delphi_long.txt' , 'Delphi \n (long)'       , 2.17 , 0.0028   ,  -27 ], 
-     ['bounds_100/bounds_t2k.txt'         , 'T2K'                    , 0.45 , 2.6e-05 ,  50], 
-     ['bounds_100/bounds_cosmo.txt'       , 'BBN'                    , 0.38  , 1.3e-5 , -40], 
-     ['bounds_100/bounds_cms_2022.txt'    , 'CMS \n (2022)'          , 6.0   , 0.001   , -35], 
-     ['bounds_100/bounds_pienu_2017.txt'  , 'PIENU \n (2017)'        , 0.117, 0.0001  ,  75], 
-     ['bounds_100/bounds_na62.txt'        , 'NA62'                   , 0.17 , 4.0e-05 ,   -15]
-    ]
+        ['bounds_100/bounds_cosmo.txt'   , 'BBN'        , 0.6    ,2*10**(-5)*.5,  -50 ],
+        ['bounds_100/bounds_pienu.txt'   , 'PIENU'      , 1e-1   ,0.000316*0.3 ,  0   ],
+        ['bounds_100/bounds_triumf.txt'  , 'Triumf'     , 1e-1   ,0.000316     ,  0   ],
+        ['bounds_100/bounds_t2k.txt'     , 'T2K'        , 4.3e-1 ,0.000141     ,  -90 ],
+        ['bounds_100/bounds_na62.txt'    , 'NA62'       , 0.2    ,5e-5         ,  0   ],
+        ['bounds_100/bounds_charm.txt'   , 'CHARM'      , 2.16   ,0.000447     ,  90  ],
+        ['bounds_100/bounds_bebc.txt'    , 'BEBC'       , 1.1    ,0.00026      ,  0   ],
+        ['bounds_100/bounds_kenu.txt'    , 'KENU'       , 2.5e-1 ,0.000224*.8  ,  0   ],
+        ['bounds_100/bounds_belle.txt'   , 'BELLE'      , 1.3    ,0.0141*.3    , -15  ],
+        ['bounds_100/bounds_delphi.txt'  , 'DELPHI'     , 5e-1*2 ,0.01*.6      , -20  ],
+        ['bounds_100/bounds_atlas.txt'   , 'Atlas'      , 3      ,0.00141      , 0    ]
+        ]
+
         bounds_010 = [
-    ['bounds_010/bounds_microboone_higgs.txt', r'$\mu$BooNe'    , 0.144, 0.00038   ,-50],
-    ['bounds_010/bounds_t2k.txt'             , 'T2K'            , 0.30, 3.5e-05,-50],
-    ['bounds_010/bounds_cosmo.txt'           , 'BBN'            , 0.41, 1.1e-05  ,-40],
-    ['bounds_010/bounds_nutev.txt'           , 'NuTeV'          , 0.765, 0.00019   ,-30],
-    ['bounds_010/bounds_bebc.txt'            , 'BEBC'           , .9, 0.000374   ,-40],
-    ['bounds_010/bounds_na62.txt'            , 'NA62'           , 0.26, 0.000151   ,0  ],
-    ['bounds_010/bounds_cms_2022.txt'        , 'CMS \n (2022)'  , 5.0  , 0.000303   ,-30],
-    ['bounds_010/bounds_na3.txt'             , 'NA3'            , 1.26, 0.0041    ,-40],
-]
+        ['bounds_010/bounds_cosmo.txt'     , 'BBN'         , 0.6     ,2*10**(-5)*.5,  -50],
+        ['bounds_010/bounds_nutev.txt'     , 'NuTeV'       , 1.3     ,0.000173     ,0    ],
+        ['bounds_010/bounds_charm.txt'     , 'CHARM'       , 4e-1    ,0.00141*0.4  ,-30  ],
+        ['bounds_010/bounds_bebc.txt'      , 'BEBC'        , 4e-1    ,0.00141*1.2  ,-30  ],
+        ['bounds_010/bounds_na3.txt'       , 'NA3'         , 1.6*.8  ,0.00316      ,0    ],
+        ['bounds_010/bounds_na62.txt'      , 'NA62'        , 3e-1*1.3,0.000141*2   ,90   ],
+        ['bounds_010/bounds_t2k.txt'       , 'T2K'         , .2      ,0.000316     ,-20  ],
+        ['bounds_010/bounds_microboone.txt', r'$\mu$BooNE' , 0.144   , 0.000738*.8 ,-36  ],
+        ['bounds_010/bounds_cms.txt'       , 'CMS'         , 2.5     ,0.00173*.8   ,-20  ],
+        ['bounds_010/bounds_atlas.txt'     , 'Atlas'       , 2.88    , 0.00425     ,-20  ],
+        ['bounds_010/bounds_delphi.txt'    , 'Delphi'      , 7*.8    ,3e-3         ,0    ]
+        ]
 
         bounds_001 = [
-    ['bounds_001/bounds_delphi_short.txt', 'Delphi \n (short)'       , 5.8, 0.0023  ,0  ],
-    ['bounds_001/bounds_cosmo.txt'       , 'BBN'                     , 0.14, 1.5e-04,-70],
-    ['bounds_001/bounds_bebc_barouki.txt', 'BEBC \n (Barouki et al.)', 0.41, 0.00048,-45 ],
-    ['bounds_001/bounds_charm_2021.txt'  , 'CHARM \n (2021)'         , 0.52, 0.0017 , -40],
-    ['bounds_001/bounds_delphi_long.txt' , 'Delphi \n (long)'        , 2.162, 0.00236 ,-30 ],
-    ['bounds_001/bounds_babar_2022.txt'  , 'BaBar'                   , 0.857, 0.00377 ,-70 ],
-    ]
+        ['bounds_001/bounds_cosmo.txt'        , 'BBN'               ,1.1e-1    ,0.00264     ,-20 ],
+        ['bounds_001/bounds_bebc.txt'         , 'BEBC'              , 1        ,0.000775    ,0   ],
+        ['bounds_001/bounds_charm.txt'        , 'CHARM'             , 1.2e-1   ,0.00632*1.8 , -25],
+        ['bounds_001/bounds_delphi_long.txt'  , 'Delphi \n (long)'  , 2        ,0.003*.8    ,0   ],
+        ['bounds_001/bounds_delphi_short.txt' , 'Delphi \n (short)' , 3.167    , 0.015      ,-40 ],
+        ['bounds_001/bounds_babar.txt'        , 'BaBar'             , 1.34*.7  ,0.00224     ,90  ],
+        ['bounds_001/bounds_argoneut.txt'     , 'Argoneut'          , 3.4e-1   ,0.0224*1.3  ,-49 ]
+        ]
+
         if coupling == (1,0,0): return bounds_100
         elif coupling ==  (0,1,0): return bounds_010
         elif coupling ==  (0,0,1): return bounds_001
