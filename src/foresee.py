@@ -1894,7 +1894,9 @@ class Foresee(Utility, Decay):
             # filter events that pass selection
             momenta =np.array(momenta)
             position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
-            momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
+            filtered = [(p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2])]
+            if not filtered: continue
+            momenta, weights = zip(*filtered)
 
             # weight of this event incl. lumi and efficiency
             weights = [w * self.numbafunc_efficiency(p[3]) * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
@@ -1989,7 +1991,9 @@ class Foresee(Utility, Decay):
             # filter events that pass selection
             momenta =np.array(momenta)
             position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
-            momenta, weights = zip(*((p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2]) ))
+            filtered = [(p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2])]
+            if not filtered: continue
+            momenta, weights = zip(*filtered)
 
             # weight of this event incl. lumi
             weights = [w * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
