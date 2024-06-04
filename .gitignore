@@ -4,6 +4,9 @@
 **/model/results
 **/model/LLP_spectra
 **/Decay Data
+**/model/br
+**/model/ctau
+**/model/results
 
 #old files
 oldfiles/
