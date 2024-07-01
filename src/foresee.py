@@ -111,7 +111,7 @@ class Utility():
         except:
             width = 0.0
             print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
-        return width*1e-6 if width!=None else 0.0
+        return width*1e-3 if width!=None else 0.0
 
     ###############################
     #  Import Function
@@ -615,19 +615,19 @@ class Model(Utility):
         """
         data=self.readfile(self.modelpath+filename).T
         self.ctau_coupling_ref=None
-        try:
-            self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-        except:
-            nx = len(np.unique(data[0]))
-            ny = int(len(data[0])/nx)
-            self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
+        #try:
+        #    self.ctau_function=interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+        #except:
+        nx = len(np.unique(data[0]))
+        ny = int(len(data[0])/nx)
+        self.ctau_function=interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
 
     def get_ctau(self,mass,coupling):
         if self.ctau_function==None:
             print ("No lifetime specified. You need to specify lifetime first!")
             return 10**10
         elif self.ctau_coupling_ref is None:
-            return self.ctau_function(mass,coupling)
+            return self.ctau_function(mass,coupling)[0]
         else:
             return self.ctau_function(mass) / coupling**2 *self.ctau_coupling_ref**2
 
@@ -685,12 +685,12 @@ class Model(Utility):
         if finalstates==None: finalstates=[None for _ in modes]
         for channel, filename, finalstate in zip(modes, filenames, finalstates):
             data = self.readfile(self.modelpath+filename).T
-            try:
-                function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
-            except:
-                nx = len(np.unique(data[0]))
-                ny = int(len(data[0])/nx)
-                function = interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
+            #try:
+            #    function = interpolate.interp2d(data[0], data[1], data[2], kind="linear",fill_value="extrapolate")
+            #except:
+            nx = len(np.unique(data[0]))
+            ny = int(len(data[0])/nx)
+            function = interpolate.interp2d(data[0].reshape(nx,ny).T[0], data[1].reshape(nx,ny)[0], data[2].reshape(nx,ny).T, kind="linear",fill_value="extrapolate")
             self.br_functions[channel] = function
             self.br_finalstate[channel] = finalstate
 
@@ -720,7 +720,7 @@ class Model(Utility):
         elif self.br_mode == "1D":
             return self.br_functions[mode](mass)
         elif self.br_mode == "2D":
-            return self.br_functions[mode](mass, coupling)
+            return self.br_functions[mode](mass, coupling)[0]
 
 
     ###############################
@@ -899,7 +899,7 @@ class Model(Utility):
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
             if scaling == "manual":
-                return eval(self.production[key]["br"], {"coupling":coupling})/eval(self.production[key]["br"], {"coupling":coupling_ref})
+                return eval(self.production[key]["br"], {"np":np, "mass":mass, "coupling":coupling})/eval(self.production[key]["br"], {"np":np, "mass":mass, "coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key]["type"] == "mixing":
             if scaling == "manual":
@@ -1872,7 +1872,7 @@ class Foresee(Utility, Decay):
         cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
         if self.channels is None: brs = np.array([1 for coupling in couplings])
         else: brs = np.array([sum([model.get_br(channel, mass, coupling) for channel in self.channels]) for coupling in couplings])
-
+        
         # setup output arrays
         output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
 
