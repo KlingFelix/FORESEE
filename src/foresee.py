@@ -899,7 +899,7 @@ class Model(Utility):
         scaling = self.production[key]["scaling"]
         if self.production[key]["type"] in ["2body","3body"]:
             if scaling == "manual":
-                return eval(self.production[key]["br"], {"np":np, "mass":mass, "coupling":coupling})/eval(self.production[key]["br"], {"np":np, "mass":mass, "coupling":coupling_ref})
+                return eval(self.production[key]["br"], {"self":self, "np":np, "mass":mass, "coupling":coupling})/eval(self.production[key]["br"], {"self":self, "np":np, "mass":mass, "coupling":coupling_ref})
             else: return (coupling/coupling_ref)**scaling
         if self.production[key]["type"] == "mixing":
             if scaling == "manual":
@@ -1553,7 +1553,7 @@ class Foresee(Utility, Decay):
             m0, m1, m2 = self.masses(pid0), self.masses(pid1,mass), mass
             momenta_llp, weights_llp = self.decay_in_restframe_2body(eval(br), m0, m1, m2, nsample)
         if self.model.production[key]["type"] == "3body":
-            m0, m1, m2, m3= self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
+            m0, m1, m2, m3 = self.masses(pid0), self.masses(pid1,mass), self.masses(pid2,mass), mass
             momenta_llp, weights_llp = self.decay_in_restframe_3body(br, coupling, m0, m1, m2, m3, nsample, integration)
 
         # boost
@@ -1867,9 +1867,8 @@ class Foresee(Utility, Decay):
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
 
-        #setup ctau, coupling-factors, branchinf fractions
+        #setup ctau, branchinf fractions
         ctaus = np.array([model.get_ctau(mass, coupling) for coupling in couplings])
-        cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
         if self.channels is None: brs = np.array([1 for coupling in couplings])
         else: brs = np.array([sum([model.get_br(channel, mass, coupling) for channel in self.channels]) for coupling in couplings])
         
@@ -1890,6 +1889,9 @@ class Foresee(Utility, Decay):
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
                 continue
+                
+            # get coupling factors
+            cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
 
             # filter events that pass selection
             momenta =np.array(momenta)
@@ -1963,9 +1965,6 @@ class Foresee(Utility, Decay):
         nprods = max([len(modes[key]) for key in modes.keys()])
         for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
 
-        #setup coupling-factors
-        cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
-
         # setup output arrays
         output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
 
@@ -1987,6 +1986,9 @@ class Foresee(Utility, Decay):
                     extend_to_low_pt_scale=extend_to_low_pt_scales[key])
             except:
                 continue
+                
+            #setup coupling-factors
+            cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
 
             # filter events that pass selection
             momenta =np.array(momenta)
