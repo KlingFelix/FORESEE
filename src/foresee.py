@@ -424,7 +424,7 @@ class Utility():
             px = np.array([mom.p for mom in momenta])
         elif type(momenta) == np.ndarray and len(momenta[0]) == 4:
             tx = np.array([math.pi/2 if zp==0 else np.arctan(np.sqrt(xp**2+yp**2)/zp) for xp,yp,zp,_ in momenta])
-            px =  np.array([np.sqrt(xp**2+yp**2+zp) for xp,yp,zp,_ in momenta])
+            px = np.array([np.sqrt(xp**2+yp**2+zp**2) for xp,yp,zp,_ in momenta])
         elif type(momenta) == np.ndarray and len(momenta[0]) == 2:
             tx, px = momenta.T
         else:
