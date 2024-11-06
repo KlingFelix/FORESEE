@@ -1135,6 +1135,7 @@ class Decay():
         if integration == "dE":
             return self.decay_in_restframe_3body_dE(br, coupling, m0, m1, m2, m3, nsample)
         if integration == "chain_decay":
+            mass = m3
             mI = eval(br[1])
             if (m0 <= m1+mI) or (mI<m2+m3): return [LorentzVector(0,0,0,m0)], [0]
             return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
