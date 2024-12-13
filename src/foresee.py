@@ -424,7 +424,7 @@ class Utility():
             px = np.array([mom.p for mom in momenta])
         elif type(momenta) == np.ndarray and len(momenta[0]) == 4:
             tx = np.array([math.pi/2 if zp==0 else np.arctan(np.sqrt(xp**2+yp**2)/zp) for xp,yp,zp,_ in momenta])
-            px =  np.array([np.sqrt(xp**2+yp**2+zp) for xp,yp,zp,_ in momenta])
+            px = np.array([np.sqrt(xp**2+yp**2+zp**2) for xp,yp,zp,_ in momenta])
         elif type(momenta) == np.ndarray and len(momenta[0]) == 2:
             tx, px = momenta.T
         else:
@@ -1135,6 +1135,7 @@ class Decay():
         if integration == "dE":
             return self.decay_in_restframe_3body_dE(br, coupling, m0, m1, m2, m3, nsample)
         if integration == "chain_decay":
+            mass = m3
             mI = eval(br[1])
             if (m0 <= m1+mI) or (mI<m2+m3): return [LorentzVector(0,0,0,m0)], [0]
             return self.decay_in_restframe_3body_chain(eval(br[0]), coupling, m0, m1, m2, m3, mI, nsample)
