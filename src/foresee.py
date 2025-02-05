@@ -1830,6 +1830,7 @@ class Foresee(Utility, Decay):
             preselectioncuts = "th<0.01",
             coup_ref = 1,
             extend_to_low_pt_scales = {},
+            delta=None, mA_mChi1=None,
         ):
         """
         The numbers of expected events in the specified detector,
@@ -1881,8 +1882,10 @@ class Foresee(Utility, Decay):
 
             productions = model.production[key]["production"]
             dirname = self.model.modelpath+"model/LLP_spectra/"
-            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
-
+            if delta is None and mA_mChi1 is None:
+                filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            else:
+                filenames = [dirname+energy+"TeV_"+key+"_"+production+"_delta_"+str(delta)+"_mA_mChi1_"+str(mA_mChi1)+"_m_"+str(mass)+".npy" for production in modes[key]]
             # try Load Flux file
             try:
                 momenta, weights =self.convert_list_to_momenta(filenames=filenames, mass=mass,
@@ -2185,7 +2188,7 @@ class Foresee(Utility, Decay):
 
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
-        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
+        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None, delta=None, mA_mChi1=None):
         """
         A handle to the file writing functions
 
@@ -2232,7 +2235,7 @@ class Foresee(Utility, Decay):
         if weightnames is None: weightnames = modes[list(modes.keys())[0]]
 
         # get weighted sample of LLPs
-        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales, preselectioncuts=preselectioncuts)
+        _, _, _, weighted_raw_data, weights = self.get_events(mass=mass, energy=energy, couplings = [coupling], nsample=nsample, modes=modes, extend_to_low_pt_scales=extend_to_low_pt_scales, preselectioncuts=preselectioncuts, delta=delta, mA_mChi1=mA_mChi1)
         baseweights = weights[0].T[0]
 
         # unweight sample
@@ -2484,6 +2487,7 @@ class Foresee(Utility, Decay):
         xlims=[0.01,1],ylims=[10**-6,10**-3],
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
         figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+        delta=None, mA_mChi1=None,
     ):
         """
         Plot the production modes
@@ -2561,7 +2565,11 @@ class Foresee(Utility, Decay):
                     # loop over channels
                     total = 0
                     for channel in channels:
-                        filename = dirname+energy+"TeV_"+channel+"_"+generator+"_m_"+str(mass)+".npy"
+#                        filename = dirname+energy+"TeV_"+channel+"_"+generator+"_m_"+str(mass)+".npy"
+                        if delta is None and mA_mChi1 is None:
+                            filename = dirname+energy+"TeV_"+channel+"_"+generator+"_m_"+str(mass)+".npy"
+                        else:
+                            filename = dirname+energy+"TeV_"+channel+"_"+generator+"_delta_"+str(delta)+"_mA_mChi1_"+str(mA_mChi1)+"_m_"+str(mass)+".npy"
                         try:
                             data = np.load(filename)
                             for logth, logp, w in data.T:
