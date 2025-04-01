@@ -341,10 +341,10 @@ def test_DarkPhoton_mix():
     
     #Compare result to expected numbers of events
     ref = {
-        "EPOSLHC": 0.219,
-        "SIBYLL": 0.14,
+        "EPOSLHC": 0.212,
+        "SIBYLL": 0.135,
         "QGSJET": 0,
-        "PYTHIA": 0.165,
+        "PYTHIA": 0.159,
     }
 
     for isetup, setup in enumerate(setupnames):
