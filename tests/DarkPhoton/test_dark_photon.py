@@ -42,7 +42,7 @@ def test_DarkPhoton_pion():
     os.symlink(src = src_path + '../Models/' + modelname + '/model/br',\
                dst = 'model/br',\
                target_is_directory=True)
-    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau.txt',\
+    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau_DarkCast.txt',\
                dst = 'model/ctau.txt',\
                target_is_directory=False)
 
@@ -118,18 +118,18 @@ def test_DarkPhoton_eta():
         os.unlink('model/br')
         os.unlink('model/ctau.txt')
     except: pass
-    os.symlink(src = src_path + '../Models/' + modelname + '/model/br',\
+    os.symlink(src = src_path + '../Models/' + modelname + '/model/br_DarkCast',\
                dst = 'model/br',\
                target_is_directory=True)
-    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau.txt',\
+    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau_DarkCast.txt',\
                dst = 'model/ctau.txt',\
                target_is_directory=False)
 
     model.set_ctau_1d(filename="model/ctau.txt",)
-    decay_modes = ["e_e", "mu_mu", "pi+_pi-", "pi0_gamma", "pi+_pi-_pi0", "K_K"]
+    decay_modes =  ["e_e", "mu_mu", "pi+_pi-", "pi0_gamma", "pi+_pi-_pi0", "K_K"]
     model.set_br_1d(
         modes = decay_modes,
-        finalstates=[[11,-11], [13,-13], [221,-211], [111,22], None, [321,-321]],
+        finalstates=[[11,-11], [13,-13], [211,-211], [111,22], None, [321,-321]],
         filenames=["model/br/"+mode+".txt" for mode in decay_modes],
     )
     
@@ -198,7 +198,7 @@ def test_DarkPhoton_brem():
     energy = "13.6"
     model = Model(modelname, path="./")
     model.add_production_direct(
-        label = "Brem",
+        label = "Brem_FWW",
         energy = energy,
         condition = ["p.pt<1", "p.pt<2", "p.pt<0.5"],
         coupling_ref=1,
@@ -218,7 +218,7 @@ def test_DarkPhoton_brem():
     os.symlink(src = src_path + '../Models/' + modelname + '/model/br',\
                dst = 'model/br',\
                target_is_directory=True)
-    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau.txt',\
+    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau_DarkCast.txt',\
                dst = 'model/ctau.txt',\
                target_is_directory=False)
     os.symlink(src = src_path + '../Models/' + modelname + '/model/direct',\
@@ -241,7 +241,7 @@ def test_DarkPhoton_brem():
         luminosity=300,
     )
     setupnames = ["p.pt<1", "p.pt<2", "p.pt<0.5"]
-    modes = {'Brem':  ["p.pt<1", "p.pt<2", "p.pt<0.5"]}
+    modes = {'Brem_FWW':  ["p.pt<1", "p.pt<2", "p.pt<0.5"]}
     
     #Find LLP spectra, save under model dir
     foresee.get_llp_spectrum(mass=mass, coupling=1, do_plot=False)
@@ -299,7 +299,7 @@ def test_DarkPhoton_mix():
     os.symlink(src = src_path + '../Models/' + modelname + '/model/br',\
                dst = 'model/br',\
                target_is_directory=True)
-    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau.txt',\
+    os.symlink(src = src_path + '../Models/' + modelname + '/model/ctau_DarkCast.txt',\
                dst = 'model/ctau.txt',\
                target_is_directory=False)
 
