@@ -847,7 +847,7 @@ class Model(Utility):
         if type(mixing   )==str: mixing=mixing.replace("'pid'","'"+str(pid)+"'")
         self.production[label]= {"type": "mixing", "pid0": pid, "mixing": mixing, "production": generator, "energy": energy, "massrange": massrange, "scaling": scaling}
 
-    def add_production_direct(self, label, energy, coupling_ref=1, condition="True", masses=None, scaling=2):
+    def add_production_direct(self, label, energy, configuration=None, coupling_ref=1, condition="True", masses=None, scaling=2):
         """
         Introduce a mode of direct production
 
@@ -873,8 +873,14 @@ class Model(Utility):
         -------
             None
         """
-        if type(condition)==str: condition=[condition]
-        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": condition}
+        if condition == None: condition='1'
+        if type(condition) in [float, int]: condition=str(condition)
+        if type(condition) == str: condition=[condition]
+        if configuration == None: configuration=label
+        if type(configuration)==str: configuration=[configuration]
+        if (len(configuration)>1) and (len(condition)>1): print ("You can only have multiple conditions OR multiple configurations!")
+        production = condition if len(condition)>1 else configuration
+        self.production[label]= {"type": "direct", "energy": energy, "masses": masses, "scaling": scaling, "coupling_ref": coupling_ref, "production": production, "configuration": configuration, "condition": condition}
 
     def get_production_scaling(self, key, mass, coupling, coupling_ref):
         """
@@ -1638,7 +1644,8 @@ class Foresee(Utility, Decay):
         label = key
         energy = self.model.production[key]["energy"]
         coupling_ref =  self.model.production[key]["coupling_ref"]
-        condition =  self.model.production[key]["production"]
+        condition =  self.model.production[key]["condition"]
+        configuration =  self.model.production[key]["configuration"]
         masses =  self.model.production[key]["masses"]
 
         #determined mass benchmark below / above mass
@@ -1649,8 +1656,8 @@ class Foresee(Utility, Decay):
             if xmass> mass and xmass<mass1: mass1=xmass
 
         #load benchmark data
-        filenames0=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass0)+".txt"
-        filenames1=self.model.modelpath+"model/direct/"+energy+"TeV/"+label+"_"+energy+"TeV_"+str(mass1)+".txt"
+        filenames0=[self.model.modelpath+"model/direct/"+energy+"TeV/"+config+"_"+energy+"TeV_"+str(mass0)+".txt" for config in configuration]
+        filenames1=[self.model.modelpath+"model/direct/"+energy+"TeV/"+config+"_"+energy+"TeV_"+str(mass1)+".txt" for config in configuration]
         try:
             momenta_llp0, weights_llp0 = self.convert_list_to_momenta(filenames0,mass=mass0,nocuts=True)
             momenta_llp1, weights_llp1 = self.convert_list_to_momenta(filenames1,mass=mass1,nocuts=True)
@@ -1660,11 +1667,17 @@ class Foresee(Utility, Decay):
 
         #momenta
         momenta_lab = np.array([[np.arctan(p.pt/p.pz), p.p] for p in momenta_llp0])
-
+        
         # weights
-        factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
-        weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0, weights_llp1)]
-        weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
+        if len(condition)>1:
+            factors = np.array([[0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0] for c in condition]).T
+            weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0.T[0], weights_llp1.T[0])]
+            weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)])
+        else:
+            c = condition[0]
+            factors = np.array([0 if (c is not None) and (eval(c)==0) else 1 if c is None else eval(c) for p in momenta_llp0])
+            weights_llp = [ w_lpp0 + (w_lpp1-w_lpp0)/(mass1-mass0)*(mass-mass0) for  w_lpp0, w_lpp1 in zip(weights_llp0.T, weights_llp1.T)]
+            weights_lab = np.array([w*coupling**2/coupling_ref**2*factor for w,factor in zip(weights_llp, factors)]).T
 
         #return
         return momenta_lab, weights_lab
