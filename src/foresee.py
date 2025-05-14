@@ -460,6 +460,8 @@ class Model(Utility):
         self.model_name = name
         self.dsigma_der_coupling_ref = None
         self.dsigma_der = None
+        self.dEdx_coupling_ref= None
+        self.dEdx = None
         self.recoil_max = "1e10"
         self.lifetime_coupling_ref = None
         self.lifetime_function = None
@@ -576,6 +578,25 @@ class Model(Utility):
             sigmaint_ref = self.get_sigmaint(mass, self.dsigma_der_coupling_ref, energy, ermin, ermax)
             sigmaints = [ sigmaint_ref * coupling**2 / self.dsigma_der_coupling_ref**2  for coupling in couplings]
             return sigmaints
+            
+    ###############################
+    #  Ionization
+    ###############################
+    
+    def set_dEdx(self, dEdx, coupling_ref=1, K=0.307075):
+        self.dEdx = dEdx
+        self.dEdx_coupling_ref = coupling_ref
+        self.K = K
+        
+    def get_dEdx_ref(self, mass, coupling, energy):
+        K = self.K
+        return eval(self.dEdx)
+        
+    def get_dEdx(self, mass, couplings, energy):
+        K = self.K
+        dEdx_ref = self.get_dEdx_ref(mass, self.dEdx_coupling_ref, energy)
+        dEdx = [ dEdx_ref * coupling**2 / self.dEdx_coupling_ref**2  for coupling in couplings]
+        return dEdx
 
     ###############################
     #  Lifetime
@@ -1753,6 +1774,11 @@ class Foresee(Utility, Decay):
             ermin=0.03,
             ermax=1,
             efficiency=1,
+            photon_yield = 17.4e+3*0.64,
+            n_layer = 4,
+            length_layer = 100,
+            efficiency_layer = 0.1,
+            density_layer=1.023,
         ):
         """
         Specify the detector configuration
@@ -1797,6 +1823,13 @@ class Foresee(Utility, Decay):
         self.ermin=ermin
         self.ermax=ermax
         self.efficiency=efficiency
+        
+        # for MCPs only
+        self.photon_yield=photon_yield
+        self.n_layer=n_layer
+        self.length_layer=length_layer
+        self.efficiency_layer=efficiency_layer
+        self.density_layer=density_layer
 
         #make evaluation of selection faster
         selection = selection.replace("x.x", "x").replace("x.y", "y").replace("x.z", "z")
@@ -2027,6 +2060,93 @@ class Foresee(Utility, Decay):
         return couplings, sum(output_w), output_p, np.transpose(np.array(output_w), (1, 0, 2))
 
 
+    def get_events_ionisation(self, mass, energy,
+            modes=None,
+            couplings = np.logspace(-5,0,51),
+            nsample=1,
+            preselectioncuts="th<0.01 and p>100",
+            coup_ref=1,
+        ):
+        """
+        Get the expected number of signal events in the specified detector
+
+        Parameters
+        ----------
+        mass: float
+            Particle mass
+        energy: str
+            Collider sqrt(S) in TeV
+        modes: None, dict
+            If specified, a dictionary with production modes to consider as keys,
+            and lists of prediction labels (e.g. generator names) as values
+        couplings: numpy array
+            The couplings to scan over
+        nsample: int
+            Number of Monte Carlo samples to add into particles, and to divide weights by
+            Relevant for non-cylindrical or off-axis detectors
+        preselectioncuts: str
+            Expression defining cuts to be used e.g. "th<0.01 and p>100"
+        coup_ref: float
+            Reference coupling value
+
+        Returns
+        -------
+            List of couplings, number of nsignals as numpy array, stat momenta, stat weights as numpy array
+        """
+        
+        # setup different couplings to scan over
+        model = self.model
+        if modes is None: modes = {key: model.production[key]["production"] for key in model.production.keys()}
+        nprods = max([len(modes[key]) for key in modes.keys()])
+        for key in modes.keys(): modes[key] += [modes[key][0]] * (nprods - len(modes[key]))
+
+        # setup output arrays
+        output_p, output_w = [LorentzVector(0,0,0,0)], [np.array([[0 for _ in range(nprods)] for _ in couplings])]
+
+        # loop over production modes
+        for key in modes.keys():
+
+            productions = model.production[key]["production"]
+            dirname = self.model.modelpath+"model/LLP_spectra/"
+            filenames = [dirname+energy+"TeV_"+key+"_"+production+"_m_"+str(mass)+".npy" for production in modes[key]]
+            
+            # try Load Flux file
+            try:
+                momenta, weights=self.convert_list_to_momenta(
+                    filenames=filenames, mass=mass,
+                    filetype="npy", nsample=nsample, preselectioncut=preselectioncuts,
+                    extend_to_low_pt_scale=None)
+            except:
+                continue
+                
+            #setup coupling-factors
+            cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
+
+            # filter events that pass selection
+            momenta =np.array(momenta)
+            position = [ [self.distance/p[2]*p[0], self.distance/p[2]*p[1], self.distance] for p in momenta]
+            filtered = [(p, w) for p,x,w in zip(momenta, position, weights) if self.numbafunc_selection(x[0],x[1],x[2],p[0],p[1],p[2])]
+            if not filtered: continue
+            momenta, weights = zip(*filtered)
+
+            # weight of this event incl. lumi
+            weights = [w * self.luminosity * 1000 for (p,w) in zip(momenta, weights)]
+
+            #factor
+            factor = self.density_layer * self.efficiency_layer * self.photon_yield * self.length_layer
+            
+            # loop over particles, and record probablity to interact in volume
+            for p,w in zip(momenta, weights):
+                dEdxs = model.get_dEdx(mass, couplings, p[3])
+                nPhotoElec = factor*np.array(dEdxs)
+                Prob_det = (1 - np.exp(-abs(nPhotoElec)))**self.n_layer
+                wgts = np.outer(cfacs * Prob_det, w)
+                output_w.append(wgts)
+
+            output_p += [LorentzVector(p[0],p[1],p[2],p[3]) for p in momenta]
+
+        return couplings, sum(output_w), output_p, np.transpose(np.array(output_w), (1, 0, 2))
+        
     ###############################
     #  Export Results as HEPMC File
     ###############################
