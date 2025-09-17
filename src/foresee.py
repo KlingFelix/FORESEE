@@ -2390,7 +2390,7 @@ class Foresee(Utility, Decay):
                 pids, mode = self.rng.choices(channels[0], weights=channels[1], k=1)[0]
                 if (self.channels is None) or (mode in self.channels): break
             # position
-            thetax, thetay = momentum.px/momentum.pz, momentum.py/momentum.pz
+            thetax, thetay = 0 if momentum.pz==0 else momentum.px/momentum.pz, 0 if momentum.pz==0 else momentum.py/momentum.pz
             posz = self.rng.uniform(0,self.length)
             posx = thetax*self.distance
             posy = thetay*self.distance
@@ -2616,7 +2616,7 @@ class Foresee(Utility, Decay):
         masses, productions, condition="True", energy="14",
         xlims=[0.01,1],ylims=[10**-6,10**-3],
         xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
-        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1,
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, ncol=1, normalization_factor=1,
     ):
         """
         Plot the production modes
@@ -2705,7 +2705,7 @@ class Foresee(Utility, Decay):
                     yvals[igen].append(total+1e-10)
 
             # add to plot
-            yvals = np.array(yvals)
+            yvals = np.array(yvals)*float(normalization_factor)
             yvals_min = [min(row) for row in yvals.T]
             yvals_max = [max(row) for row in yvals.T]
             ax.plot(xvals, yvals[0], color=color, label=label, ls=ls)
