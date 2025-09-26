@@ -2150,8 +2150,32 @@ class Foresee(Utility, Decay):
     ###############################
     #  Export Results as HEPMC File
     ###############################
+    
+    def sample_costheta_mode1(self, mf, m):
+    
+        """
+        Samples cos theta for polarized dark photons from pi0 and eta decay according to Eq 59 of 2508.18352.
 
-    def decay_llp(self, momentum, pids):
+        Parameters
+        ----------
+        mf: float
+            final state fermion mass
+        m:  float
+            llp mass
+
+        Returns
+        -------
+            value of cos theta
+        """
+    
+        f = lambda x: (m**2+4*(mf**2)) + (m**2-4*(mf**2))*x**2
+        while True:
+            x = np.random.uniform(-1,1)
+            y = np.random.uniform(0, f(1))
+            if y < f(x): break
+        return x
+
+    def decay_llp(self, momentum, pids, MEmode=None):
         """
         Handle to call the appropriate decay functions (2-body, 3-body, ...) based on the length of input pids
 
@@ -2161,6 +2185,8 @@ class Foresee(Utility, Decay):
             Initial state particle 4-momentum
         pids: [str] / [int]
             Final state particle PDG IDs
+        MEmode: None or int
+            mode ID for the decay (default=None)
 
         Returns
         -------
@@ -2176,9 +2202,10 @@ class Foresee(Utility, Decay):
             return pids, [p1]
         # 2-body decays
         elif len(pids)==2:
-            phi = self.rng.uniform(-math.pi,math.pi)
-            cos = self.rng.uniform(-1.,1.)
             m0, m1, m2 = momentum.m, self.masses(str(pids[0])), self.masses(str(pids[1]))
+            phi = self.rng.uniform(-math.pi,math.pi)
+            if MEmode==1: cos = self.sample_costheta_mode1(m1, m0)
+            else: cos = self.rng.uniform(-1.,1.)
             p1, p2 = self.twobody_decay(momentum,m0,m1,m2,phi,cos)
             return pids, [p1,p2]
         # 3-body decays
@@ -2318,7 +2345,7 @@ class Foresee(Utility, Decay):
 
     def write_events(self, mass, coupling, energy, filename=None, numberevent=10, zfront=0, nsample=1,
         notime=True, t0=0, modes=None, return_data=False, extend_to_low_pt_scales={},
-        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None):
+        filetype="hepmc", preselectioncuts="th<0.01", weightnames=None, MEmode=None):
         """
         A handle to the file writing functions
 
@@ -2351,6 +2378,8 @@ class Foresee(Utility, Decay):
             Expression defining cuts to be used e.g. "th<0.01"
         weightnames:
             Labels for the weights, written into hepmc file header
+        MEmode: None or int
+            mode ID for the decay (default=None)
 
         Returns
         -------
@@ -2398,7 +2427,7 @@ class Foresee(Utility, Decay):
             if notime: position = LorentzVector(posx,posy,posz+zfront,0)
             else     : position = LorentzVector(posx,posy,posz+zfront,post)
             # decay
-            pids, finalstate = self.decay_llp(momentum, pids)
+            pids, finalstate = self.decay_llp(momentum, pids, MEmode)
             # save
             unweighted_data.append([eventweight*weight, position, momentum, pids, finalstate])
 
