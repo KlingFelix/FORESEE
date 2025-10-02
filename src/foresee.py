@@ -2422,6 +2422,7 @@ class Foresee(Utility, Decay):
     def extract_contours(self,
             inputfile, outputfile,
             nevents=3,
+            icontour=0,
         ):
         """
         Export information of contour lines into text files
@@ -2434,6 +2435,8 @@ class Foresee(Utility, Decay):
             Filename for result output
         nevents: int
             Number of events
+        icontour: int
+            Number of Contour
 
         Returns
         -------
@@ -2446,7 +2449,7 @@ class Foresee(Utility, Decay):
 
         # extract line
         cs = plt.contour (m,c,n, levels=[np.log10(nevents)])
-        p = cs.collections[0].get_paths()[0]
+        p = cs.collections[0].get_paths()[icontour]
         v = p.vertices
         xvals, yvals = v[:,0], v[:,1]
         plt.close()
