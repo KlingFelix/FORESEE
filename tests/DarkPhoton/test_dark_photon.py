@@ -221,7 +221,7 @@ def test_DarkPhoton_brem():
     os.symlink(src = os.path.normpath(src_path + '../Models/' + modelname + '/model/ctau_DarkCast.txt'),\
                dst = 'model/ctau.txt',\
                target_is_directory=False)
-    os.symlink(src = os.path.normpath(src_path + '../Models/' + modelname + '/model/direct'),\
+    os.symlink(src = os.path.normpath(src_path + '../files/direct/' + modelname),\
                dst = 'model/direct',\
                target_is_directory=True)
 
