@@ -102,6 +102,32 @@ class Utility():
             width = 0.0
             print('WARNING '+str(pid)+' width not obtained from scikit-particle, returning 0')
         return width*1e-3 if width!=None else 0.0
+        
+    ###############################
+    #  Import Function
+    ###############################
+
+    def readfile(self,filename):
+        """
+        Function that reads a table in a .txt file and converts it to a numpy array
+
+        Parameters
+        ----------
+        filename:  str
+            The name/path of the file to be read
+
+        Returns
+        -------
+        The recovered table as a numpy array. Do be de-preciated, kept for historial reasons.
+        """
+        print ("Warning: Foresee.readfile(filename) will be depreciated soon. Replace it with np.loadtxt(filename).")
+        array = []
+        with open(filename) as f:
+            for line in f:
+                if line[0]=="#":continue
+                words = [float(elt.strip()) for elt in line.split( )]
+                array.append(words)
+        return np.array(array)
 
     ###############################
     #  Reading/Plotting Particle Tables
@@ -291,7 +317,7 @@ class Utility():
         Please replace by "read_list_4momenta_weights".
         Will be depreciated soon.
         """
-        ## TODO: remov function when its safe to do so
+        ## TODO: remove function when its safe to do so
         print ("Warning: Foresee.convert_list_to_momenta() will be depreciated soon. Replace it with Foresee.read_list_4momenta_weights().")
         return self.read_list_4momenta_weights(filename, keys, mass,nsample,preselectioncut,nocuts)
 
