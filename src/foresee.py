@@ -362,11 +362,11 @@ class Foresee(Utility, Decay):
             # selected channels only
             if key not in channels: continue
             if self.model.production[key]["type"] in ["2body", "3body"]:
-                momenta, weights = self.get_spectrum_decays(mass,coupling,key)
+                momenta, weights = self.get_spectrum_decays(mass=mass,coupling=coupling,key=key)
             if self.model.production[key]["type"]=="mixing":
-                momenta, weights = self.get_spectrum_mixing(mass,coupling,key)
+                momenta, weights = self.get_spectrum_mixing(mass=mass,coupling=coupling,key=key)
             if self.model.production[key]["type"]=="direct":
-                momenta, weights = self.get_spectrum_direct(mass,coupling,key)
+                momenta, weights = self.get_spectrum_direct(mass=mass,coupling=coupling,key=key)
 
             #return statistcs
             if save_file==True and len(momenta)>0:
@@ -563,7 +563,7 @@ class Foresee(Utility, Decay):
                 momenta, weights =self.read_list_4momenta_weights(filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
             except:
                 continue
-
+            
             # get coupling factors
             cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
 
@@ -658,8 +658,8 @@ class Foresee(Utility, Decay):
                     filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
             except:
                 continue
-
-            #setup coupling-factors
+            
+            # setup coupling-factors
             cfacs = np.array([model.get_production_scaling(key, mass, coupling, coup_ref) for coupling in couplings])
 
             # filter events that pass selection
