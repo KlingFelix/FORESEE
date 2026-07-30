@@ -232,8 +232,12 @@ class Utility():
             corresponds to alternative cross sections / weights per particle
         """
         #read file
-        list_logth, list_logp, list_xs = self.read_list_angle_momenta_weights(filename=filename, keys=keys)
-
+        try:
+            list_logth, list_logp, list_xs = self.read_list_angle_momenta_weights(filename=filename, keys=keys)
+        except:
+            if filename.endswith(".gz"): filename = filename[:-3]  #Check for uncompressed filename variant
+            list_logth, list_logp, list_xs = self.read_list_angle_momenta_weights(filename=filename, keys=keys)
+            
         phis,ths,pts,ens,weights = [],[],[],[],[]
         for logth,logp,xs in zip(list_logth,list_logp, list_xs):
             

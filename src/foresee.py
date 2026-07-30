@@ -197,7 +197,14 @@ class Foresee(Utility, Decay):
         # load mother particle spectrum
         filename = self.dirpath + "files/hadrons/"+energy+"TeV.txt.gz"
         keys = [f"{pid0}({gen})" for gen in generator]
-        momenta_mother, weights_mother = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
+        try:
+            momenta_mother, weights_mother = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid0), preselectioncut=preselectioncut, nsample=nsample_had)
+        except FileNotFoundError:
+            print ("did not find file:", filename)
+            return [],[]
+        except:
+            print ("error in foresee.get_spectrum_decays")
+            return [],[]
 
         # get sample of LLP momenta in the mother's rest frame
         if self.model.production[key]["type"] == "2body":
@@ -253,7 +260,14 @@ class Foresee(Utility, Decay):
         # load mother particle spectrum
         filename = self.dirpath + "files/hadrons/"+energy+"TeV.txt.gz"
         keys = [f"{pid0}({gen})" for gen in generator]
-        momenta_mother, weights_mother = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid0))
+        try:
+            momenta_mother, weights_mother = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid0))
+        except FileNotFoundError:
+            print ("did not find file:", filename)
+            return [],[]
+        except:
+            print ("error in foresee.get_spectrum_mixing")
+            return [],[]
 
         # z-axis angles and 3-momentum magnitudes from momenta
         momenta_lab = theta_p3_f_arr(momenta=momenta_mother)
@@ -301,13 +315,17 @@ class Foresee(Utility, Decay):
             if xmass> mass and xmass<mass1: mass1=xmass
 
         #load benchmark data
-        filename0 = self.model.modelpath+"model/direct/"+energy+"TeV/"+energy+"TeV_"+str(mass0)+".txt.gz"
-        filename1 = self.model.modelpath+"model/direct/"+energy+"TeV/"+energy+"TeV_"+str(mass1)+".txt.gz"
+        suffix=".txt.gz"  #Default filetype to try. Exception handling also checks for .txt
+        filename0 = self.model.modelpath+"model/direct/"+energy+"TeV/"+energy+"TeV_"+str(mass0)+suffix
+        filename1 = self.model.modelpath+"model/direct/"+energy+"TeV/"+energy+"TeV_"+str(mass1)+suffix
         try:
             momenta_llp0, weights_llp0 = self.read_list_4momenta_weights(filename0, configuration,mass=mass0,nocuts=True)
-            momenta_llp1, weights_llp1 = self.read_list_4momenta_weights(filename1, configuration, mass=mass1,nocuts=True)
-        except:
+            momenta_llp1, weights_llp1 = self.read_list_4momenta_weights(filename1, configuration,mass=mass1,nocuts=True)
+        except FileNotFoundError:
             print ("did not find file:", filename0, "or", filename1)
+            return [], []
+        except:
+            print ("error in foresee.get_spectrum_direct")
             return [], []
 
         # z-axis angles and 3-momentum magnitudes from momenta
@@ -560,8 +578,12 @@ class Foresee(Utility, Decay):
 
             # try Load Flux file
             try:
-                momenta, weights =self.read_list_4momenta_weights(filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
+                momenta, weights = self.read_list_4momenta_weights(filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
+            except FileNotFoundError:
+                print ("did not find file:", filename," skipping mode",key)
+                continue
             except:
+                print ("error in foresee.get_events, skipping mode",key)
                 continue
             
             # get coupling factors
@@ -629,7 +651,7 @@ class Foresee(Utility, Decay):
 
         Returns
         -------
-            List of couplings, umber of nsignals as numpy array, stat momenta, stat weights as numpy array
+            List of couplings, number of nsignals as numpy array, stat momenta, stat weights as numpy array
         """
 
         # setup different couplings to scan over
@@ -656,7 +678,11 @@ class Foresee(Utility, Decay):
             try:
                 momenta, weights=self.read_list_4momenta_weights(
                     filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
+            except FileNotFoundError:
+                print ("did not find file:", filename," skipping mode",key)
+                continue
             except:
+                print ("error in foresee.get_events_interaction, skipping mode",key)
                 continue
             
             # setup coupling-factors
@@ -742,7 +768,11 @@ class Foresee(Utility, Decay):
             try:
                 momenta, weights=self.read_list_4momenta_weights(
                     filename=filename, keys=keys_llp, mass=mass, nsample=nsample, preselectioncut=preselectioncuts)
+            except FileNotFoundError:
+                print ("did not find file:", filename)
+                continue
             except:
+                print ("error in foresee.get_events_ionisation")
                 continue
 
             #setup coupling-factors
@@ -1381,7 +1411,15 @@ class Foresee(Utility, Decay):
         """
         filename = self.dirpath + "files/hadrons/"+energy+"TeV.txt.gz"
         keys = [f"{pid}({generator})"]
-        p,w = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid))
+        try:
+            p,w = self.read_list_4momenta_weights(filename, keys,mass=self.masses(pid))
+        except FileNotFoundError:
+            print ("did not find file:", filename)
+            p,w = [],[]
+        except:
+            print ("error in foresee.get_spectrumplot")
+            p,w = [],[]
+        
         plt,_,_,_ =self.convert_to_hist_list(p,w[:,0], do_plot=True, prange=prange)
         return plt
 
